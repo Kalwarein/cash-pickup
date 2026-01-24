@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CandleData {
@@ -11,12 +11,28 @@ interface CandleData {
   timestamp: number;
 }
 
+interface TradeOverlay {
+  id: string;
+  entryPrice: number;
+  takeProfit: number;
+  stopLoss: number;
+}
+
 interface CandlestickChartProps {
   data: CandleData[];
   height?: number;
+  trades?: TradeOverlay[];
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
 }
 
-export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) => {
+export const CandlestickChart = ({ 
+  data, 
+  height = 300, 
+  trades = [],
+  isFullscreen = false,
+  onToggleFullscreen
+}: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [scrollPosition, setScrollPosition] = useState(0);
@@ -25,12 +41,14 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
+  const effectiveHeight = isFullscreen ? window.innerHeight - 200 : height;
+
   // Calculate visible candles based on zoom
   const candleWidth = 8 * zoomLevel;
   const candleGap = 2 * zoomLevel;
   const totalWidth = data.length * (candleWidth + candleGap);
 
-  // Find price range for scaling
+  // Find price range for scaling (include trade lines in range)
   const { minPrice, maxPrice } = useMemo(() => {
     if (data.length === 0) return { minPrice: 0, maxPrice: 100 };
     let min = Infinity;
@@ -39,17 +57,22 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
       min = Math.min(min, candle.low);
       max = Math.max(max, candle.high);
     });
+    // Include trade overlay prices in range
+    trades.forEach(trade => {
+      min = Math.min(min, trade.stopLoss);
+      max = Math.max(max, trade.takeProfit);
+    });
     const padding = (max - min) * 0.1;
     return { minPrice: min - padding, maxPrice: max + padding };
-  }, [data]);
+  }, [data, trades]);
 
   const priceRange = maxPrice - minPrice;
 
   // Scale price to Y coordinate
   const scaleY = useCallback((price: number) => {
-    const chartHeight = height - 40; // Leave room for x-axis
+    const chartHeight = effectiveHeight - 40;
     return chartHeight - ((price - minPrice) / priceRange) * chartHeight + 10;
-  }, [height, minPrice, priceRange]);
+  }, [effectiveHeight, minPrice, priceRange]);
 
   // Handle zoom
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev * 1.5, 4));
@@ -83,11 +106,9 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     if (e.ctrlKey || e.metaKey) {
-      // Zoom
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoomLevel(prev => Math.max(0.5, Math.min(4, prev * delta)));
     } else {
-      // Scroll
       const maxScroll = Math.max(0, totalWidth - (containerRef.current?.clientWidth || 0) + 60);
       setScrollPosition(prev => Math.max(0, Math.min(maxScroll, prev + e.deltaX + e.deltaY)));
     }
@@ -111,7 +132,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
 
   const handleTouchEnd = () => setIsDragging(false);
 
-  // Auto-scroll to latest on mount
+  // Auto-scroll to latest on mount and when new data arrives
   useEffect(() => {
     if (containerRef.current && data.length > 0) {
       const maxScroll = Math.max(0, totalWidth - containerRef.current.clientWidth + 60);
@@ -142,8 +163,8 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
   }
 
   return (
-    <div className="relative">
-      {/* Zoom Controls */}
+    <div className={cn("relative", isFullscreen && "fixed inset-0 z-50 bg-background p-4")}>
+      {/* Controls */}
       <div className="absolute top-2 right-2 z-10 flex items-center gap-1 bg-background/80 backdrop-blur-sm rounded-lg p-1 border border-border">
         <button
           onClick={handleZoomIn}
@@ -166,6 +187,15 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
         >
           <RotateCcw className="w-4 h-4" />
         </button>
+        {onToggleFullscreen && (
+          <button
+            onClick={onToggleFullscreen}
+            className="p-1.5 hover:bg-muted rounded-md transition-colors"
+            title={isFullscreen ? "Minimize" : "Fullscreen"}
+          >
+            {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </button>
+        )}
         <span className="px-2 text-xs text-muted-foreground border-l border-border ml-1">
           {Math.round(zoomLevel * 100)}%
         </span>
@@ -201,7 +231,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
 
       <div className="flex">
         {/* Y-Axis */}
-        <div className="w-14 flex-shrink-0 relative" style={{ height }}>
+        <div className="w-14 flex-shrink-0 relative" style={{ height: effectiveHeight }}>
           {yAxisLabels.map((label, i) => (
             <div
               key={i}
@@ -220,7 +250,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
             "flex-1 overflow-hidden relative",
             isDragging ? "cursor-grabbing" : "cursor-grab"
           )}
-          style={{ height }}
+          style={{ height: effectiveHeight }}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
@@ -246,10 +276,79 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
             ))}
           </svg>
 
+          {/* Trade overlay lines (Entry, TP, SL) */}
+          {trades.length > 0 && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
+              {trades.map((trade) => (
+                <g key={trade.id}>
+                  {/* Entry Price Line */}
+                  <line
+                    x1="0"
+                    y1={scaleY(trade.entryPrice)}
+                    x2="100%"
+                    y2={scaleY(trade.entryPrice)}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    strokeDasharray="8,4"
+                  />
+                  <text
+                    x="4"
+                    y={scaleY(trade.entryPrice) - 4}
+                    fill="hsl(var(--primary))"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    Entry ${trade.entryPrice.toFixed(2)}
+                  </text>
+
+                  {/* Take Profit Line */}
+                  <line
+                    x1="0"
+                    y1={scaleY(trade.takeProfit)}
+                    x2="100%"
+                    y2={scaleY(trade.takeProfit)}
+                    stroke="hsl(var(--success))"
+                    strokeWidth="2"
+                    strokeDasharray="8,4"
+                  />
+                  <text
+                    x="4"
+                    y={scaleY(trade.takeProfit) - 4}
+                    fill="hsl(var(--success))"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    TP ${trade.takeProfit.toFixed(2)}
+                  </text>
+
+                  {/* Stop Loss Line */}
+                  <line
+                    x1="0"
+                    y1={scaleY(trade.stopLoss)}
+                    x2="100%"
+                    y2={scaleY(trade.stopLoss)}
+                    stroke="hsl(var(--destructive))"
+                    strokeWidth="2"
+                    strokeDasharray="8,4"
+                  />
+                  <text
+                    x="4"
+                    y={scaleY(trade.stopLoss) - 4}
+                    fill="hsl(var(--destructive))"
+                    fontSize="10"
+                    fontWeight="bold"
+                  >
+                    SL ${trade.stopLoss.toFixed(2)}
+                  </text>
+                </g>
+              ))}
+            </svg>
+          )}
+
           {/* Candles */}
           <svg
             width={totalWidth}
-            height={height}
+            height={effectiveHeight}
             style={{ transform: `translateX(-${scrollPosition}px)` }}
           >
             {data.map((candle, i) => {
@@ -304,7 +403,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
                     x={x - candleGap / 2}
                     y={0}
                     width={candleWidth + candleGap}
-                    height={height}
+                    height={effectiveHeight}
                     fill="transparent"
                   />
                 </g>

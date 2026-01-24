@@ -1,25 +1,60 @@
 import { useEffect } from 'react';
-import { User, RefreshCw, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown, Gift } from 'lucide-react';
+import { User, RefreshCw, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown, Gift, Target, XCircle, Timer } from 'lucide-react';
 import { TransactionItem } from '@/components/TransactionItem';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { useForexTrades } from '@/hooks/useForexTrades';
+import { useMarketCandles } from '@/hooks/useMarketCandles';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
 export const WalletTab = () => {
-  const { wallet, transactions, loading, deposit } = useWallet();
+  const { wallet, transactions, loading, deposit, refetch: refetchWallet } = useWallet();
   const { investments, completedInvestments } = useInvestments();
   const { profile, updateViewPreference } = useProfile();
   const { signOut } = useAuth();
+  const { openTrades, closeTrade, checkAndCloseTrades, calculateUnrealizedPL } = useForexTrades();
+  const { currentPrice } = useMarketCandles();
 
   // Use database-persisted view preference
   const showProfile = profile?.wallet_view_preference === 'profile';
 
+  // Check for auto-close conditions
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (currentPrice > 0) {
+        checkAndCloseTrades(currentPrice);
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [currentPrice, checkAndCloseTrades]);
+
   const handleToggleView = () => {
     const newView = showProfile ? 'wallet' : 'profile';
     updateViewPreference(newView);
+  };
+
+  const handleCloseTrade = async (tradeId: string) => {
+    const { error, profitLoss } = await closeTrade(tradeId, currentPrice);
+    if (error) {
+      toast.error(error);
+    } else {
+      toast.success(`Trade closed: ${profitLoss && profitLoss >= 0 ? '+' : ''}$${profitLoss?.toFixed(2)}`);
+      await refetchWallet();
+    }
+  };
+
+  const getTimeRemaining = (expiresAt: string) => {
+    const now = new Date();
+    const expiry = new Date(expiresAt);
+    const diff = expiry.getTime() - now.getTime();
+    if (diff <= 0) return 'Expiring...';
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   const totalProfitLoss = investments.reduce((sum, inv) => sum + inv.profit_loss, 0);
@@ -29,6 +64,8 @@ export const WalletTab = () => {
     ? (allInvestments.filter(inv => inv.is_matured && (inv.final_profit_loss || 0) > 0).length / 
        allInvestments.filter(inv => inv.is_matured).length) * 100
     : 0;
+
+  const unrealizedPL = calculateUnrealizedPL(currentPrice);
 
   if (loading) {
     return (
@@ -85,6 +122,77 @@ export const WalletTab = () => {
               </div>
             </div>
           </div>
+
+          {/* Open Trades */}
+          {openTrades.length > 0 && (
+            <div className="glass-card p-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-semibold">Open Trades</h3>
+                <span className={cn(
+                  "text-sm font-medium",
+                  unrealizedPL >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  P/L: {unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toFixed(2)}
+                </span>
+              </div>
+              
+              <div className="space-y-3">
+                {openTrades.map((trade) => {
+                  const priceChange = (currentPrice - trade.entry_price) / trade.entry_price;
+                  const currentPL = trade.amount * priceChange;
+                  
+                  return (
+                    <div key={trade.id} className="p-3 bg-muted/50 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn(
+                            "w-8 h-8 rounded-full flex items-center justify-center",
+                            currentPL >= 0 ? "bg-success/20" : "bg-destructive/20"
+                          )}>
+                            {currentPL >= 0 ? <TrendingUp className="w-4 h-4 text-success" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">${trade.amount.toFixed(2)}</p>
+                            <p className="text-xs text-muted-foreground">Entry: ${trade.entry_price.toFixed(2)}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className={cn(
+                            "font-bold",
+                            currentPL >= 0 ? "text-success" : "text-destructive"
+                          )}>
+                            {currentPL >= 0 ? '+' : ''}${currentPL.toFixed(2)}
+                          </p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Timer className="w-3 h-3" />
+                            {getTimeRemaining(trade.expires_at)}
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between text-xs mb-2">
+                        <span className="flex items-center gap-1 text-success">
+                          <Target className="w-3 h-3" />
+                          TP: ${trade.take_profit.toFixed(2)}
+                        </span>
+                        <span className="flex items-center gap-1 text-destructive">
+                          <XCircle className="w-3 h-3" />
+                          SL: ${trade.stop_loss.toFixed(2)}
+                        </span>
+                      </div>
+                      
+                      <button
+                        onClick={() => handleCloseTrade(trade.id)}
+                        className="w-full py-2 border border-border rounded-lg text-sm font-medium hover:bg-muted transition-colors"
+                      >
+                        Close Trade
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Active Investments */}
           {investments.length > 0 && (
