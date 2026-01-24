@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, TrendingDown, Activity, Zap, Clock, DollarSign, Target, XCircle, Timer } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { TrendingUp, TrendingDown, Activity, Zap, Clock, DollarSign, Target, XCircle, Timer, CandlestickChart as CandlestickIcon, LineChart } from 'lucide-react';
 import { MarketChart } from '@/components/MarketChart';
+import { CandlestickChart } from '@/components/CandlestickChart';
 import { useMarketCandles } from '@/hooks/useMarketCandles';
 import { useForexTrades } from '@/hooks/useForexTrades';
 import { useWallet } from '@/hooks/useWallet';
@@ -13,6 +14,7 @@ export const MarketTab = () => {
   const { openTrades, trades, openTrade, closeTrade, checkAndCloseTrades, calculateUnrealizedPL } = useForexTrades();
   const { wallet, refetch: refetchWallet } = useWallet();
   const [showTradeModal, setShowTradeModal] = useState(false);
+  const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
 
   // Check for auto-close conditions every 5 seconds
   useEffect(() => {
@@ -101,17 +103,46 @@ export const MarketTab = () => {
               <span className="font-semibold">{isPositive ? '+' : ''}{changePercent.toFixed(2)}%</span>
             </div>
           </div>
-          <div className={cn(
-            "px-3 py-1.5 rounded-xl text-sm font-medium",
-            marketStatus.status === 'rising' && "bg-success/10 text-success",
-            marketStatus.status === 'falling' && "bg-destructive/10 text-destructive",
-            marketStatus.status === 'volatile' && "bg-warning/10 text-warning"
-          )}>
-            {marketStatus.message}
+          <div className="flex items-center gap-2">
+            {/* Chart Type Toggle */}
+            <div className="flex items-center bg-muted/50 rounded-lg p-1">
+              <button
+                onClick={() => setChartType('line')}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  chartType === 'line' ? "bg-background shadow-sm" : "hover:bg-muted"
+                )}
+                title="Line Chart"
+              >
+                <LineChart className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setChartType('candlestick')}
+                className={cn(
+                  "p-1.5 rounded-md transition-colors",
+                  chartType === 'candlestick' ? "bg-background shadow-sm" : "hover:bg-muted"
+                )}
+                title="Candlestick Chart"
+              >
+                <CandlestickIcon className="w-4 h-4" />
+              </button>
+            </div>
+            <div className={cn(
+              "px-3 py-1.5 rounded-xl text-sm font-medium",
+              marketStatus.status === 'rising' && "bg-success/10 text-success",
+              marketStatus.status === 'falling' && "bg-destructive/10 text-destructive",
+              marketStatus.status === 'volatile' && "bg-warning/10 text-warning"
+            )}>
+              {marketStatus.message}
+            </div>
           </div>
         </div>
 
-        <MarketChart data={chartData} height={220} showAxis />
+        {chartType === 'candlestick' ? (
+          <CandlestickChart data={chartData} height={300} />
+        ) : (
+          <MarketChart data={chartData} height={220} showAxis />
+        )}
       </div>
 
       {/* Trade Button */}
