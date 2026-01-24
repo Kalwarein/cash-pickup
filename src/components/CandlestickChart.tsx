@@ -41,12 +41,33 @@ export const CandlestickChart = ({
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
+  // If the user drags/scrolls away from the latest candle, we should NOT force
+  // them back to the end when new candles arrive.
+  const userInteractedRef = useRef(false);
+  const pinnedToLatestRef = useRef(true);
+
   const effectiveHeight = isFullscreen ? window.innerHeight - 200 : height;
 
   // Calculate visible candles based on zoom
   const candleWidth = 8 * zoomLevel;
   const candleGap = 2 * zoomLevel;
   const totalWidth = data.length * (candleWidth + candleGap);
+
+  const getMaxScroll = useCallback(() => {
+    const viewportWidth = containerRef.current?.clientWidth || 0;
+    return Math.max(0, totalWidth - viewportWidth + 60);
+  }, [totalWidth]);
+
+  const isAtLatest = useCallback(() => {
+    const max = getMaxScroll();
+    return max === 0 || scrollPosition >= max - 20;
+  }, [getMaxScroll, scrollPosition]);
+
+  const jumpToLatest = useCallback(() => {
+    const max = getMaxScroll();
+    setScrollPosition(max);
+    pinnedToLatestRef.current = true;
+  }, [getMaxScroll]);
 
   // Find price range for scaling (include trade lines in range)
   const { minPrice, maxPrice } = useMemo(() => {
@@ -84,6 +105,8 @@ export const CandlestickChart = ({
 
   // Handle drag scrolling
   const handleMouseDown = (e: React.MouseEvent) => {
+    userInteractedRef.current = true;
+    pinnedToLatestRef.current = false;
     setIsDragging(true);
     setDragStart(e.clientX + scrollPosition);
   };
@@ -91,8 +114,10 @@ export const CandlestickChart = ({
   const handleMouseMove = (e: React.MouseEvent) => {
     if (isDragging) {
       const newScroll = dragStart - e.clientX;
-      const maxScroll = Math.max(0, totalWidth - (containerRef.current?.clientWidth || 0) + 60);
-      setScrollPosition(Math.max(0, Math.min(newScroll, maxScroll)));
+      const maxScroll = getMaxScroll();
+      const next = Math.max(0, Math.min(newScroll, maxScroll));
+      setScrollPosition(next);
+      if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
     }
   };
 
@@ -105,18 +130,26 @@ export const CandlestickChart = ({
   // Handle wheel zoom and scroll
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    userInteractedRef.current = true;
     if (e.ctrlKey || e.metaKey) {
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoomLevel(prev => Math.max(0.5, Math.min(4, prev * delta)));
     } else {
-      const maxScroll = Math.max(0, totalWidth - (containerRef.current?.clientWidth || 0) + 60);
-      setScrollPosition(prev => Math.max(0, Math.min(maxScroll, prev + e.deltaX + e.deltaY)));
+      pinnedToLatestRef.current = false;
+      const maxScroll = getMaxScroll();
+      setScrollPosition(prev => {
+        const next = Math.max(0, Math.min(maxScroll, prev + e.deltaX + e.deltaY));
+        if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
+        return next;
+      });
     }
   };
 
   // Touch support
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
+      userInteractedRef.current = true;
+      pinnedToLatestRef.current = false;
       setIsDragging(true);
       setDragStart(e.touches[0].clientX + scrollPosition);
     }
@@ -125,20 +158,33 @@ export const CandlestickChart = ({
   const handleTouchMove = (e: React.TouchEvent) => {
     if (isDragging && e.touches.length === 1) {
       const newScroll = dragStart - e.touches[0].clientX;
-      const maxScroll = Math.max(0, totalWidth - (containerRef.current?.clientWidth || 0) + 60);
-      setScrollPosition(Math.max(0, Math.min(newScroll, maxScroll)));
+      const maxScroll = getMaxScroll();
+      const next = Math.max(0, Math.min(newScroll, maxScroll));
+      setScrollPosition(next);
+      if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
     }
   };
 
   const handleTouchEnd = () => setIsDragging(false);
 
-  // Auto-scroll to latest on mount and when new data arrives
+  // Auto-scroll behavior:
+  // - On first load (no user interaction): jump to latest.
+  // - After that: only stay pinned if the user is already at the latest.
   useEffect(() => {
-    if (containerRef.current && data.length > 0) {
-      const maxScroll = Math.max(0, totalWidth - containerRef.current.clientWidth + 60);
-      setScrollPosition(maxScroll);
+    if (!containerRef.current || data.length === 0) return;
+
+    const max = getMaxScroll();
+    if (!userInteractedRef.current) {
+      setScrollPosition(max);
+      pinnedToLatestRef.current = true;
+      return;
     }
-  }, [data.length, totalWidth]);
+
+    if (pinnedToLatestRef.current || isAtLatest()) {
+      setScrollPosition(max);
+      pinnedToLatestRef.current = true;
+    }
+  }, [data.length, getMaxScroll, isAtLatest]);
 
   // Handle candle hover
   const handleCandleHover = (candle: CandleData, x: number, y: number) => {
@@ -187,6 +233,18 @@ export const CandlestickChart = ({
         >
           <RotateCcw className="w-4 h-4" />
         </button>
+
+        {/* Jump to latest */}
+        {!isAtLatest() && (
+          <button
+            onClick={jumpToLatest}
+            className="px-2 py-1.5 hover:bg-muted rounded-md transition-colors text-xs font-medium"
+            title="Jump to latest candle"
+          >
+            Latest
+          </button>
+        )}
+
         {onToggleFullscreen && (
           <button
             onClick={onToggleFullscreen}
