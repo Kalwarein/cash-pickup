@@ -1,4 +1,4 @@
-import { Home, TrendingUp, BarChart3, MessageSquare, Wallet } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Trophy, Wallet } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BottomNavProps {
@@ -10,7 +10,7 @@ const tabs = [
   { id: 'home', label: 'Home', icon: Home },
   { id: 'invest', label: 'Invest', icon: TrendingUp },
   { id: 'market', label: 'Market', icon: BarChart3 },
-  { id: 'chat', label: 'Chat', icon: MessageSquare },
+  { id: 'leaderboard', label: 'Leaders', icon: Trophy },
   { id: 'wallet', label: 'Wallet', icon: Wallet },
 ];
 

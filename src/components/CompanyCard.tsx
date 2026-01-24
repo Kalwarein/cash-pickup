@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Flame } from 'lucide-react';
+import { TrendingUp, TrendingDown, Flame, Eye } from 'lucide-react';
 
 interface CompanyCardProps {
   name: string;
@@ -10,6 +10,7 @@ interface CompanyCardProps {
   riskLevel: 'Low' | 'Medium' | 'High';
   isTrending?: boolean;
   onInvest?: () => void;
+  onView?: () => void;
 }
 
 export const CompanyCard = ({
@@ -21,6 +22,7 @@ export const CompanyCard = ({
   riskLevel,
   isTrending,
   onInvest,
+  onView,
 }: CompanyCardProps) => {
   const isPositive = change >= 0;
   
@@ -56,19 +58,30 @@ export const CompanyCard = ({
           <p className="text-lg font-bold">${price.toFixed(2)}</p>
           <div className={cn(
             "flex items-center gap-1 text-sm",
-            isPositive ? "text-green-400" : "text-red-400"
+            isPositive ? "text-success" : "text-destructive"
           )}>
             {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
             <span>{isPositive ? '+' : ''}{change.toFixed(2)}%</span>
           </div>
         </div>
         
-        <button
-          onClick={onInvest}
-          className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors"
-        >
-          Invest
-        </button>
+        <div className="flex gap-2">
+          {onView && (
+            <button
+              onClick={onView}
+              className="p-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
+              title="View details"
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          )}
+          <button
+            onClick={onInvest}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium text-sm hover:bg-primary/90 transition-colors"
+          >
+            Invest
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Search, Filter } from 'lucide-react';
 import { CompanyCard } from '@/components/CompanyCard';
+import { CompanyDetail } from '@/components/CompanyDetail';
 import { InvestModal } from '@/components/InvestModal';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useWallet } from '@/hooks/useWallet';
@@ -17,6 +18,7 @@ export const InvestTab = () => {
   const [search, setSearch] = useState('');
   const [selectedSector, setSelectedSector] = useState('All');
   const [selectedCompany, setSelectedCompany] = useState<typeof companies[0] | null>(null);
+  const [viewingCompanyId, setViewingCompanyId] = useState<string | null>(null);
 
   const filteredCompanies = companies.filter(c => {
     const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -40,6 +42,16 @@ export const InvestTab = () => {
     }
   };
 
+  // Show company detail view
+  if (viewingCompanyId) {
+    return (
+      <CompanyDetail 
+        companyId={viewingCompanyId} 
+        onBack={() => setViewingCompanyId(null)} 
+      />
+    );
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -56,7 +68,7 @@ export const InvestTab = () => {
       <div>
         <h1 className="text-2xl font-bold mb-1">Invest</h1>
         <p className="text-muted-foreground text-sm">
-          Choose a company to invest in. Balance: ${wallet?.balance.toFixed(2) || '0.00'}
+          Long-term company investments (30-90 days). Balance: ${wallet?.balance.toFixed(2) || '0.00'}
         </p>
       </div>
 
@@ -130,6 +142,7 @@ export const InvestTab = () => {
             riskLevel={company.risk_level}
             isTrending={company.is_trending}
             onInvest={() => setSelectedCompany(company)}
+            onView={() => setViewingCompanyId(company.id)}
           />
         ))}
       </div>

@@ -39,7 +39,12 @@ export type Database = {
         Row: {
           created_at: string | null
           current_price: number
+          description: string | null
+          employees: number | null
+          founded_year: number | null
+          headquarters: string | null
           id: string
+          image_url: string | null
           is_trending: boolean | null
           max_return_percent: number | null
           min_return_percent: number | null
@@ -52,7 +57,12 @@ export type Database = {
         Insert: {
           created_at?: string | null
           current_price: number
+          description?: string | null
+          employees?: number | null
+          founded_year?: number | null
+          headquarters?: string | null
           id?: string
+          image_url?: string | null
           is_trending?: boolean | null
           max_return_percent?: number | null
           min_return_percent?: number | null
@@ -65,7 +75,12 @@ export type Database = {
         Update: {
           created_at?: string | null
           current_price?: number
+          description?: string | null
+          employees?: number | null
+          founded_year?: number | null
+          headquarters?: string | null
           id?: string
+          image_url?: string | null
           is_trending?: boolean | null
           max_return_percent?: number | null
           min_return_percent?: number | null
@@ -77,14 +92,100 @@ export type Database = {
         }
         Relationships: []
       }
+      company_price_history: {
+        Row: {
+          change_percent: number | null
+          company_id: string
+          created_at: string | null
+          id: string
+          price: number
+          timestamp: string
+        }
+        Insert: {
+          change_percent?: number | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          price: number
+          timestamp?: string
+        }
+        Update: {
+          change_percent?: number | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          price?: number
+          timestamp?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_price_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forex_trades: {
+        Row: {
+          amount: number
+          closed_at: string | null
+          created_at: string | null
+          entry_price: number
+          exit_price: number | null
+          expires_at: string
+          id: string
+          max_duration_minutes: number
+          profit_loss: number | null
+          status: string | null
+          stop_loss: number
+          take_profit: number
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          closed_at?: string | null
+          created_at?: string | null
+          entry_price: number
+          exit_price?: number | null
+          expires_at: string
+          id?: string
+          max_duration_minutes?: number
+          profit_loss?: number | null
+          status?: string | null
+          stop_loss: number
+          take_profit: number
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          closed_at?: string | null
+          created_at?: string | null
+          entry_price?: number
+          exit_price?: number | null
+          expires_at?: string
+          id?: string
+          max_duration_minutes?: number
+          profit_loss?: number | null
+          status?: string | null
+          stop_loss?: number
+          take_profit?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       investments: {
         Row: {
           amount: number
           company_id: string
           created_at: string | null
           current_value: number
+          final_profit_loss: number | null
+          final_value: number | null
           id: string
           is_matured: boolean | null
+          matured_at: string | null
           maturity_date: string | null
           maturity_days: number
           profit_loss: number | null
@@ -97,8 +198,11 @@ export type Database = {
           company_id: string
           created_at?: string | null
           current_value: number
+          final_profit_loss?: number | null
+          final_value?: number | null
           id?: string
           is_matured?: boolean | null
+          matured_at?: string | null
           maturity_date?: string | null
           maturity_days?: number
           profit_loss?: number | null
@@ -111,8 +215,11 @@ export type Database = {
           company_id?: string
           created_at?: string | null
           current_value?: number
+          final_profit_loss?: number | null
+          final_value?: number | null
           id?: string
           is_matured?: boolean | null
+          matured_at?: string | null
           maturity_date?: string | null
           maturity_days?: number
           profit_loss?: number | null
@@ -129,6 +236,78 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      leaderboard_cache: {
+        Row: {
+          id: string
+          rank_by_profit: number | null
+          rank_by_volume: number | null
+          total_investments: number | null
+          total_profit: number | null
+          total_trades: number | null
+          updated_at: string | null
+          user_id: string
+          user_name: string
+          win_rate: number | null
+        }
+        Insert: {
+          id?: string
+          rank_by_profit?: number | null
+          rank_by_volume?: number | null
+          total_investments?: number | null
+          total_profit?: number | null
+          total_trades?: number | null
+          updated_at?: string | null
+          user_id: string
+          user_name: string
+          win_rate?: number | null
+        }
+        Update: {
+          id?: string
+          rank_by_profit?: number | null
+          rank_by_volume?: number | null
+          total_investments?: number | null
+          total_profit?: number | null
+          total_trades?: number | null
+          updated_at?: string | null
+          user_id?: string
+          user_name?: string
+          win_rate?: number | null
+        }
+        Relationships: []
+      }
+      market_candles: {
+        Row: {
+          close_price: number
+          created_at: string | null
+          high_price: number
+          id: string
+          low_price: number
+          open_price: number
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          close_price: number
+          created_at?: string | null
+          high_price: number
+          id?: string
+          low_price: number
+          open_price: number
+          timestamp?: string
+          volume?: number | null
+        }
+        Update: {
+          close_price?: number
+          created_at?: string | null
+          high_price?: number
+          id?: string
+          low_price?: number
+          open_price?: number
+          timestamp?: string
+          volume?: number | null
+        }
+        Relationships: []
       }
       market_events: {
         Row: {
@@ -160,21 +339,27 @@ export type Database = {
           email: string
           id: string
           name: string
+          promo_codes: Json | null
           updated_at: string | null
+          wallet_view_preference: string | null
         }
         Insert: {
           created_at?: string | null
           email: string
           id: string
           name: string
+          promo_codes?: Json | null
           updated_at?: string | null
+          wallet_view_preference?: string | null
         }
         Update: {
           created_at?: string | null
           email?: string
           id?: string
           name?: string
+          promo_codes?: Json | null
           updated_at?: string | null
+          wallet_view_preference?: string | null
         }
         Relationships: []
       }
@@ -243,7 +428,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

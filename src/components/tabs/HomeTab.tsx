@@ -1,21 +1,23 @@
-import { TrendingUp, Users, Activity, Flame, Clock, Calendar } from 'lucide-react';
+import { TrendingUp, Users, Activity, Flame, Clock, Eye } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { MarketChart } from '@/components/MarketChart';
 import { StatCard } from '@/components/StatCard';
-import { useMarketSimulation } from '@/hooks/useMarketSimulation';
+import { useMarketCandles } from '@/hooks/useMarketCandles';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 export const HomeTab = () => {
-  const { chartData, marketStatus } = useMarketSimulation();
+  const { chartData, currentPrice, marketStatus } = useMarketCandles();
   const { companies } = useCompanies();
-  const { investments } = useInvestments();
+  const { investments, completedInvestments } = useInvestments();
 
   const trendingCompanies = companies.filter(c => c.is_trending).slice(0, 4);
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
   const totalProfitLoss = investments.reduce((sum, inv) => sum + inv.profit_loss, 0);
   const totalCurrentValue = investments.reduce((sum, inv) => sum + inv.current_value, 0);
+  const completedPL = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
 
   const getDaysRemaining = (maturityDate: string) => {
     const now = new Date();
@@ -50,9 +52,9 @@ export const HomeTab = () => {
       <div className="glass-card p-4 glow-primary">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground">Market Index</p>
+            <p className="text-sm text-muted-foreground">SLE Market Index</p>
             <p className="text-3xl font-bold">
-              ${chartData[chartData.length - 1]?.value.toFixed(2) || '0.00'}
+              ${currentPrice.toFixed(2)}
             </p>
           </div>
           <div className={cn(
@@ -72,7 +74,7 @@ export const HomeTab = () => {
       {investments.length > 0 && (
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold">My Investments</h2>
+            <h2 className="text-lg font-semibold">Active Investments</h2>
             <span className="text-sm text-muted-foreground">{investments.length} active</span>
           </div>
           
@@ -144,12 +146,51 @@ export const HomeTab = () => {
                       "text-xs font-medium",
                       daysRemaining <= 0 ? "text-success" : "text-muted-foreground"
                     )}>
-                      {daysRemaining <= 0 ? 'Matured!' : `${daysRemaining}d left`}
+                      {daysRemaining <= 0 ? 'Maturing...' : `${daysRemaining}d left`}
                     </span>
                   </div>
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Completed Investments */}
+      {completedInvestments.length > 0 && (
+        <div className="glass-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-lg font-semibold">Recently Completed</h2>
+            <span className={cn(
+              "text-sm font-medium",
+              completedPL >= 0 ? "text-success" : "text-destructive"
+            )}>
+              Total: {completedPL >= 0 ? '+' : ''}${completedPL.toFixed(2)}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {completedInvestments.slice(0, 3).map((inv) => (
+              <div key={inv.id} className="flex items-center justify-between p-2 bg-muted/30 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <div className={cn(
+                    "w-6 h-6 rounded-full flex items-center justify-center",
+                    (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-destructive/20"
+                  )}>
+                    <TrendingUp className={cn(
+                      "w-3 h-3",
+                      (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
+                    )} />
+                  </div>
+                  <span className="text-sm">{inv.company_name}</span>
+                </div>
+                <span className={cn(
+                  "text-sm font-semibold",
+                  (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}${(inv.final_profit_loss || 0).toFixed(2)}
+                </span>
+              </div>
+            ))}
           </div>
         </div>
       )}
