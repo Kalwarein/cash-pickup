@@ -18,13 +18,12 @@ interface InvestModalProps {
   onInvest: (amount: number, maturityDays: number) => Promise<void>;
 }
 
+// Long-term investment options only (30+ days)
 const MATURITY_OPTIONS = [
-  { days: 6, label: '6 Days', risk: 'High', returnMultiplier: 0.6 },
-  { days: 10, label: '10 Days', risk: 'Medium-High', returnMultiplier: 0.75 },
-  { days: 14, label: '14 Days', risk: 'Medium', returnMultiplier: 0.9 },
-  { days: 21, label: '21 Days', risk: 'Medium-Low', returnMultiplier: 1.0 },
-  { days: 30, label: '30 Days', risk: 'Low', returnMultiplier: 1.15 },
-  { days: 60, label: '60 Days', risk: 'Very Low', returnMultiplier: 1.35 },
+  { days: 30, label: '30 Days', risk: 'Standard', returnMultiplier: 1.0 },
+  { days: 45, label: '45 Days', risk: 'Balanced', returnMultiplier: 1.15 },
+  { days: 60, label: '60 Days', risk: 'Lower Risk', returnMultiplier: 1.30 },
+  { days: 90, label: '90 Days', risk: 'Safest', returnMultiplier: 1.50 },
 ];
 
 export const InvestModal = ({
@@ -35,7 +34,7 @@ export const InvestModal = ({
   onInvest,
 }: InvestModalProps) => {
   const [amount, setAmount] = useState('');
-  const [selectedMaturity, setSelectedMaturity] = useState(MATURITY_OPTIONS[2]); // Default 14 days
+  const [selectedMaturity, setSelectedMaturity] = useState(MATURITY_OPTIONS[0]); // Default 30 days
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -104,7 +103,7 @@ export const InvestModal = ({
             <div>
               <p className="text-sm font-medium text-warning">Risk Level: {company.riskLevel}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Investment values can go up or down. Returns depend on market conditions and maturity period.
+                Long-term investments (30-90 days). Returns depend on market conditions and company performance.
               </p>
             </div>
           </div>
@@ -113,9 +112,9 @@ export const InvestModal = ({
           <div>
             <label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              Investment Period (Maturity)
+              Investment Period
             </label>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-2 gap-2">
               {MATURITY_OPTIONS.map((option) => (
                 <button
                   key={option.days}
@@ -153,11 +152,13 @@ export const InvestModal = ({
                 </span>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {selectedMaturity.days < 14 
-                  ? "⚠️ Shorter periods have higher risk but faster returns"
-                  : selectedMaturity.days >= 30
-                  ? "✅ Longer periods are safer with better potential returns"
-                  : "📊 Balanced risk and return potential"
+                {selectedMaturity.days >= 90 
+                  ? "✅ Maximum safety with best potential returns"
+                  : selectedMaturity.days >= 60
+                  ? "✅ Lower risk with good potential returns"
+                  : selectedMaturity.days >= 45
+                  ? "📊 Balanced risk and return potential"
+                  : "📊 Standard investment period"
                 }
               </p>
             </div>
@@ -174,16 +175,16 @@ export const InvestModal = ({
               placeholder="Enter amount..."
               className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            {error && <p className="text-sm text-red-400 mt-2">{error}</p>}
+            {error && <p className="text-sm text-destructive mt-2">{error}</p>}
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="glass-card p-3">
-              <div className="flex items-center gap-2 text-green-400 mb-1">
+              <div className="flex items-center gap-2 text-success mb-1">
                 <TrendingUp className="w-4 h-4" />
                 <span className="text-xs font-medium">Potential Gain</span>
               </div>
-              <p className="font-bold text-green-400">
+              <p className="font-bold text-success">
                 +${potentialProfit.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -191,11 +192,11 @@ export const InvestModal = ({
               </p>
             </div>
             <div className="glass-card p-3">
-              <div className="flex items-center gap-2 text-red-400 mb-1">
+              <div className="flex items-center gap-2 text-destructive mb-1">
                 <TrendingDown className="w-4 h-4" />
                 <span className="text-xs font-medium">Potential Loss</span>
               </div>
-              <p className="font-bold text-red-400">
+              <p className="font-bold text-destructive">
                 -${potentialLoss.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground">

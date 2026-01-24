@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { User, RefreshCw, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown } from 'lucide-react';
+import { useEffect } from 'react';
+import { User, RefreshCw, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown, Gift } from 'lucide-react';
 import { TransactionItem } from '@/components/TransactionItem';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
@@ -10,26 +10,25 @@ import { cn } from '@/lib/utils';
 
 export const WalletTab = () => {
   const { wallet, transactions, loading, deposit } = useWallet();
-  const { investments } = useInvestments();
-  const { profile } = useProfile();
+  const { investments, completedInvestments } = useInvestments();
+  const { profile, updateViewPreference } = useProfile();
   const { signOut } = useAuth();
-  const [showProfile, setShowProfile] = useState(false);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [showDeposit, setShowDeposit] = useState(false);
+
+  // Use database-persisted view preference
+  const showProfile = profile?.wallet_view_preference === 'profile';
+
+  const handleToggleView = () => {
+    const newView = showProfile ? 'wallet' : 'profile';
+    updateViewPreference(newView);
+  };
 
   const totalProfitLoss = investments.reduce((sum, inv) => sum + inv.profit_loss, 0);
-  const winRate = investments.length > 0
-    ? (investments.filter(inv => inv.profit_loss > 0).length / investments.length) * 100
+  const completedPL = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
+  const allInvestments = [...investments, ...completedInvestments];
+  const winRate = allInvestments.filter(inv => inv.is_matured).length > 0
+    ? (allInvestments.filter(inv => inv.is_matured && (inv.final_profit_loss || 0) > 0).length / 
+       allInvestments.filter(inv => inv.is_matured).length) * 100
     : 0;
-
-  const handleDeposit = async () => {
-    const amount = parseFloat(depositAmount);
-    if (amount > 0) {
-      await deposit(amount);
-      setDepositAmount('');
-      setShowDeposit(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -50,7 +49,7 @@ export const WalletTab = () => {
         <div className="flex items-center gap-2">
           <ThemeToggle />
           <button
-            onClick={() => setShowProfile(!showProfile)}
+            onClick={handleToggleView}
             className="p-2 bg-muted rounded-xl hover:bg-muted/80 transition-colors"
           >
             <ArrowUpDown className="w-5 h-5" />
@@ -68,12 +67,6 @@ export const WalletTab = () => {
                 <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
                 <p className="text-4xl font-bold">${wallet?.balance.toFixed(2)}</p>
               </div>
-              <button
-                onClick={() => setShowDeposit(true)}
-                className="px-4 py-2 bg-primary text-primary-foreground rounded-xl font-medium text-sm hover:bg-primary/90 transition-colors"
-              >
-                Deposit
-              </button>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
@@ -82,12 +75,12 @@ export const WalletTab = () => {
                 <p className="text-lg font-semibold">${wallet?.invested_amount.toFixed(2)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Profit/Loss</p>
+                <p className="text-xs text-muted-foreground">Total Profit</p>
                 <p className={cn(
                   "text-lg font-semibold",
-                  totalProfitLoss >= 0 ? "text-success" : "text-destructive"
+                  (wallet?.total_profit || 0) >= (wallet?.total_loss || 0) ? "text-success" : "text-destructive"
                 )}>
-                  {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+                  +${wallet?.total_profit.toFixed(2)}
                 </p>
               </div>
             </div>
@@ -175,7 +168,7 @@ export const WalletTab = () => {
               <div className="glass-card p-4">
                 <TrendingUp className="w-5 h-5 text-success mb-2" />
                 <p className="text-xs text-muted-foreground">Investments</p>
-                <p className="font-bold">{investments.length}</p>
+                <p className="font-bold">{investments.length + completedInvestments.length}</p>
               </div>
               <div className="glass-card p-4">
                 <Award className="w-5 h-5 text-warning mb-2" />
@@ -188,6 +181,25 @@ export const WalletTab = () => {
                 <p className="font-bold text-success">Active</p>
               </div>
             </div>
+          </div>
+
+          {/* Promo Codes (Future) */}
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Gift className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold">Promo Codes</h3>
+            </div>
+            {profile?.promo_codes && profile.promo_codes.length > 0 ? (
+              <div className="space-y-2">
+                {profile.promo_codes.map((code, i) => (
+                  <div key={i} className="p-2 bg-primary/10 rounded-lg text-sm font-medium text-primary">
+                    {code}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">No promo codes yet. Stay tuned for special offers!</p>
+            )}
           </div>
 
           {/* Account Info */}
@@ -203,9 +215,15 @@ export const WalletTab = () => {
                 <span className="text-success">Verified</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total P/L</span>
-                <span className={totalProfitLoss >= 0 ? "text-success" : "text-destructive"}>
-                  {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+                <span className="text-muted-foreground">Total Profit</span>
+                <span className="text-success">
+                  +${wallet?.total_profit.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Total Loss</span>
+                <span className="text-destructive">
+                  -${wallet?.total_loss.toFixed(2)}
                 </span>
               </div>
             </div>
@@ -220,39 +238,6 @@ export const WalletTab = () => {
             <span className="font-medium">Sign Out</span>
           </button>
         </>
-      )}
-
-      {/* Deposit Modal */}
-      {showDeposit && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up">
-            <h2 className="text-xl font-bold mb-4">Deposit Funds</h2>
-            <p className="text-muted-foreground text-sm mb-4">
-              Add funds to your wallet to start investing
-            </p>
-            <input
-              type="number"
-              value={depositAmount}
-              onChange={(e) => setDepositAmount(e.target.value)}
-              placeholder="Enter amount..."
-              className="w-full bg-input border border-border rounded-xl px-4 py-3 mb-4 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-            />
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeposit(false)}
-                className="flex-1 py-3 border border-border rounded-xl font-medium hover:bg-muted transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeposit}
-                className="flex-1 py-3 bg-primary text-primary-foreground rounded-xl font-medium hover:bg-primary/90 transition-colors"
-              >
-                Deposit
-              </button>
-            </div>
-          </div>
-        </div>
       )}
     </div>
   );

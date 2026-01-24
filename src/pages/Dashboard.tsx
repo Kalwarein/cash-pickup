@@ -4,7 +4,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { HomeTab } from '@/components/tabs/HomeTab';
 import { InvestTab } from '@/components/tabs/InvestTab';
 import { MarketTab } from '@/components/tabs/MarketTab';
-import { ChatTab } from '@/components/tabs/ChatTab';
+import { LeaderboardTab } from '@/components/tabs/LeaderboardTab';
 import { WalletTab } from '@/components/tabs/WalletTab';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -44,8 +44,8 @@ const Dashboard = () => {
         return <InvestTab />;
       case 'market':
         return <MarketTab />;
-      case 'chat':
-        return <ChatTab />;
+      case 'leaderboard':
+        return <LeaderboardTab />;
       case 'wallet':
         return <WalletTab />;
       default:
