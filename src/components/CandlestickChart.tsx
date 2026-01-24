@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2 } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CandleData {
@@ -24,6 +24,9 @@ interface CandlestickChartProps {
   trades?: TradeOverlay[];
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
+  /** When true, chart auto-follows latest candle */
+  autoScroll?: boolean;
+  onAutoScrollChange?: (value: boolean) => void;
 }
 
 export const CandlestickChart = ({ 
@@ -31,7 +34,9 @@ export const CandlestickChart = ({
   height = 300, 
   trades = [],
   isFullscreen = false,
-  onToggleFullscreen
+  onToggleFullscreen,
+  autoScroll = true,
+  onAutoScrollChange
 }: CandlestickChartProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
@@ -41,12 +46,11 @@ export const CandlestickChart = ({
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
-  // If the user drags/scrolls away from the latest candle, we should NOT force
-  // them back to the end when new candles arrive.
+  // Track if user has interacted to prevent auto-scroll override
   const userInteractedRef = useRef(false);
-  const pinnedToLatestRef = useRef(true);
 
-  const effectiveHeight = isFullscreen ? window.innerHeight - 200 : height;
+  // Full-screen mode: use entire viewport minus bottom nav (~80px)
+  const effectiveHeight = isFullscreen ? window.innerHeight - 120 : height;
 
   // Calculate visible candles based on zoom
   const candleWidth = 8 * zoomLevel;
@@ -66,7 +70,6 @@ export const CandlestickChart = ({
   const jumpToLatest = useCallback(() => {
     const max = getMaxScroll();
     setScrollPosition(max);
-    pinnedToLatestRef.current = true;
   }, [getMaxScroll]);
 
   // Find price range for scaling (include trade lines in range)
@@ -106,7 +109,10 @@ export const CandlestickChart = ({
   // Handle drag scrolling
   const handleMouseDown = (e: React.MouseEvent) => {
     userInteractedRef.current = true;
-    pinnedToLatestRef.current = false;
+    // Disable auto-scroll when user drags
+    if (autoScroll && onAutoScrollChange) {
+      onAutoScrollChange(false);
+    }
     setIsDragging(true);
     setDragStart(e.clientX + scrollPosition);
   };
@@ -117,7 +123,6 @@ export const CandlestickChart = ({
       const maxScroll = getMaxScroll();
       const next = Math.max(0, Math.min(newScroll, maxScroll));
       setScrollPosition(next);
-      if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
     }
   };
 
@@ -135,11 +140,13 @@ export const CandlestickChart = ({
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoomLevel(prev => Math.max(0.5, Math.min(4, prev * delta)));
     } else {
-      pinnedToLatestRef.current = false;
+      // Disable auto-scroll when user scrolls manually
+      if (autoScroll && onAutoScrollChange) {
+        onAutoScrollChange(false);
+      }
       const maxScroll = getMaxScroll();
       setScrollPosition(prev => {
         const next = Math.max(0, Math.min(maxScroll, prev + e.deltaX + e.deltaY));
-        if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
         return next;
       });
     }
@@ -149,7 +156,10 @@ export const CandlestickChart = ({
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       userInteractedRef.current = true;
-      pinnedToLatestRef.current = false;
+      // Disable auto-scroll when user touches
+      if (autoScroll && onAutoScrollChange) {
+        onAutoScrollChange(false);
+      }
       setIsDragging(true);
       setDragStart(e.touches[0].clientX + scrollPosition);
     }
@@ -161,30 +171,28 @@ export const CandlestickChart = ({
       const maxScroll = getMaxScroll();
       const next = Math.max(0, Math.min(newScroll, maxScroll));
       setScrollPosition(next);
-      if (maxScroll > 0 && next >= maxScroll - 20) pinnedToLatestRef.current = true;
     }
   };
 
   const handleTouchEnd = () => setIsDragging(false);
 
-  // Auto-scroll behavior:
-  // - On first load (no user interaction): jump to latest.
-  // - After that: only stay pinned if the user is already at the latest.
+  // Auto-scroll behavior controlled by autoScroll prop
   useEffect(() => {
     if (!containerRef.current || data.length === 0) return;
 
     const max = getMaxScroll();
+    
+    // On first load (no user interaction), jump to latest
     if (!userInteractedRef.current) {
       setScrollPosition(max);
-      pinnedToLatestRef.current = true;
       return;
     }
 
-    if (pinnedToLatestRef.current || isAtLatest()) {
+    // If autoScroll is enabled, follow latest candle
+    if (autoScroll) {
       setScrollPosition(max);
-      pinnedToLatestRef.current = true;
     }
-  }, [data.length, getMaxScroll, isAtLatest]);
+  }, [data.length, getMaxScroll, autoScroll]);
 
   // Handle candle hover
   const handleCandleHover = (candle: CandleData, x: number, y: number) => {
@@ -234,12 +242,29 @@ export const CandlestickChart = ({
           <RotateCcw className="w-4 h-4" />
         </button>
 
-        {/* Jump to latest */}
-        {!isAtLatest() && (
+        {/* Auto-scroll toggle */}
+        {onAutoScrollChange && (
           <button
-            onClick={jumpToLatest}
-            className="px-2 py-1.5 hover:bg-muted rounded-md transition-colors text-xs font-medium"
-            title="Jump to latest candle"
+            onClick={() => onAutoScrollChange(!autoScroll)}
+            className={cn(
+              "p-1.5 rounded-md transition-colors",
+              autoScroll ? "bg-primary/20 text-primary" : "hover:bg-muted"
+            )}
+            title={autoScroll ? "Auto-scroll ON (click to pause)" : "Auto-scroll OFF (click to resume)"}
+          >
+            {autoScroll ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
+          </button>
+        )}
+
+        {/* Jump to latest */}
+        {!autoScroll && !isAtLatest() && (
+          <button
+            onClick={() => {
+              jumpToLatest();
+              if (onAutoScrollChange) onAutoScrollChange(true);
+            }}
+            className="px-2 py-1.5 hover:bg-muted rounded-md transition-colors text-xs font-medium text-primary"
+            title="Jump to latest candle and resume auto-scroll"
           >
             Latest
           </button>
