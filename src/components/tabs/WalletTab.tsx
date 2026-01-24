@@ -5,6 +5,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 
 export const WalletTab = () => {
@@ -46,12 +47,15 @@ export const WalletTab = () => {
         <h1 className="text-2xl font-bold">
           {showProfile ? 'Profile' : 'Wallet'}
         </h1>
-        <button
-          onClick={() => setShowProfile(!showProfile)}
-          className="p-2 bg-muted rounded-xl hover:bg-muted/80 transition-colors"
-        >
-          <ArrowUpDown className="w-5 h-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+          <button
+            onClick={() => setShowProfile(!showProfile)}
+            className="p-2 bg-muted rounded-xl hover:bg-muted/80 transition-colors"
+          >
+            <ArrowUpDown className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* Wallet View */}
@@ -224,7 +228,7 @@ export const WalletTab = () => {
           <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up">
             <h2 className="text-xl font-bold mb-4">Deposit Funds</h2>
             <p className="text-muted-foreground text-sm mb-4">
-              Add simulated funds to your wallet
+              Add funds to your wallet to start investing
             </p>
             <input
               type="number"

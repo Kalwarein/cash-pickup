@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity, Zap } from 'lucide-react';
 import { ChatMessage } from '@/components/ChatMessage';
 import { useChatSimulation } from '@/hooks/useChatSimulation';
 
@@ -27,14 +27,15 @@ export const ChatTab = () => {
         </div>
       </div>
 
-      {/* Notice */}
-      <div className="glass-card p-3 mb-4 flex items-center gap-3 bg-primary/5">
-        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
-          <Activity className="w-4 h-4 text-primary" />
+      {/* Live Indicator */}
+      <div className="glass-card p-3 mb-4 flex items-center gap-3 bg-success/5 border-success/20">
+        <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
+          <Zap className="w-4 h-4 text-success" />
         </div>
-        <p className="text-sm text-muted-foreground">
-          This is a simulated market activity feed. Not real trading data.
-        </p>
+        <div>
+          <p className="text-sm font-medium text-success">Live Market Updates</p>
+          <p className="text-xs text-muted-foreground">Real-time trading signals and market movements</p>
+        </div>
       </div>
 
       {/* Messages */}

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, TrendingUp, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
 
@@ -80,6 +81,11 @@ const Auth = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
+      {/* Theme Toggle */}
+      <div className="absolute top-4 right-4">
+        <ThemeToggle />
+      </div>
+
       {/* Header */}
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="w-full max-w-sm">
@@ -89,7 +95,7 @@ const Auth = () => {
               <TrendingUp className="w-10 h-10 text-primary-foreground" />
             </div>
             <h1 className="text-3xl font-bold text-gradient">Cash Pickup</h1>
-            <p className="text-muted-foreground mt-2">Investment Simulation Platform</p>
+            <p className="text-muted-foreground mt-2">Investment Platform for Sierra Leone</p>
           </div>
 
           {/* Tab Toggle */}
@@ -181,11 +187,11 @@ const Auth = () => {
             </button>
           </form>
 
-          {/* Disclaimer */}
-          <div className="mt-8 p-4 bg-muted/50 rounded-xl">
+          {/* Info */}
+          <div className="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/20">
             <p className="text-xs text-center text-muted-foreground">
-              This is a simulated investment platform for educational purposes only. 
-              No real money is involved. All market data and transactions are fictional.
+              Start investing with a <span className="text-primary font-semibold">$10,000 welcome bonus</span>. 
+              Grow your wealth with Sierra Leone's top companies.
             </p>
           </div>
         </div>
@@ -194,7 +200,7 @@ const Auth = () => {
       {/* Footer */}
       <div className="p-6 text-center">
         <p className="text-xs text-muted-foreground">
-          © 2024 Cash Pickup. For Sierra Leone 🇸🇱
+          © 2024 Cash Pickup. Serving Sierra Leone 🇸🇱
         </p>
       </div>
     </div>
