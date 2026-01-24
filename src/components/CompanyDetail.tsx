@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, Users, Clock, Calendar, Building2 } from 'lucide-react';
-import { MarketChart } from '@/components/MarketChart';
-import { useCompanyPriceHistory } from '@/hooks/useCompanyPriceHistory';
+import { CandlestickChart } from '@/components/CandlestickChart';
+import { useCompanyCandles } from '@/hooks/useCompanyCandles';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
 import { InvestModal } from '@/components/InvestModal';
@@ -35,8 +35,10 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
   const [showInvestModal, setShowInvestModal] = useState(false);
+  const [isChartFullscreen, setIsChartFullscreen] = useState(false);
   
-  const { chartData, currentPrice } = useCompanyPriceHistory(companyId);
+  // Use the new candlestick hook for OHLC data
+  const { chartData, currentPrice, loading: chartLoading } = useCompanyCandles(companyId);
   const { investments, createInvestment, refetch: refetchInvestments } = useInvestments();
   const { wallet, refetch: refetchWallet } = useWallet();
 
@@ -101,14 +103,15 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
     );
   }
 
+  const displayPrice = currentPrice || company.current_price;
   const isPositive = company.price_change_percent >= 0;
 
   return (
-    <div className="space-y-4 animate-fade-in">
+    <div className={cn("space-y-4 animate-fade-in", isChartFullscreen && "fixed inset-0 z-50 bg-background p-4 overflow-auto")}>
       {/* Header */}
       <div className="flex items-center gap-3">
         <button
-          onClick={onBack}
+          onClick={isChartFullscreen ? () => setIsChartFullscreen(false) : onBack}
           className="p-2 bg-muted rounded-xl hover:bg-muted/80 transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
@@ -127,12 +130,12 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
         </span>
       </div>
 
-      {/* Price Chart */}
+      {/* Price + Candlestick Chart */}
       <div className="glass-card p-4 glow-primary">
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Current Price</p>
-            <p className="text-3xl font-bold">${(currentPrice || company.current_price).toFixed(2)}</p>
+            <p className="text-3xl font-bold">${displayPrice.toFixed(2)}</p>
             <div className={cn(
               "flex items-center gap-2 mt-1",
               isPositive ? "text-success" : "text-destructive"
@@ -143,106 +146,117 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
           </div>
         </div>
 
-        {chartData.length > 0 ? (
-          <MarketChart data={chartData} height={200} showAxis />
+        {chartLoading ? (
+          <div className="h-[250px] loading-pulse rounded-lg" />
+        ) : chartData.length > 0 ? (
+          <CandlestickChart 
+            data={chartData} 
+            height={isChartFullscreen ? 400 : 250}
+            isFullscreen={isChartFullscreen}
+            onToggleFullscreen={() => setIsChartFullscreen(!isChartFullscreen)}
+          />
         ) : (
-          <div className="h-[200px] flex items-center justify-center text-muted-foreground">
-            Loading chart data...
+          <div className="h-[250px] flex items-center justify-center text-muted-foreground">
+            Building price history...
           </div>
         )}
       </div>
 
       {/* Invest Button */}
-      <button
-        onClick={() => setShowInvestModal(true)}
-        className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all"
-      >
-        Invest in {company.ticker}
-      </button>
+      {!isChartFullscreen && (
+        <>
+          <button
+            onClick={() => setShowInvestModal(true)}
+            className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all"
+          >
+            Invest in {company.ticker}
+          </button>
 
-      {/* My Investments */}
-      {companyInvestments.length > 0 && (
-        <div className="glass-card p-4">
-          <h3 className="font-semibold mb-3">Your Investments</h3>
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            <div className="p-3 bg-muted/50 rounded-xl">
-              <p className="text-xs text-muted-foreground">Total Invested</p>
-              <p className="font-bold">${totalInvested.toFixed(2)}</p>
+          {/* My Investments */}
+          {companyInvestments.length > 0 && (
+            <div className="glass-card p-4">
+              <h3 className="font-semibold mb-3">Your Investments</h3>
+              <div className="grid grid-cols-2 gap-3 mb-4">
+                <div className="p-3 bg-muted/50 rounded-xl">
+                  <p className="text-xs text-muted-foreground">Total Invested</p>
+                  <p className="font-bold">${totalInvested.toFixed(2)}</p>
+                </div>
+                <div className="p-3 bg-muted/50 rounded-xl">
+                  <p className="text-xs text-muted-foreground">Total P/L</p>
+                  <p className={cn(
+                    "font-bold",
+                    totalProfitLoss >= 0 ? "text-success" : "text-destructive"
+                  )}>
+                    {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {companyInvestments.map((inv) => {
+                  const daysRemaining = Math.max(0, Math.ceil(
+                    (new Date(inv.maturity_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+                  ));
+                  
+                  return (
+                    <div key={inv.id} className="p-3 bg-muted/30 rounded-xl flex items-center justify-between">
+                      <div>
+                        <p className="font-medium">${inv.amount.toFixed(2)}</p>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          {inv.is_matured ? 'Matured' : `${daysRemaining}d remaining`}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-semibold">${inv.current_value.toFixed(2)}</p>
+                        <p className={cn(
+                          "text-xs",
+                          inv.profit_loss >= 0 ? "text-success" : "text-destructive"
+                        )}>
+                          {inv.profit_loss >= 0 ? '+' : ''}${inv.profit_loss.toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div className="p-3 bg-muted/50 rounded-xl">
-              <p className="text-xs text-muted-foreground">Total P/L</p>
-              <p className={cn(
-                "font-bold",
-                totalProfitLoss >= 0 ? "text-success" : "text-destructive"
-              )}>
-                {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+          )}
+
+          {/* Company Info */}
+          <div className="glass-card p-4">
+            <h3 className="font-semibold mb-3">About {company.name}</h3>
+            <p className="text-sm text-muted-foreground mb-4">{company.description}</p>
+            
+            <div className="grid grid-cols-2 gap-3">
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">{company.headquarters}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">Founded {company.founded_year}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm">{company.employees?.toLocaleString()} employees</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Risk Info */}
+          <div className="glass-card p-4 flex items-start gap-3 bg-warning/5 border-warning/20">
+            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-warning">Investment Risk</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Expected returns: {company.min_return_percent}% to +{company.max_return_percent}%. 
+                Longer investment periods (30-90 days) generally provide better returns and lower risk.
               </p>
             </div>
           </div>
-
-          <div className="space-y-2">
-            {companyInvestments.map((inv) => {
-              const daysRemaining = Math.max(0, Math.ceil(
-                (new Date(inv.maturity_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
-              ));
-              
-              return (
-                <div key={inv.id} className="p-3 bg-muted/30 rounded-xl flex items-center justify-between">
-                  <div>
-                    <p className="font-medium">${inv.amount.toFixed(2)}</p>
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                      <Clock className="w-3 h-3" />
-                      {inv.is_matured ? 'Matured' : `${daysRemaining}d remaining`}
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">${inv.current_value.toFixed(2)}</p>
-                    <p className={cn(
-                      "text-xs",
-                      inv.profit_loss >= 0 ? "text-success" : "text-destructive"
-                    )}>
-                      {inv.profit_loss >= 0 ? '+' : ''}${inv.profit_loss.toFixed(2)}
-                    </p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        </>
       )}
-
-      {/* Company Info */}
-      <div className="glass-card p-4">
-        <h3 className="font-semibold mb-3">About {company.name}</h3>
-        <p className="text-sm text-muted-foreground mb-4">{company.description}</p>
-        
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm">{company.headquarters}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm">Founded {company.founded_year}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Users className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm">{company.employees?.toLocaleString()} employees</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Risk Info */}
-      <div className="glass-card p-4 flex items-start gap-3 bg-warning/5 border-warning/20">
-        <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-        <div>
-          <p className="text-sm font-medium text-warning">Investment Risk</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Expected returns: {company.min_return_percent}% to +{company.max_return_percent}%. 
-            Longer investment periods (30-90 days) generally provide better returns and lower risk.
-          </p>
-        </div>
-      </div>
 
       {/* Invest Modal */}
       {showInvestModal && wallet && (
@@ -253,7 +267,7 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
             id: company.id,
             name: company.name,
             ticker: company.ticker,
-            price: currentPrice || company.current_price,
+            price: displayPrice,
             riskLevel: company.risk_level,
             minReturn: company.min_return_percent,
             maxReturn: company.max_return_percent,

@@ -1,1 +1,13 @@
 project_id = "lwcsknjikqnkqbeoaoca"
+
+[functions.generate-market-candle]
+verify_jwt = false
+
+[functions.update-company-prices]
+verify_jwt = false
+
+[functions.generate-company-candles]
+verify_jwt = false
+
+[functions.market-scheduler]
+verify_jwt = false

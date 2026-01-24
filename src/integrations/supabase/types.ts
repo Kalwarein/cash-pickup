@@ -92,6 +92,50 @@ export type Database = {
         }
         Relationships: []
       }
+      company_candles: {
+        Row: {
+          close_price: number
+          company_id: string
+          created_at: string | null
+          high_price: number
+          id: string
+          low_price: number
+          open_price: number
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          close_price: number
+          company_id: string
+          created_at?: string | null
+          high_price: number
+          id?: string
+          low_price: number
+          open_price: number
+          timestamp?: string
+          volume?: number | null
+        }
+        Update: {
+          close_price?: number
+          company_id?: string
+          created_at?: string | null
+          high_price?: number
+          id?: string
+          low_price?: number
+          open_price?: number
+          timestamp?: string
+          volume?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_candles_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_price_history: {
         Row: {
           change_percent: number | null
@@ -429,6 +473,7 @@ export type Database = {
     }
     Functions: {
       cleanup_old_candles: { Args: never; Returns: undefined }
+      cleanup_old_company_candles: { Args: never; Returns: undefined }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {
