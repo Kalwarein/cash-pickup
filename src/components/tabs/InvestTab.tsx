@@ -1,34 +1,40 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, Filter } from 'lucide-react';
 import { CompanyCard } from '@/components/CompanyCard';
 import { InvestModal } from '@/components/InvestModal';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
+
+const SECTORS = ['All', 'Mining', 'Agriculture', 'Technology', 'Finance', 'Energy', 'Real Estate', 'Telecom', 'Tourism', 'Transport'];
 
 export const InvestTab = () => {
   const { companies, loading } = useCompanies();
   const { wallet, refetch: refetchWallet } = useWallet();
   const { createInvestment, refetch: refetchInvestments } = useInvestments();
   const [search, setSearch] = useState('');
+  const [selectedSector, setSelectedSector] = useState('All');
   const [selectedCompany, setSelectedCompany] = useState<typeof companies[0] | null>(null);
 
-  const filteredCompanies = companies.filter(
-    c => c.name.toLowerCase().includes(search.toLowerCase()) ||
-         c.ticker.toLowerCase().includes(search.toLowerCase()) ||
-         c.sector.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredCompanies = companies.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) ||
+      c.ticker.toLowerCase().includes(search.toLowerCase()) ||
+      c.sector.toLowerCase().includes(search.toLowerCase());
+    const matchesSector = selectedSector === 'All' || c.sector === selectedSector;
+    return matchesSearch && matchesSector;
+  });
 
-  const handleInvest = async (amount: number) => {
+  const handleInvest = async (amount: number, maturityDays: number) => {
     if (!selectedCompany) return;
     
-    const { error } = await createInvestment(selectedCompany.id, amount);
+    const { error } = await createInvestment(selectedCompany.id, amount, maturityDays);
     
     if (error) {
       toast.error(error);
     } else {
-      toast.success(`Successfully invested $${amount} in ${selectedCompany.ticker}`);
+      toast.success(`Successfully invested $${amount} in ${selectedCompany.ticker} for ${maturityDays} days`);
       await refetchWallet();
       await refetchInvestments();
     }
@@ -66,6 +72,30 @@ export const InvestTab = () => {
         />
       </div>
 
+      {/* Sector Filter */}
+      <div>
+        <div className="flex items-center gap-2 mb-2">
+          <Filter className="w-4 h-4 text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">Filter by sector</span>
+        </div>
+        <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
+          {SECTORS.map((sector) => (
+            <button
+              key={sector}
+              onClick={() => setSelectedSector(sector)}
+              className={cn(
+                "px-3 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all",
+                selectedSector === sector
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+              )}
+            >
+              {sector}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Risk Legend */}
       <div className="flex items-center gap-4 text-xs">
         <span className="flex items-center gap-1">
@@ -81,6 +111,11 @@ export const InvestTab = () => {
           High Risk
         </span>
       </div>
+
+      {/* Companies Count */}
+      <p className="text-sm text-muted-foreground">
+        Showing {filteredCompanies.length} companies
+      </p>
 
       {/* Companies List */}
       <div className="space-y-3">
@@ -98,6 +133,12 @@ export const InvestTab = () => {
           />
         ))}
       </div>
+
+      {filteredCompanies.length === 0 && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No companies found matching your criteria</p>
+        </div>
+      )}
 
       {/* Invest Modal */}
       {selectedCompany && wallet && (

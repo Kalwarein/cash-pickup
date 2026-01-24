@@ -84,6 +84,9 @@ export type Database = {
           created_at: string | null
           current_value: number
           id: string
+          is_matured: boolean | null
+          maturity_date: string | null
+          maturity_days: number
           profit_loss: number | null
           status: string | null
           updated_at: string | null
@@ -95,6 +98,9 @@ export type Database = {
           created_at?: string | null
           current_value: number
           id?: string
+          is_matured?: boolean | null
+          maturity_date?: string | null
+          maturity_days?: number
           profit_loss?: number | null
           status?: string | null
           updated_at?: string | null
@@ -106,6 +112,9 @@ export type Database = {
           created_at?: string | null
           current_value?: number
           id?: string
+          is_matured?: boolean | null
+          maturity_date?: string | null
+          maturity_days?: number
           profit_loss?: number | null
           status?: string | null
           updated_at?: string | null

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, AlertTriangle, TrendingUp, TrendingDown, Clock, Calendar } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface InvestModalProps {
@@ -15,8 +15,17 @@ interface InvestModalProps {
     maxReturn: number;
   };
   balance: number;
-  onInvest: (amount: number) => Promise<void>;
+  onInvest: (amount: number, maturityDays: number) => Promise<void>;
 }
+
+const MATURITY_OPTIONS = [
+  { days: 6, label: '6 Days', risk: 'High', returnMultiplier: 0.6 },
+  { days: 10, label: '10 Days', risk: 'Medium-High', returnMultiplier: 0.75 },
+  { days: 14, label: '14 Days', risk: 'Medium', returnMultiplier: 0.9 },
+  { days: 21, label: '21 Days', risk: 'Medium-Low', returnMultiplier: 1.0 },
+  { days: 30, label: '30 Days', risk: 'Low', returnMultiplier: 1.15 },
+  { days: 60, label: '60 Days', risk: 'Very Low', returnMultiplier: 1.35 },
+];
 
 export const InvestModal = ({
   isOpen,
@@ -26,6 +35,7 @@ export const InvestModal = ({
   onInvest,
 }: InvestModalProps) => {
   const [amount, setAmount] = useState('');
+  const [selectedMaturity, setSelectedMaturity] = useState(MATURITY_OPTIONS[2]); // Default 14 days
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -53,7 +63,7 @@ export const InvestModal = ({
     setError('');
     
     try {
-      await onInvest(investAmount);
+      await onInvest(investAmount, selectedMaturity.days);
       onClose();
     } catch {
       setError('Investment failed. Please try again.');
@@ -62,12 +72,17 @@ export const InvestModal = ({
     }
   };
 
-  const potentialProfit = parseFloat(amount || '0') * (company.maxReturn / 100);
-  const potentialLoss = parseFloat(amount || '0') * (Math.abs(company.minReturn) / 100);
+  const adjustedMaxReturn = company.maxReturn * selectedMaturity.returnMultiplier;
+  const adjustedMinReturn = company.minReturn * (2 - selectedMaturity.returnMultiplier);
+  const potentialProfit = parseFloat(amount || '0') * (adjustedMaxReturn / 100);
+  const potentialLoss = parseFloat(amount || '0') * (Math.abs(adjustedMinReturn) / 100);
+
+  const maturityDate = new Date();
+  maturityDate.setDate(maturityDate.getDate() + selectedMaturity.days);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up">
+      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold">Invest in {company.ticker}</h2>
           <button
@@ -89,7 +104,61 @@ export const InvestModal = ({
             <div>
               <p className="text-sm font-medium text-warning">Risk Level: {company.riskLevel}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Investment values can go up or down. You may lose some or all of your investment.
+                Investment values can go up or down. Returns depend on market conditions and maturity period.
+              </p>
+            </div>
+          </div>
+
+          {/* Maturity Period Selection */}
+          <div>
+            <label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
+              <Calendar className="w-4 h-4" />
+              Investment Period (Maturity)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              {MATURITY_OPTIONS.map((option) => (
+                <button
+                  key={option.days}
+                  onClick={() => setSelectedMaturity(option)}
+                  className={cn(
+                    "p-3 rounded-xl text-center transition-all border",
+                    selectedMaturity.days === option.days
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-muted border-border hover:border-primary/50"
+                  )}
+                >
+                  <p className="font-semibold text-sm">{option.label}</p>
+                  <p className={cn(
+                    "text-xs mt-1",
+                    selectedMaturity.days === option.days
+                      ? "text-primary-foreground/80"
+                      : "text-muted-foreground"
+                  )}>
+                    {option.risk}
+                  </p>
+                </button>
+              ))}
+            </div>
+            <div className="mt-3 p-3 bg-primary/5 rounded-xl border border-primary/20">
+              <div className="flex items-center gap-2 text-sm">
+                <Clock className="w-4 h-4 text-primary" />
+                <span className="text-muted-foreground">Matures on:</span>
+                <span className="font-semibold text-primary">
+                  {maturityDate.toLocaleDateString('en-US', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric',
+                    year: 'numeric'
+                  })}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {selectedMaturity.days < 14 
+                  ? "⚠️ Shorter periods have higher risk but faster returns"
+                  : selectedMaturity.days >= 30
+                  ? "✅ Longer periods are safer with better potential returns"
+                  : "📊 Balanced risk and return potential"
+                }
               </p>
             </div>
           </div>
@@ -118,7 +187,7 @@ export const InvestModal = ({
                 +${potentialProfit.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Up to {company.maxReturn}%
+                Up to {adjustedMaxReturn.toFixed(0)}%
               </p>
             </div>
             <div className="glass-card p-3">
@@ -130,7 +199,7 @@ export const InvestModal = ({
                 -${potentialLoss.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground">
-                Up to {Math.abs(company.minReturn)}%
+                Up to {Math.abs(adjustedMinReturn).toFixed(0)}%
               </p>
             </div>
           </div>
@@ -145,7 +214,7 @@ export const InvestModal = ({
               loading && "opacity-50 cursor-not-allowed"
             )}
           >
-            {loading ? 'Processing...' : 'Confirm Investment'}
+            {loading ? 'Processing...' : `Invest for ${selectedMaturity.label}`}
           </button>
         </div>
       </div>

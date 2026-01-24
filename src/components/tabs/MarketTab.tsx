@@ -13,6 +13,9 @@ const MARKET_EVENTS = [
   { message: 'Volume spike detected', type: 'warning' },
   { message: 'Market consolidating', type: 'info' },
   { message: 'Momentum building', type: 'success' },
+  { message: 'Mining sector rallying', type: 'success' },
+  { message: 'Tech stocks gaining', type: 'success' },
+  { message: 'Agriculture sector stable', type: 'info' },
 ];
 
 export const MarketTab = () => {
@@ -51,7 +54,7 @@ export const MarketTab = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Market</h1>
-          <p className="text-muted-foreground text-sm">24/7 Live Simulation</p>
+          <p className="text-muted-foreground text-sm">24/7 Live Trading</p>
         </div>
         <div className="flex items-center gap-2 text-success">
           <span className="w-2 h-2 rounded-full bg-success animate-pulse" />
@@ -63,7 +66,7 @@ export const MarketTab = () => {
       <div className="glass-card p-6 glow-primary">
         <div className="flex items-start justify-between mb-6">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Global Market Index</p>
+            <p className="text-sm text-muted-foreground mb-1">Sierra Leone Market Index</p>
             <p className="text-4xl font-bold mb-2">${currentValue.toFixed(2)}</p>
             <div className={cn(
               "flex items-center gap-2",
