@@ -428,6 +428,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_old_candles: { Args: never; Returns: undefined }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {
