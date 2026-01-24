@@ -37,26 +37,39 @@ export const useCompanies = () => {
     setLoading(false);
   }, []);
 
-  // Simulate price changes
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCompanies(prev => prev.map(company => {
-        const changePercent = (Math.random() - 0.5) * 4;
-        const newPrice = company.current_price * (1 + changePercent / 100);
-        return {
-          ...company,
-          current_price: Math.round(newPrice * 100) / 100,
-          price_change_percent: Math.round(changePercent * 100) / 100,
-        };
-      }));
-    }, 5000);
-
-    return () => clearInterval(interval);
-  }, []);
-
   useEffect(() => {
     fetchCompanies();
   }, [fetchCompanies]);
+
+  // Realtime updates: reflect database-backed company engine updates.
+  useEffect(() => {
+    const channel = supabase
+      .channel('companies_realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'companies' },
+        (payload) => {
+          const updated = payload.new as Partial<Company> & { id: string };
+          setCompanies((prev) =>
+            prev.map((c) =>
+              c.id !== updated.id
+                ? c
+                : {
+                    ...c,
+                    current_price: updated.current_price !== undefined ? Number(updated.current_price) : c.current_price,
+                    price_change_percent:
+                      updated.price_change_percent !== undefined ? Number(updated.price_change_percent) : c.price_change_percent,
+                  },
+            ),
+          );
+        },
+      )
+      .subscribe();
+
+    return () => {
+      channel.unsubscribe();
+    };
+  }, []);
 
   return { companies, loading, refetch: fetchCompanies };
 };

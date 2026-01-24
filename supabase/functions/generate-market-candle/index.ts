@@ -28,6 +28,20 @@ Deno.serve(async (req) => {
     }
 
     const prevClose = latestCandle ? Number(latestCandle.close_price) : 1000;
+
+    // Guardrail: enforce a stable global cadence.
+    // If multiple clients call this function, only append a new candle if the
+    // latest one is older than ~2 seconds.
+    if (latestCandle?.timestamp) {
+      const lastTs = new Date(latestCandle.timestamp).getTime();
+      const nowTs = Date.now();
+      if (nowTs - lastTs < 1500) {
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: 'rate_limited' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
     
     // Generate realistic market movement with trends
     const trend = Math.random();

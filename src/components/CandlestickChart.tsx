@@ -276,7 +276,10 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
                       handleCandleHover(candle, x - scrollPosition, e.clientY - rect.top + 50);
                     }
                   }}
-                  className="cursor-pointer"
+                  className={cn(
+                    "cursor-pointer",
+                    isGreen ? "text-success" : "text-destructive",
+                  )}
                 >
                   {/* Wick */}
                   <line
@@ -284,7 +287,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
                     y1={wickTop}
                     x2={x + candleWidth / 2}
                     y2={wickBottom}
-                    stroke={isGreen ? "hsl(142, 76%, 45%)" : "hsl(0, 84%, 60%)"}
+                    stroke="currentColor"
                     strokeWidth={1}
                   />
                   {/* Body */}
@@ -293,7 +296,7 @@ export const CandlestickChart = ({ data, height = 300 }: CandlestickChartProps) 
                     y={bodyTop}
                     width={candleWidth}
                     height={bodyHeight}
-                    fill={isGreen ? "hsl(142, 76%, 45%)" : "hsl(0, 84%, 60%)"}
+                    fill="currentColor"
                     rx={1}
                   />
                   {/* Hover area (invisible) */}

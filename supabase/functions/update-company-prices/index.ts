@@ -15,6 +15,25 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Guardrail: prevent excessive writes if multiple clients trigger updates.
+    const { data: latestPoint } = await supabase
+      .from('company_price_history')
+      .select('timestamp')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (latestPoint?.timestamp) {
+      const lastTs = new Date(latestPoint.timestamp).getTime();
+      const nowTs = Date.now();
+      if (nowTs - lastTs < 1500) {
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: 'rate_limited' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
+    }
+
     // Get all companies
     const { data: companies, error: fetchError } = await supabase
       .from('companies')
