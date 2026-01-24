@@ -17,13 +17,13 @@ export const MarketTab = () => {
   const [chartType, setChartType] = useState<'line' | 'candlestick'>('candlestick');
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // Check for auto-close conditions every 5 seconds
+  // Check for auto-close conditions every 1 second for instant TP/SL closure
   useEffect(() => {
     const interval = setInterval(() => {
       if (currentPrice > 0) {
         checkAndCloseTrades(currentPrice);
       }
-    }, 5000);
+    }, 1000);
 
     return () => clearInterval(interval);
   }, [currentPrice, checkAndCloseTrades]);

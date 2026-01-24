@@ -9,11 +9,14 @@ interface TransactionItemProps {
 }
 
 const typeConfig: Record<string, { icon: typeof DollarSign; color: string }> = {
-  deposit: { icon: ArrowDownRight, color: 'text-green-400' },
+  deposit: { icon: ArrowDownRight, color: 'text-success' },
   investment: { icon: TrendingUp, color: 'text-primary' },
-  profit: { icon: ArrowUpRight, color: 'text-green-400' },
-  loss: { icon: ArrowDownRight, color: 'text-red-400' },
-  withdrawal: { icon: ArrowUpRight, color: 'text-orange-400' },
+  profit: { icon: ArrowUpRight, color: 'text-success' },
+  loss: { icon: ArrowDownRight, color: 'text-destructive' },
+  withdrawal: { icon: ArrowUpRight, color: 'text-warning' },
+  trade_open: { icon: TrendingUp, color: 'text-primary' },
+  trade_profit: { icon: ArrowUpRight, color: 'text-success' },
+  trade_loss: { icon: ArrowDownRight, color: 'text-destructive' },
 };
 
 export const TransactionItem = ({ type, amount, description, date }: TransactionItemProps) => {
@@ -36,10 +39,10 @@ export const TransactionItem = ({ type, amount, description, date }: Transaction
       <div className="text-right">
         <p className={cn(
           "font-semibold",
-          type === 'profit' || type === 'deposit' ? 'text-green-400' : 
-          type === 'loss' ? 'text-red-400' : 'text-foreground'
+          (type === 'profit' || type === 'deposit' || type === 'trade_profit') ? 'text-success' : 
+          (type === 'loss' || type === 'trade_loss') ? 'text-destructive' : 'text-foreground'
         )}>
-          {type === 'profit' || type === 'deposit' ? '+' : '-'}${Math.abs(amount).toFixed(2)}
+          {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
         </p>
         <p className="text-xs text-muted-foreground">
           {new Date(date).toLocaleDateString()}

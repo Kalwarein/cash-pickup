@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { User, RefreshCw, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown, Gift, Target, XCircle, Timer } from 'lucide-react';
 import { TransactionItem } from '@/components/TransactionItem';
+import { TradeHistory } from '@/components/TradeHistory';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useProfile } from '@/hooks/useProfile';
@@ -22,13 +23,13 @@ export const WalletTab = () => {
   // Use database-persisted view preference
   const showProfile = profile?.wallet_view_preference === 'profile';
 
-  // Check for auto-close conditions
+  // Check for auto-close conditions - run frequently (every 1s) for instant TP/SL closure
   useEffect(() => {
     const interval = setInterval(() => {
       if (currentPrice > 0) {
         checkAndCloseTrades(currentPrice);
       }
-    }, 5000);
+    }, 1000); // Check every second for instant trade closure
     return () => clearInterval(interval);
   }, [currentPrice, checkAndCloseTrades]);
 
@@ -51,7 +52,7 @@ export const WalletTab = () => {
     const now = new Date();
     const expiry = new Date(expiresAt);
     const diff = expiry.getTime() - now.getTime();
-    if (diff <= 0) return 'Expiring...';
+    if (diff <= 0) return 'Closing...';
     const mins = Math.floor(diff / 60000);
     const secs = Math.floor((diff % 60000) / 1000);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
@@ -290,6 +291,9 @@ export const WalletTab = () => {
               </div>
             </div>
           </div>
+
+          {/* Trade History */}
+          <TradeHistory />
 
           {/* Promo Codes (Future) */}
           <div className="glass-card p-4">

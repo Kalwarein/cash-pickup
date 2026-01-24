@@ -179,86 +179,94 @@ export const useForexTrades = () => {
     return { error: null, profitLoss };
   }, [user, openTrades, fetchTrades]);
 
-  // Check and auto-close trades based on TP/SL/Expiry
+  // Check and auto-close trades based on TP/SL/Expiry - runs frequently for instant closure
   const checkAndCloseTrades = useCallback(async (currentPrice: number) => {
     if (!user || openTrades.length === 0) return;
 
     const now = new Date();
+    const tradesToClose: { trade: ForexTrade; closeReason: ForexTrade['status'] }[] = [];
 
+    // First, identify all trades that should close
     for (const trade of openTrades) {
-      let shouldClose = false;
-      let closeReason: ForexTrade['status'] = 'closed_manual';
+      let closeReason: ForexTrade['status'] | null = null;
       
-      // Check take profit
+      // Check take profit - INSTANT close
       if (currentPrice >= trade.take_profit) {
-        shouldClose = true;
         closeReason = 'closed_tp';
       }
-      // Check stop loss
+      // Check stop loss - INSTANT close
       else if (currentPrice <= trade.stop_loss) {
-        shouldClose = true;
         closeReason = 'closed_sl';
       }
       // Check expiry
       else if (new Date(trade.expires_at) <= now) {
-        shouldClose = true;
         closeReason = 'closed_expired';
       }
 
-      if (shouldClose) {
-        const exitPrice = closeReason === 'closed_tp' ? trade.take_profit :
-                          closeReason === 'closed_sl' ? trade.stop_loss : currentPrice;
-        
-        const priceChange = (exitPrice - trade.entry_price) / trade.entry_price;
-        const profitLoss = trade.amount * priceChange;
-        const finalAmount = trade.amount + profitLoss;
-
-        // Update trade
-        await supabase
-          .from('forex_trades')
-          .update({
-            exit_price: exitPrice,
-            status: closeReason,
-            profit_loss: profitLoss,
-            closed_at: new Date().toISOString(),
-          })
-          .eq('id', trade.id);
-
-        // Update wallet
-        const { data: wallet } = await supabase
-          .from('wallets')
-          .select('*')
-          .eq('user_id', user.id)
-          .single();
-
-        if (wallet) {
-          const newBalance = Number(wallet.balance) + finalAmount;
-          const newProfit = profitLoss > 0 ? Number(wallet.total_profit) + profitLoss : Number(wallet.total_profit);
-          const newLoss = profitLoss < 0 ? Number(wallet.total_loss) + Math.abs(profitLoss) : Number(wallet.total_loss);
-
-          await supabase
-            .from('wallets')
-            .update({
-              balance: newBalance,
-              total_profit: newProfit,
-              total_loss: newLoss,
-            })
-            .eq('user_id', user.id);
-        }
-
-        // Record transaction
-        await supabase
-          .from('transactions')
-          .insert({
-            user_id: user.id,
-            type: profitLoss >= 0 ? 'trade_profit' : 'trade_loss',
-            amount: finalAmount,
-            description: `Trade ${closeReason.replace('closed_', '').toUpperCase()}: ${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)}`,
-          });
+      if (closeReason) {
+        tradesToClose.push({ trade, closeReason });
       }
     }
 
-    await fetchTrades();
+    // Process all closures
+    for (const { trade, closeReason } of tradesToClose) {
+      const exitPrice = closeReason === 'closed_tp' ? trade.take_profit :
+                        closeReason === 'closed_sl' ? trade.stop_loss : currentPrice;
+      
+      const priceChange = (exitPrice - trade.entry_price) / trade.entry_price;
+      const profitLoss = trade.amount * priceChange;
+      const finalAmount = trade.amount + profitLoss;
+
+      // Update trade immediately
+      await supabase
+        .from('forex_trades')
+        .update({
+          exit_price: exitPrice,
+          status: closeReason,
+          profit_loss: profitLoss,
+          closed_at: new Date().toISOString(),
+        })
+        .eq('id', trade.id);
+
+      // Update wallet - credit the user with their funds
+      const { data: wallet } = await supabase
+        .from('wallets')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+
+      if (wallet) {
+        const newBalance = Number(wallet.balance) + finalAmount;
+        const newProfit = profitLoss > 0 ? Number(wallet.total_profit) + profitLoss : Number(wallet.total_profit);
+        const newLoss = profitLoss < 0 ? Number(wallet.total_loss) + Math.abs(profitLoss) : Number(wallet.total_loss);
+
+        await supabase
+          .from('wallets')
+          .update({
+            balance: newBalance,
+            total_profit: newProfit,
+            total_loss: newLoss,
+          })
+          .eq('user_id', user.id);
+      }
+
+      // Record transaction with clear description
+      const reasonLabel = closeReason === 'closed_tp' ? 'Take Profit Hit' :
+                          closeReason === 'closed_sl' ? 'Stop Loss Hit' : 'Trade Expired';
+      
+      await supabase
+        .from('transactions')
+        .insert({
+          user_id: user.id,
+          type: profitLoss >= 0 ? 'trade_profit' : 'trade_loss',
+          amount: finalAmount,
+          description: `${reasonLabel} at $${exitPrice.toFixed(2)}: ${profitLoss >= 0 ? '+' : ''}$${profitLoss.toFixed(2)}`,
+        });
+    }
+
+    if (tradesToClose.length > 0) {
+      await fetchTrades();
+    }
   }, [user, openTrades, fetchTrades]);
 
   // Calculate unrealized P/L for open trades
