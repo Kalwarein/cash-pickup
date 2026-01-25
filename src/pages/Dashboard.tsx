@@ -7,16 +7,11 @@ import { MarketTab } from '@/components/tabs/MarketTab';
 import { LeaderboardTab } from '@/components/tabs/LeaderboardTab';
 import { WalletTab } from '@/components/tabs/WalletTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { useMarketEngine } from '@/hooks/useMarketEngine';
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('home');
-
-  // Keep the database-backed market + company charts moving in real time.
-  // Rendering stays DB-driven via realtime subscriptions.
-  useMarketEngine(Boolean(user));
 
   useEffect(() => {
     if (!loading && !user) {
