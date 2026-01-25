@@ -13,6 +13,7 @@ const corsHeaders = {
 
 const MS_PER_CANDLE = 2000;
 const MAX_MARKET_CANDLES_PER_RUN = 30; // ~1 minute of 2s candles
+const MAX_COMPANY_CANDLES_PER_COMPANY_PER_RUN = 5; // caps work per cron run
 
 type MarketCandleInsert = {
   timestamp: string;
@@ -22,6 +23,62 @@ type MarketCandleInsert = {
   close_price: number;
   volume: number;
 };
+
+type CompanyCandleInsert = {
+  company_id: string;
+  timestamp: string;
+  open_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  volume: number;
+};
+
+function generateNextCompanyCandle(
+  prevClose: number,
+  riskLevel: string,
+  timestampIso: string,
+): { candle: Omit<CompanyCandleInsert, 'company_id'>; changePercent: number } {
+  let volatility: number;
+  let trendBias: number;
+
+  switch (riskLevel) {
+    case 'High':
+      volatility = 0.04;
+      trendBias = 0.48;
+      break;
+    case 'Medium':
+      volatility = 0.025;
+      trendBias = 0.52;
+      break;
+    case 'Low':
+    default:
+      volatility = 0.015;
+      trendBias = 0.55;
+      break;
+  }
+
+  const change = (Math.random() - trendBias) * volatility;
+  const closePrice = Math.max(prevClose * 0.5, Math.min(prevClose * 2, prevClose * (1 + change)));
+  const openPrice = prevClose;
+  const intraVolatility = Math.random() * 0.008;
+  const highPrice = Math.max(openPrice, closePrice) * (1 + intraVolatility);
+  const lowPrice = Math.min(openPrice, closePrice) * (1 - intraVolatility);
+  const volume = Math.round(Math.random() * 50000 + 10000);
+  const changePercent = ((closePrice - openPrice) / openPrice) * 100;
+
+  return {
+    candle: {
+      timestamp: timestampIso,
+      open_price: Math.round(openPrice * 100) / 100,
+      high_price: Math.round(highPrice * 100) / 100,
+      low_price: Math.round(lowPrice * 100) / 100,
+      close_price: Math.round(closePrice * 100) / 100,
+      volume,
+    },
+    changePercent: Math.round(changePercent * 100) / 100,
+  };
+}
 
 function generateNextMarketCandle(prevClose: number, timestampIso: string): MarketCandleInsert {
   const trend = Math.random();
@@ -126,70 +183,56 @@ Deno.serve(async (req) => {
       .from('companies')
       .select('id, current_price, risk_level');
 
-    const now = new Date().toISOString();
-    const candleInserts = [];
-    const priceUpdates = [];
+    const nowMsCompanies = Date.now();
+    const candleInserts: CompanyCandleInsert[] = [];
+    const priceUpdates: { id: string; current_price: number; price_change_percent: number }[] = [];
 
     for (const company of companies || []) {
       const { data: lastCandle } = await supabase
         .from('company_candles')
-        .select('close_price')
+        .select('close_price, timestamp')
         .eq('company_id', company.id)
         .order('timestamp', { ascending: false })
         .limit(1)
         .maybeSingle();
 
       const prevClose = lastCandle ? Number(lastCandle.close_price) : Number(company.current_price);
+      const lastTsMs = lastCandle?.timestamp
+        ? new Date(String(lastCandle.timestamp)).getTime()
+        : nowMsCompanies - MS_PER_CANDLE;
 
-      let volatility: number;
-      let trendBias: number;
-      
-      switch (company.risk_level) {
-        case 'High':
-          volatility = 0.04;
-          trendBias = 0.48;
-          break;
-        case 'Medium':
-          volatility = 0.025;
-          trendBias = 0.52;
-          break;
-        case 'Low':
-        default:
-          volatility = 0.015;
-          trendBias = 0.55;
-          break;
+      const missing = Math.floor((nowMsCompanies - lastTsMs) / MS_PER_CANDLE);
+      if (missing <= 0) continue;
+
+      const toGenerate = Math.max(1, Math.min(MAX_COMPANY_CANDLES_PER_COMPANY_PER_RUN, missing));
+      let rollingClose = prevClose;
+      let lastGeneratedChangePct = 0;
+
+      for (let i = 1; i <= toGenerate; i++) {
+        const tsIso = new Date(lastTsMs + i * MS_PER_CANDLE).toISOString();
+        const next = generateNextCompanyCandle(rollingClose, String(company.risk_level), tsIso);
+        candleInserts.push({
+          company_id: company.id,
+          timestamp: next.candle.timestamp,
+          open_price: next.candle.open_price,
+          high_price: next.candle.high_price,
+          low_price: next.candle.low_price,
+          close_price: next.candle.close_price,
+          volume: next.candle.volume,
+        });
+        rollingClose = next.candle.close_price;
+        lastGeneratedChangePct = next.changePercent;
       }
-
-      const change = (Math.random() - trendBias) * volatility;
-      const closePrice = Math.max(prevClose * 0.5, Math.min(prevClose * 2, prevClose * (1 + change)));
-      const openPrice = prevClose;
-      const intraVolatility = Math.random() * 0.008;
-      const highPrice = Math.max(openPrice, closePrice) * (1 + intraVolatility);
-      const lowPrice = Math.min(openPrice, closePrice) * (1 - intraVolatility);
-      const volume = Math.round(Math.random() * 50000 + 10000);
-      const changePercent = ((closePrice - openPrice) / openPrice) * 100;
-
-      candleInserts.push({
-        company_id: company.id,
-        timestamp: now,
-        open_price: Math.round(openPrice * 100) / 100,
-        high_price: Math.round(highPrice * 100) / 100,
-        low_price: Math.round(lowPrice * 100) / 100,
-        close_price: Math.round(closePrice * 100) / 100,
-        volume,
-      });
 
       priceUpdates.push({
         id: company.id,
-        current_price: Math.round(closePrice * 100) / 100,
-        price_change_percent: Math.round(changePercent * 100) / 100,
+        current_price: Math.round(rollingClose * 100) / 100,
+        price_change_percent: lastGeneratedChangePct,
       });
     }
 
     if (candleInserts.length > 0) {
-      const { error: insertError } = await supabase
-        .from('company_candles')
-        .insert(candleInserts);
+      const { error: insertError } = await supabase.from('company_candles').insert(candleInserts);
 
       if (!insertError) {
         results.companyCandles.success = true;
@@ -210,18 +253,20 @@ Deno.serve(async (req) => {
         } catch (e) {
           console.error('Company cleanup error:', e);
         }
+      } else {
+        console.error('Company candle insert error:', insertError);
       }
     }
 
     console.log(
-      `Market scheduler completed: market_success=${results.marketCandle.success}, market_generated=${results.marketCandle.generated}, market_skipped=${results.marketCandle.skipped}, companies=${results.companyCandles.count}`
+       `Market scheduler completed: market_success=${results.marketCandle.success}, market_generated=${results.marketCandle.generated}, market_skipped=${results.marketCandle.skipped}, companies=${results.companyCandles.count}`
     );
 
     return new Response(
       JSON.stringify({
         success: true,
         results,
-        timestamp: now,
+         timestamp: new Date().toISOString(),
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
