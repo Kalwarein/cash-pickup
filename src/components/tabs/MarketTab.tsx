@@ -1,135 +1,177 @@
-import { useState, useEffect, useMemo } from 'react';
-import { DollarSign } from 'lucide-react';
-import { CandlestickChart } from '@/components/CandlestickChart';
-import { useMarketCandles } from '@/hooks/useMarketCandles';
-import { useForexTrades } from '@/hooks/useForexTrades';
-import { useWallet } from '@/hooks/useWallet';
-import { TradeModal } from '@/components/TradeModal';
-import { toast } from 'sonner';
+import { useState } from 'react';
+import { TrendingUp, TrendingDown, Award, Zap, Building2, Star, ChevronRight } from 'lucide-react';
+import { useCPI } from '@/hooks/useCPI';
+import { useCompanies } from '@/hooks/useCompanies';
+import { CPIGauge } from '@/components/CPIGauge';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 
+type FilterType = 'all' | 'top' | 'rising' | 'stable';
+
 export const MarketTab = () => {
-  const { chartData, currentPrice, marketStatus, loading: marketLoading } = useMarketCandles();
-  const { openTrades, openTrade, checkAndCloseTrades } = useForexTrades();
-  const { wallet, refetch: refetchWallet } = useWallet();
-  const [showTradeModal, setShowTradeModal] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [autoScroll, setAutoScroll] = useState(true);
+  const { companies: cpiCompanies, topPerformers, risingCompanies, stableCompanies, averageCPI, loading } = useCPI();
+  const { setSelectedCompanyId } = useCompanies();
+  const [filter, setFilter] = useState<FilterType>('all');
 
-  // Check for auto-close conditions every 1 second for instant TP/SL closure
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (currentPrice > 0) {
-        checkAndCloseTrades(currentPrice);
-      }
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [currentPrice, checkAndCloseTrades]);
-
-  // Convert trades to overlay format for the chart (includes expiry for countdown)
-  const tradeOverlays = useMemo(() => {
-    return openTrades.map(trade => ({
-      id: trade.id,
-      entryPrice: trade.entry_price,
-      takeProfit: trade.take_profit,
-      stopLoss: trade.stop_loss,
-      expiresAt: trade.expires_at,
-      status: trade.status,
-      profitLoss: trade.profit_loss,
-    }));
-  }, [openTrades]);
-
-  const handleOpenTrade = async (
-    amount: number,
-    takeProfitPercent: number,
-    stopLossPercent: number,
-    durationMinutes: number
-  ) => {
-    const { error } = await openTrade(currentPrice, amount, takeProfitPercent, stopLossPercent, durationMinutes);
-    if (error) {
-      toast.error(error);
-    } else {
-      toast.success(`Trade opened at ${sle(currentPrice)}`);
-      await refetchWallet();
+  const getFilteredCompanies = () => {
+    switch (filter) {
+      case 'top':
+        return topPerformers;
+      case 'rising':
+        return risingCompanies;
+      case 'stable':
+        return stableCompanies;
+      default:
+        return cpiCompanies;
     }
   };
 
-  // Calculate chart height to fill screen minus bottom nav and padding
-  const chartHeight = typeof window !== 'undefined' 
-    ? window.innerHeight - 180 // Account for bottom nav (~80px) + some padding
-    : 500;
+  const filteredCompanies = getFilteredCompanies();
 
-  if (marketLoading) {
+  if (loading) {
     return (
-      <div className="fixed inset-0 top-0 left-0 right-0 bottom-20 flex items-center justify-center bg-background">
-        <div className="w-16 h-16 rounded-2xl gradient-primary flex items-center justify-center animate-pulse">
-          <span className="text-xl font-bold text-primary-foreground">CP</span>
-        </div>
+      <div className="space-y-4 animate-fade-in">
+        <div className="glass-card p-6 h-40 loading-pulse" />
+        <div className="glass-card p-4 h-60 loading-pulse" />
       </div>
     );
   }
 
   return (
-    <div className={cn(
-      "fixed inset-0 top-0 left-0 right-0 bottom-20 bg-background animate-fade-in",
-      isFullscreen && "bottom-0 z-50"
-    )}>
-      {/* Full-screen chart container */}
-      <div className="relative w-full h-full">
-        <CandlestickChart
-          data={chartData}
-          height={isFullscreen ? window.innerHeight - 40 : chartHeight}
-          trades={tradeOverlays}
-          isFullscreen={isFullscreen}
-          onToggleFullscreen={() => setIsFullscreen(!isFullscreen)}
-          autoScroll={autoScroll}
-          onAutoScrollChange={setAutoScroll}
-        />
+    <div className="space-y-6 animate-fade-in pb-4">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold">Company Performance Index</h1>
+        <p className="text-muted-foreground text-sm">Track company strength and investment potential</p>
+      </div>
 
-        {/* Floating overlay trade button */}
-        <button
-          onClick={() => setShowTradeModal(true)}
-          className={cn(
-            "absolute left-1/2 -translate-x-1/2 z-20 flex items-center justify-center gap-2 rounded-xl font-semibold shadow-lg transition-all",
-            "bg-primary text-primary-foreground hover:bg-primary/90",
-            isFullscreen ? "bottom-6 px-6 py-4 text-lg" : "bottom-4 px-5 py-3 text-base"
-          )}
-        >
-          <DollarSign className="w-5 h-5" />
-          Open Trade
-        </button>
-
-        {/* Live status pill */}
-        <div className={cn(
-          "absolute left-3 top-3 z-20 px-3 py-1.5 rounded-lg text-xs font-medium",
-          "bg-background/90 backdrop-blur-sm border border-border"
-        )}>
-          <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse mr-2" />
-          <span className="text-foreground font-semibold">{sle(currentPrice)}</span>
-          <span className="text-muted-foreground ml-2">• {marketStatus.message}</span>
+      {/* Market Overview Card */}
+      <div className="glass-card p-6 glow-primary">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <p className="text-sm text-muted-foreground mb-1">Market Average CPI</p>
+            <p className="text-4xl font-bold">{averageCPI.toFixed(1)}</p>
+            <p className="text-sm text-muted-foreground">out of 100</p>
+          </div>
+          <CPIGauge score={averageCPI} size="lg" />
         </div>
 
-        {/* Auto-scroll status indicator */}
-        <div className={cn(
-          "absolute right-3 bottom-16 z-20 px-2 py-1 rounded-lg text-xs",
-          "bg-background/80 backdrop-blur-sm border border-border text-muted-foreground"
-        )}>
-          {autoScroll ? "Auto-follow: ON" : "Auto-follow: OFF"}
+        <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border/50">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-success mb-1">
+              <TrendingUp className="w-4 h-4" />
+              <span className="font-bold">{risingCompanies.length}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Rising</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-warning mb-1">
+              <Zap className="w-4 h-4" />
+              <span className="font-bold">{stableCompanies.length}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Stable</p>
+          </div>
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-1 text-primary mb-1">
+              <Building2 className="w-4 h-4" />
+              <span className="font-bold">{cpiCompanies.length}</span>
+            </div>
+            <p className="text-xs text-muted-foreground">Total</p>
+          </div>
         </div>
       </div>
 
-      {/* Trade Modal */}
-      {showTradeModal && wallet && (
-        <TradeModal
-          isOpen={showTradeModal}
-          onClose={() => setShowTradeModal(false)}
-          currentPrice={currentPrice}
-          balance={wallet.balance}
-          onTrade={handleOpenTrade}
-        />
-      )}
+      {/* What is CPI Info */}
+      <div className="glass-card p-4 bg-primary/5 border-primary/20">
+        <div className="flex items-start gap-3">
+          <Award className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-primary">What is CPI?</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Company Performance Index measures company strength based on investment activity, 
+              completed payouts, and investor confidence. Higher CPI indicates better performance.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Filter Tabs */}
+      <div className="flex gap-2 overflow-x-auto pb-2">
+        {[
+          { key: 'all', label: 'All Companies', icon: Building2 },
+          { key: 'top', label: 'Top Performers', icon: Star },
+          { key: 'rising', label: 'Rising', icon: TrendingUp },
+          { key: 'stable', label: 'Stable', icon: Zap },
+        ].map(({ key, label, icon: Icon }) => (
+          <button
+            key={key}
+            onClick={() => setFilter(key as FilterType)}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium whitespace-nowrap transition-all",
+              filter === key
+                ? "bg-primary text-primary-foreground"
+                : "bg-muted hover:bg-muted/80"
+            )}
+          >
+            <Icon className="w-4 h-4" />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Companies List */}
+      <div className="space-y-3">
+        {filteredCompanies.length > 0 ? (
+          filteredCompanies.map((company, index) => (
+            <button
+              key={company.id}
+              onClick={() => setSelectedCompanyId(company.id)}
+              className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors text-left"
+            >
+              <div className="flex items-center gap-4">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-muted text-sm font-bold text-muted-foreground">
+                  {index + 1}
+                </div>
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center">
+                  <span className="text-sm font-bold text-primary-foreground">
+                    {company.ticker.slice(0, 2)}
+                  </span>
+                </div>
+                <div>
+                  <p className="font-medium">{company.name}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{company.ticker}</span>
+                    <span>•</span>
+                    <span>{company.sector}</span>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className={cn(
+                    "text-lg font-bold",
+                    company.cpi_score >= 70 ? "text-success" : 
+                    company.cpi_score >= 50 ? "text-warning" : "text-destructive"
+                  )}>
+                    {company.cpi_score.toFixed(0)}
+                  </div>
+                  <div className="text-xs text-muted-foreground">CPI</div>
+                </div>
+                <div className="text-right">
+                  <p className="font-semibold text-sm">{sle(company.current_price)}</p>
+                  <p className="text-xs text-success">+{company.guaranteed_return_percent}%</p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              </div>
+            </button>
+          ))
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            No companies found in this category
+          </div>
+        )}
+      </div>
     </div>
   );
 };

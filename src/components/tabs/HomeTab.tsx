@@ -1,16 +1,15 @@
-import { TrendingUp, Users, Activity, Flame, Clock, Eye } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { MarketChart } from '@/components/MarketChart';
+import { TrendingUp, Users, Activity, Flame, Clock, Award } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
-import { useMarketCandles } from '@/hooks/useMarketCandles';
+import { useCPI } from '@/hooks/useCPI';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { CPIGauge } from '@/components/CPIGauge';
 import { cn } from '@/lib/utils';
 import { formatSLE, sle } from '@/lib/currency';
 
 export const HomeTab = () => {
-  const { chartData, currentPrice, marketStatus } = useMarketCandles();
+  const { topPerformers, averageCPI, loading: cpiLoading } = useCPI();
   const { companies } = useCompanies();
   const { investments, completedInvestments } = useInvestments();
 
@@ -27,6 +26,15 @@ export const HomeTab = () => {
     return Math.max(0, diff);
   };
 
+  // Determine market status based on average CPI
+  const getMarketStatus = () => {
+    if (averageCPI >= 60) return { status: 'strong', message: 'Market Strong', color: 'text-success bg-success/20' };
+    if (averageCPI >= 45) return { status: 'stable', message: 'Market Stable', color: 'text-warning bg-warning/20' };
+    return { status: 'cautious', message: 'Market Cautious', color: 'text-destructive bg-destructive/20' };
+  };
+
+  const marketStatus = getMarketStatus();
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -39,9 +47,7 @@ export const HomeTab = () => {
           <ThemeToggle />
           <div className={cn(
             "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2",
-            marketStatus.status === 'rising' && "bg-success/20 text-success",
-            marketStatus.status === 'falling' && "bg-destructive/20 text-destructive",
-            marketStatus.status === 'volatile' && "bg-warning/20 text-warning"
+            marketStatus.color
           )}>
             <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
             {marketStatus.message}
@@ -49,26 +55,21 @@ export const HomeTab = () => {
         </div>
       </div>
 
-      {/* Market Chart */}
+      {/* CPI Overview */}
       <div className="glass-card p-4 glow-primary">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground">SLE Market Index</p>
+            <p className="text-sm text-muted-foreground">Market Performance Index</p>
             <p className="text-3xl font-bold">
-              {sle(currentPrice)}
+              {averageCPI.toFixed(1)} <span className="text-lg text-muted-foreground">/ 100</span>
             </p>
           </div>
-          <div className={cn(
-            "text-right",
-            marketStatus.sentiment >= 0 ? "text-success" : "text-destructive"
-          )}>
-            <p className="text-lg font-semibold">
-              {marketStatus.sentiment >= 0 ? '+' : ''}{marketStatus.sentiment.toFixed(1)}%
-            </p>
-            <p className="text-xs text-muted-foreground">24h Sentiment</p>
-          </div>
+          <CPIGauge score={averageCPI} size="md" />
         </div>
-        <MarketChart data={chartData} height={180} />
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Award className="w-4 h-4" />
+          <span>CPI reflects overall company performance and investor activity</span>
+        </div>
       </div>
 
       {/* My Investments Section */}
@@ -220,14 +221,14 @@ export const HomeTab = () => {
         />
       </div>
 
-      {/* Trending Companies */}
+      {/* Top Performers by CPI */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Flame className="w-5 h-5 text-orange-400" />
-          <h2 className="text-lg font-semibold">Trending Now</h2>
+          <h2 className="text-lg font-semibold">Top Performers</h2>
         </div>
         <div className="space-y-3">
-          {trendingCompanies.map((company) => (
+          {topPerformers.slice(0, 4).map((company) => (
             <div 
               key={company.id}
               className="glass-card p-4 flex items-center justify-between"
@@ -243,15 +244,12 @@ export const HomeTab = () => {
                   <p className="text-xs text-muted-foreground">{company.sector}</p>
                 </div>
               </div>
-              <div className="text-right">
-                <p className="font-semibold">{sle(company.current_price)}</p>
-                <p className={cn(
-                  "text-sm",
-                  company.price_change_percent >= 0 ? "text-success" : "text-destructive"
-                )}>
-                  {company.price_change_percent >= 0 ? '+' : ''}
-                  {company.price_change_percent.toFixed(2)}%
-                </p>
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  <p className="font-semibold">{sle(company.current_price)}</p>
+                  <p className="text-xs text-success">+{company.guaranteed_return_percent}%</p>
+                </div>
+                <CPIGauge score={company.cpi_score} size="sm" showLabel={false} />
               </div>
             </div>
           ))}
