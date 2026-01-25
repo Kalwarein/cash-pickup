@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, AlertTriangle, TrendingUp, Clock, Calendar, Shield } from 'lucide-react';
+import { X, AlertTriangle, Clock, Calendar, TrendingUp, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
+import { RiskWarning } from '@/components/RiskWarning';
 
 interface InvestModalProps {
   isOpen: boolean;
@@ -11,18 +12,19 @@ interface InvestModalProps {
     name: string;
     ticker: string;
     minInvestment: number;
-    guaranteedReturnPercent: number;
+    riskLevel: 'Low' | 'Medium' | 'High';
+    cprToday: number;
   };
   balance: number;
   onInvest: (amount: number, maturityDays: number) => Promise<void>;
 }
 
-// Investment duration options (max 3 months)
+// Investment duration options
 const MATURITY_OPTIONS = [
-  { days: 7, label: '1 Week', returnMultiplier: 0.7 },
-  { days: 14, label: '2 Weeks', returnMultiplier: 0.85 },
-  { days: 30, label: '1 Month', returnMultiplier: 1.0 },
-  { days: 90, label: '3 Months', returnMultiplier: 1.5 },
+  { days: 7, label: '1 Week' },
+  { days: 14, label: '2 Weeks' },
+  { days: 30, label: '1 Month' },
+  { days: 90, label: '3 Months' },
 ];
 
 export const InvestModal = ({
@@ -70,13 +72,13 @@ export const InvestModal = ({
     }
   };
 
-  // Calculate guaranteed return based on duration
-  const adjustedReturnPercent = company.guaranteedReturnPercent * selectedMaturity.returnMultiplier;
-  const guaranteedProfit = parseFloat(amount || '0') * (adjustedReturnPercent / 100);
-  const totalReturn = parseFloat(amount || '0') + guaranteedProfit;
-
   const maturityDate = new Date();
   maturityDate.setDate(maturityDate.getDate() + selectedMaturity.days);
+
+  // Show potential scenarios
+  const investAmount = parseFloat(amount || '0');
+  const bestCase = investAmount * 1.5; // +50% max
+  const worstCase = investAmount * 0.1; // -90% loss, minimum 10% remains
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
@@ -95,19 +97,42 @@ export const InvestModal = ({
           <div className="glass-card p-4">
             <p className="text-sm text-muted-foreground mb-1">Investing in</p>
             <p className="text-2xl font-bold">{company.name}</p>
-            <p className="text-sm text-muted-foreground">{company.ticker}</p>
-          </div>
-
-          {/* Guaranteed Return Banner */}
-          <div className="glass-card p-4 flex items-start gap-3 bg-success/10 border-success/20">
-            <Shield className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-success">Guaranteed Returns</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Your investment return is guaranteed. No risk of loss on company investments.
-              </p>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="text-sm text-muted-foreground">{company.ticker}</span>
+              <span className={cn(
+                "text-xs px-2 py-0.5 rounded-full font-medium",
+                company.riskLevel === 'Low' && "bg-success/20 text-success",
+                company.riskLevel === 'Medium' && "bg-warning/20 text-warning",
+                company.riskLevel === 'High' && "bg-destructive/20 text-destructive"
+              )}>
+                {company.riskLevel} Risk
+              </span>
             </div>
           </div>
+
+          {/* Current CPR */}
+          <div className="glass-card p-4">
+            <p className="text-sm text-muted-foreground mb-1">Today's Performance Rate</p>
+            <div className="flex items-center gap-2">
+              {company.cprToday >= 0 ? (
+                <TrendingUp className="w-5 h-5 text-success" />
+              ) : (
+                <TrendingDown className="w-5 h-5 text-destructive" />
+              )}
+              <p className={cn(
+                "text-2xl font-bold",
+                company.cprToday >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {company.cprToday >= 0 ? '+' : ''}{company.cprToday.toFixed(1)}%
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Note: Final outcome depends on CPR on maturity date
+            </p>
+          </div>
+
+          {/* Risk Warning Banner */}
+          <RiskWarning variant="default" />
 
           {/* Investment Period Selection */}
           <div>
@@ -128,14 +153,6 @@ export const InvestModal = ({
                   )}
                 >
                   <p className="font-semibold text-sm">{option.label}</p>
-                  <p className={cn(
-                    "text-xs mt-1",
-                    selectedMaturity.days === option.days
-                      ? "text-primary-foreground/80"
-                      : "text-muted-foreground"
-                  )}>
-                    {(company.guaranteedReturnPercent * option.returnMultiplier).toFixed(0)}% return
-                  </p>
                 </button>
               ))}
             </div>
@@ -169,31 +186,27 @@ export const InvestModal = ({
             {error && <p className="text-sm text-destructive mt-2">{error}</p>}
           </div>
 
-          {/* Guaranteed Return Preview */}
-          <div className="glass-card p-4 bg-success/5 border-success/20">
-            <div className="flex items-center gap-2 text-success mb-3">
-              <TrendingUp className="w-5 h-5" />
-              <span className="font-semibold">Guaranteed Return</span>
+          {/* Potential Outcomes */}
+          {investAmount > 0 && (
+            <div className="glass-card p-4 bg-muted/50">
+              <p className="text-sm font-medium mb-3">Potential Outcomes at Maturity</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="p-3 bg-success/10 rounded-lg border border-success/20">
+                  <p className="text-xs text-muted-foreground">Best Case (+50%)</p>
+                  <p className="font-bold text-success">{sle(bestCase)}</p>
+                  <p className="text-xs text-success">+{sle(bestCase - investAmount)}</p>
+                </div>
+                <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                  <p className="text-xs text-muted-foreground">Worst Case (-90%)</p>
+                  <p className="font-bold text-destructive">{sle(worstCase)}</p>
+                  <p className="text-xs text-destructive">-{sle(investAmount - worstCase)}</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3 text-center">
+                Most outcomes fall between these extremes based on CPR on maturity day
+              </p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-muted-foreground">You Invest</p>
-                <p className="font-bold">{sle(parseFloat(amount || '0'))}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">You Receive</p>
-                <p className="font-bold text-success">{sle(totalReturn)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Profit</p>
-                <p className="font-bold text-success">+{sle(guaranteedProfit)}</p>
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Return Rate</p>
-                <p className="font-bold text-success">+{adjustedReturnPercent.toFixed(0)}%</p>
-              </div>
-            </div>
-          </div>
+          )}
 
           <button
             onClick={handleSubmit}
@@ -207,6 +220,10 @@ export const InvestModal = ({
           >
             {loading ? 'Processing...' : `Invest for ${selectedMaturity.label}`}
           </button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            By investing, you acknowledge that you understand the risks involved.
+          </p>
         </div>
       </div>
     </div>

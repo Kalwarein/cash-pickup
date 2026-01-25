@@ -1,28 +1,28 @@
 import { useState } from 'react';
-import { TrendingUp, TrendingDown, Award, Zap, Building2, Star, ChevronRight } from 'lucide-react';
-import { useCPI } from '@/hooks/useCPI';
+import { TrendingUp, TrendingDown, AlertTriangle, ChevronRight, Building2, Flame, Activity } from 'lucide-react';
+import { useCPR } from '@/hooks/useCPR';
 import { useCompanies } from '@/hooks/useCompanies';
-import { CPIGauge } from '@/components/CPIGauge';
+import { CPRIndicator } from '@/components/CPRIndicator';
+import { RiskWarning } from '@/components/RiskWarning';
 import { cn } from '@/lib/utils';
-import { sle } from '@/lib/currency';
 
-type FilterType = 'all' | 'top' | 'rising' | 'stable';
+type FilterType = 'all' | 'positive' | 'negative' | 'stable';
 
 export const MarketTab = () => {
-  const { companies: cpiCompanies, topPerformers, risingCompanies, stableCompanies, averageCPI, loading } = useCPI();
+  const { companies: cprCompanies, topPerformers, positiveCompanies, negativeCompanies, stableCompanies, averageCPR, loading } = useCPR();
   const { setSelectedCompanyId } = useCompanies();
   const [filter, setFilter] = useState<FilterType>('all');
 
   const getFilteredCompanies = () => {
     switch (filter) {
-      case 'top':
-        return topPerformers;
-      case 'rising':
-        return risingCompanies;
+      case 'positive':
+        return positiveCompanies;
+      case 'negative':
+        return negativeCompanies;
       case 'stable':
         return stableCompanies;
       default:
-        return cpiCompanies;
+        return cprCompanies;
     }
   };
 
@@ -41,55 +41,69 @@ export const MarketTab = () => {
     <div className="space-y-6 animate-fade-in pb-4">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold">Company Performance Index</h1>
-        <p className="text-muted-foreground text-sm">Track company strength and investment potential</p>
+        <h1 className="text-2xl font-bold">Company Performance Rate</h1>
+        <p className="text-muted-foreground text-sm">Daily performance outcomes that affect your investments</p>
       </div>
 
+      {/* Risk Warning */}
+      <RiskWarning variant="compact" />
+
       {/* Market Overview Card */}
-      <div className="glass-card p-6 glow-primary">
+      <div className="glass-card p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground mb-1">Market Average CPI</p>
-            <p className="text-4xl font-bold">{averageCPI.toFixed(1)}</p>
-            <p className="text-sm text-muted-foreground">out of 100</p>
+            <p className="text-sm text-muted-foreground mb-1">Platform Average CPR</p>
+            <div className="flex items-center gap-2">
+              <p className={cn(
+                "text-4xl font-bold",
+                averageCPR >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {averageCPR >= 0 ? '+' : ''}{averageCPR.toFixed(1)}%
+              </p>
+              {averageCPR >= 0 ? (
+                <TrendingUp className="w-6 h-6 text-success" />
+              ) : (
+                <TrendingDown className="w-6 h-6 text-destructive" />
+              )}
+            </div>
           </div>
-          <CPIGauge score={averageCPI} size="lg" />
+          <CPRIndicator value={averageCPR} size="lg" showLabel />
         </div>
 
         <div className="grid grid-cols-3 gap-3 pt-4 border-t border-border/50">
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-success mb-1">
               <TrendingUp className="w-4 h-4" />
-              <span className="font-bold">{risingCompanies.length}</span>
+              <span className="font-bold">{positiveCompanies.length}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Rising</p>
+            <p className="text-xs text-muted-foreground">Positive</p>
           </div>
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-warning mb-1">
-              <Zap className="w-4 h-4" />
-              <span className="font-bold">{stableCompanies.length}</span>
+            <div className="flex items-center justify-center gap-1 text-destructive mb-1">
+              <TrendingDown className="w-4 h-4" />
+              <span className="font-bold">{negativeCompanies.length}</span>
             </div>
-            <p className="text-xs text-muted-foreground">Stable</p>
+            <p className="text-xs text-muted-foreground">Negative</p>
           </div>
           <div className="text-center">
             <div className="flex items-center justify-center gap-1 text-primary mb-1">
               <Building2 className="w-4 h-4" />
-              <span className="font-bold">{cpiCompanies.length}</span>
+              <span className="font-bold">{cprCompanies.length}</span>
             </div>
             <p className="text-xs text-muted-foreground">Total</p>
           </div>
         </div>
       </div>
 
-      {/* What is CPI Info */}
+      {/* What is CPR Info */}
       <div className="glass-card p-4 bg-primary/5 border-primary/20">
         <div className="flex items-start gap-3">
-          <Award className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+          <Activity className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
           <div>
-            <p className="text-sm font-medium text-primary">What is CPI?</p>
+            <p className="text-sm font-medium text-primary">What is CPR?</p>
             <p className="text-xs text-muted-foreground mt-1">
-              Company Performance Index measures company strength based on investment activity, 
-              completed payouts, and investor confidence. Higher CPI indicates better performance.
+              Company Performance Rate is the daily outcome that determines investment returns at maturity. 
+              CPR ranges from -90% to +50%. Negative rates result in losses. Only invest what you can afford to lose.
             </p>
           </div>
         </div>
@@ -99,9 +113,9 @@ export const MarketTab = () => {
       <div className="flex gap-2 overflow-x-auto pb-2">
         {[
           { key: 'all', label: 'All Companies', icon: Building2 },
-          { key: 'top', label: 'Top Performers', icon: Star },
-          { key: 'rising', label: 'Rising', icon: TrendingUp },
-          { key: 'stable', label: 'Stable', icon: Zap },
+          { key: 'positive', label: 'Positive CPR', icon: TrendingUp },
+          { key: 'negative', label: 'Negative CPR', icon: TrendingDown },
+          { key: 'stable', label: 'Low Volatility', icon: Activity },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -138,29 +152,33 @@ export const MarketTab = () => {
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium">{company.name}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium">{company.name}</p>
+                    {company.is_trending && <Flame className="w-4 h-4 text-warning" />}
+                  </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span>{company.ticker}</span>
                     <span>•</span>
                     <span>{company.sector}</span>
+                    <span>•</span>
+                    <span className={cn(
+                      "px-1.5 py-0.5 rounded text-[10px] font-medium",
+                      company.risk_level === 'Low' && "bg-success/20 text-success",
+                      company.risk_level === 'Medium' && "bg-warning/20 text-warning",
+                      company.risk_level === 'High' && "bg-destructive/20 text-destructive"
+                    )}>
+                      {company.risk_level}
+                    </span>
                   </div>
                 </div>
               </div>
               
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <div className={cn(
-                    "text-lg font-bold",
-                    company.cpi_score >= 70 ? "text-success" : 
-                    company.cpi_score >= 50 ? "text-warning" : "text-destructive"
-                  )}>
-                    {company.cpi_score.toFixed(0)}
+                  <CPRIndicator value={company.cpr_today} size="md" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    7d: {company.cpr_7day_avg >= 0 ? '+' : ''}{company.cpr_7day_avg.toFixed(1)}%
                   </div>
-                  <div className="text-xs text-muted-foreground">CPI</div>
-                </div>
-                <div className="text-right">
-                  <p className="font-semibold text-sm">{sle(company.current_price)}</p>
-                  <p className="text-xs text-success">+{company.guaranteed_return_percent}%</p>
                 </div>
                 <ChevronRight className="w-5 h-5 text-muted-foreground" />
               </div>

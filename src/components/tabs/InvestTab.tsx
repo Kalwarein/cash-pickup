@@ -163,7 +163,8 @@ export const InvestTab = () => {
             name: selectedCompany.name,
             ticker: selectedCompany.ticker,
             minInvestment: Number(selectedCompany.min_investment) || 50,
-            guaranteedReturnPercent: Number(selectedCompany.guaranteed_return_percent) || 25,
+            riskLevel: selectedCompany.risk_level,
+            cprToday: Number(selectedCompany.cpr_today) || 0,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}
