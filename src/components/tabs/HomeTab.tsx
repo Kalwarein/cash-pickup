@@ -7,6 +7,7 @@ import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
+import { formatSLE, sle } from '@/lib/currency';
 
 export const HomeTab = () => {
   const { chartData, currentPrice, marketStatus } = useMarketCandles();
@@ -54,7 +55,7 @@ export const HomeTab = () => {
           <div>
             <p className="text-sm text-muted-foreground">SLE Market Index</p>
             <p className="text-3xl font-bold">
-              ${currentPrice.toFixed(2)}
+              {sle(currentPrice)}
             </p>
           </div>
           <div className={cn(
@@ -82,7 +83,7 @@ export const HomeTab = () => {
           <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="p-3 bg-muted/50 rounded-xl">
               <p className="text-xs text-muted-foreground">Total Invested</p>
-              <p className="text-lg font-bold">${totalInvested.toFixed(2)}</p>
+              <p className="text-lg font-bold">{sle(totalInvested)}</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-xl">
               <p className="text-xs text-muted-foreground">Current Value</p>
@@ -90,7 +91,7 @@ export const HomeTab = () => {
                 "text-lg font-bold",
                 totalCurrentValue >= totalInvested ? "text-success" : "text-destructive"
               )}>
-                ${totalCurrentValue.toFixed(2)}
+                {sle(totalCurrentValue)}
               </p>
             </div>
           </div>
@@ -116,7 +117,7 @@ export const HomeTab = () => {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${inv.current_value.toFixed(2)}</p>
+                      <p className="font-semibold">{sle(inv.current_value)}</p>
                       <p className={cn(
                         "text-sm font-medium",
                         inv.profit_loss >= 0 ? "text-success" : "text-destructive"
@@ -165,7 +166,7 @@ export const HomeTab = () => {
               "text-sm font-medium",
               completedPL >= 0 ? "text-success" : "text-destructive"
             )}>
-              Total: {completedPL >= 0 ? '+' : ''}${completedPL.toFixed(2)}
+              Total: {formatSLE(completedPL, true)}
             </span>
           </div>
           <div className="space-y-2">
@@ -187,7 +188,7 @@ export const HomeTab = () => {
                   "text-sm font-semibold",
                   (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
                 )}>
-                  {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}${(inv.final_profit_loss || 0).toFixed(2)}
+                  {formatSLE(inv.final_profit_loss || 0, true)}
                 </span>
               </div>
             ))}
@@ -209,7 +210,7 @@ export const HomeTab = () => {
         />
         <StatCard
           label="Your Portfolio"
-          value={`$${totalInvested.toFixed(0)}`}
+          value={`${totalInvested.toFixed(0)} SLE`}
           change={totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0}
         />
         <StatCard
@@ -243,7 +244,7 @@ export const HomeTab = () => {
                 </div>
               </div>
               <div className="text-right">
-                <p className="font-semibold">${company.current_price.toFixed(2)}</p>
+                <p className="font-semibold">{sle(company.current_price)}</p>
                 <p className={cn(
                   "text-sm",
                   company.price_change_percent >= 0 ? "text-success" : "text-destructive"

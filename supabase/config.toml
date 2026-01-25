@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.market-scheduler]
 verify_jwt = false
+
+[functions.trade-monitor]
+verify_jwt = false

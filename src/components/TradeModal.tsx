@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { X, TrendingUp, TrendingDown, Timer, Target, XCircle, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sle } from '@/lib/currency';
 
 interface TradeModalProps {
   isOpen: boolean;
@@ -47,7 +48,7 @@ export const TradeModal = ({
     }
 
     if (tradeAmount < 10) {
-      setError('Minimum trade is $10');
+      setError('Minimum trade is 10 SLE');
       return;
     }
 
@@ -86,7 +87,7 @@ export const TradeModal = ({
           {/* Current Price */}
           <div className="glass-card p-4 text-center">
             <p className="text-sm text-muted-foreground mb-1">Current Market Price</p>
-            <p className="text-3xl font-bold">${currentPrice.toFixed(2)}</p>
+            <p className="text-3xl font-bold">{sle(currentPrice)}</p>
           </div>
 
           {/* Warning */}
@@ -103,7 +104,7 @@ export const TradeModal = ({
           {/* Trade Amount */}
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">
-              Trade Amount (Balance: ${balance.toFixed(2)})
+              Trade Amount (Balance: {sle(balance)})
             </label>
             <input
               type="number"
@@ -119,7 +120,7 @@ export const TradeModal = ({
           <div>
             <label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
               <Target className="w-4 h-4 text-success" />
-              Take Profit: {takeProfitPercent}% (${takeProfitPrice.toFixed(2)})
+              Take Profit: {takeProfitPercent}% ({sle(takeProfitPrice)})
             </label>
             <input
               type="range"
@@ -135,7 +136,7 @@ export const TradeModal = ({
           <div>
             <label className="text-sm text-muted-foreground mb-2 flex items-center gap-2">
               <XCircle className="w-4 h-4 text-destructive" />
-              Stop Loss: {stopLossPercent}% (${stopLossPrice.toFixed(2)})
+              Stop Loss: {stopLossPercent}% ({sle(stopLossPrice)})
             </label>
             <input
               type="range"
@@ -179,7 +180,7 @@ export const TradeModal = ({
                 <span className="text-xs font-medium">Max Profit</span>
               </div>
               <p className="font-bold text-success">
-                +${potentialProfit.toFixed(2)}
+                +{sle(potentialProfit)}
               </p>
             </div>
             <div className="glass-card p-3">
@@ -188,7 +189,7 @@ export const TradeModal = ({
                 <span className="text-xs font-medium">Max Loss</span>
               </div>
               <p className="font-bold text-destructive">
-                -${potentialLoss.toFixed(2)}
+                -{sle(potentialLoss)}
               </p>
             </div>
           </div>

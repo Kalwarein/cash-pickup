@@ -7,6 +7,7 @@ import { useWallet } from '@/hooks/useWallet';
 import { TradeModal } from '@/components/TradeModal';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { sle } from '@/lib/currency';
 
 export const MarketTab = () => {
   const { chartData, currentPrice, marketStatus, loading: marketLoading } = useMarketCandles();
@@ -47,7 +48,7 @@ export const MarketTab = () => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success(`Trade opened at $${currentPrice.toFixed(2)}`);
+      toast.success(`Trade opened at ${sle(currentPrice)}`);
       await refetchWallet();
     }
   };
@@ -103,7 +104,7 @@ export const MarketTab = () => {
           "bg-background/90 backdrop-blur-sm border border-border"
         )}>
           <span className="inline-block w-2 h-2 rounded-full bg-success animate-pulse mr-2" />
-          <span className="text-foreground font-semibold">${currentPrice.toFixed(2)}</span>
+          <span className="text-foreground font-semibold">{sle(currentPrice)}</span>
           <span className="text-muted-foreground ml-2">• {marketStatus.message}</span>
         </div>
 
