@@ -10,6 +10,8 @@ interface InvestModalProps {
     id: string;
     name: string;
     ticker: string;
+    price: number;
+    riskLevel: string;
     minInvestment: number;
     guaranteedReturnPercent: number;
   };
@@ -93,9 +95,8 @@ export const InvestModal = ({
 
         <div className="space-y-4">
           <div className="glass-card p-4">
-            <p className="text-sm text-muted-foreground mb-1">Investing in</p>
-            <p className="text-2xl font-bold">{company.name}</p>
-            <p className="text-sm text-muted-foreground">{company.ticker}</p>
+            <p className="text-sm text-muted-foreground mb-1">{company.name}</p>
+            <p className="text-2xl font-bold">{sle(company.price)}</p>
           </div>
 
           {/* Guaranteed Return Banner */}

@@ -14,13 +14,11 @@ interface Company {
   is_trending: boolean;
   min_investment: number;
   guaranteed_return_percent: number;
-  cpi_score?: number;
 }
 
 export const useCompanies = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
 
   const fetchCompanies = useCallback(async () => {
     const { data, error } = await supabase
@@ -38,7 +36,6 @@ export const useCompanies = () => {
         min_investment: Number(c.min_investment) || 50,
         guaranteed_return_percent: Number(c.guaranteed_return_percent) || 25,
         risk_level: c.risk_level as 'Low' | 'Medium' | 'High',
-        cpi_score: Number(c.cpi_score) || 50,
       })));
     }
     setLoading(false);
@@ -48,6 +45,7 @@ export const useCompanies = () => {
     fetchCompanies();
   }, [fetchCompanies]);
 
+  // Realtime updates: reflect database-backed company engine updates.
   useEffect(() => {
     const channel = supabase
       .channel('companies_realtime')
@@ -65,7 +63,6 @@ export const useCompanies = () => {
                     current_price: updated.current_price !== undefined ? Number(updated.current_price) : c.current_price,
                     price_change_percent:
                       updated.price_change_percent !== undefined ? Number(updated.price_change_percent) : c.price_change_percent,
-                    cpi_score: (updated as { cpi_score?: number }).cpi_score !== undefined ? Number((updated as { cpi_score?: number }).cpi_score) : c.cpi_score,
                   },
             ),
           );
@@ -78,5 +75,5 @@ export const useCompanies = () => {
     };
   }, []);
 
-  return { companies, loading, refetch: fetchCompanies, selectedCompanyId, setSelectedCompanyId };
+  return { companies, loading, refetch: fetchCompanies };
 };

@@ -38,8 +38,6 @@ export type Database = {
       companies: {
         Row: {
           banner_url: string | null
-          cpi_score: number | null
-          cpi_updated_at: string | null
           created_at: string | null
           current_price: number
           description: string | null
@@ -62,8 +60,6 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
-          cpi_score?: number | null
-          cpi_updated_at?: string | null
           created_at?: string | null
           current_price: number
           description?: string | null
@@ -86,8 +82,6 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
-          cpi_score?: number | null
-          cpi_updated_at?: string | null
           created_at?: string | null
           current_price?: number
           description?: string | null
@@ -221,37 +215,53 @@ export type Database = {
           },
         ]
       }
-      cpi_history: {
+      forex_trades: {
         Row: {
-          company_id: string
-          cpi_score: number
+          amount: number
+          closed_at: string | null
           created_at: string | null
+          entry_price: number
+          exit_price: number | null
+          expires_at: string
           id: string
-          recorded_at: string
+          max_duration_minutes: number
+          profit_loss: number | null
+          status: string | null
+          stop_loss: number
+          take_profit: number
+          user_id: string
         }
         Insert: {
-          company_id: string
-          cpi_score: number
+          amount: number
+          closed_at?: string | null
           created_at?: string | null
+          entry_price: number
+          exit_price?: number | null
+          expires_at: string
           id?: string
-          recorded_at?: string
+          max_duration_minutes?: number
+          profit_loss?: number | null
+          status?: string | null
+          stop_loss: number
+          take_profit: number
+          user_id: string
         }
         Update: {
-          company_id?: string
-          cpi_score?: number
+          amount?: number
+          closed_at?: string | null
           created_at?: string | null
+          entry_price?: number
+          exit_price?: number | null
+          expires_at?: string
           id?: string
-          recorded_at?: string
+          max_duration_minutes?: number
+          profit_loss?: number | null
+          status?: string | null
+          stop_loss?: number
+          take_profit?: number
+          user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "cpi_history_company_id_fkey"
-            columns: ["company_id"]
-            isOneToOne: false
-            referencedRelation: "companies"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       investments: {
         Row: {
@@ -357,6 +367,39 @@ export type Database = {
           user_id?: string
           user_name?: string
           win_rate?: number | null
+        }
+        Relationships: []
+      }
+      market_candles: {
+        Row: {
+          close_price: number
+          created_at: string | null
+          high_price: number
+          id: string
+          low_price: number
+          open_price: number
+          timestamp: string
+          volume: number | null
+        }
+        Insert: {
+          close_price: number
+          created_at?: string | null
+          high_price: number
+          id?: string
+          low_price: number
+          open_price: number
+          timestamp?: string
+          volume?: number | null
+        }
+        Update: {
+          close_price?: number
+          created_at?: string | null
+          high_price?: number
+          id?: string
+          low_price?: number
+          open_price?: number
+          timestamp?: string
+          volume?: number | null
         }
         Relationships: []
       }

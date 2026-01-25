@@ -162,6 +162,8 @@ export const InvestTab = () => {
             id: selectedCompany.id,
             name: selectedCompany.name,
             ticker: selectedCompany.ticker,
+            price: selectedCompany.current_price,
+            riskLevel: selectedCompany.risk_level,
             minInvestment: Number(selectedCompany.min_investment) || 50,
             guaranteedReturnPercent: Number(selectedCompany.guaranteed_return_percent) || 25,
           }}

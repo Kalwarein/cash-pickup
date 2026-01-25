@@ -1,10 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.91.1';
 
 /**
- * Investment monitor that runs periodically to:
- * 1. Mature investments that have reached their maturity date (guaranteed returns)
- * 2. Generate random company activity feed messages
- * 3. Update CPI scores based on investment activity
+ * Background trade monitor that runs periodically to:
+ * 1. Close trades that hit TP/SL based on current market price
+ * 2. Close expired trades
+ * 3. Mature investments that have reached their maturity date (guaranteed returns)
+ * 4. Generate random company activity feed messages
+ * 
+ * This ensures trades and investments close correctly even when users are offline.
  */
 
 const corsHeaders = {
@@ -12,6 +15,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Sample activity messages for company feeds
 const ACTIVITY_TEMPLATES = [
   "New production facility expansion announced 📈",
   "Quarterly earnings exceeded expectations by {percent}%",
@@ -23,6 +27,11 @@ const ACTIVITY_TEMPLATES = [
   "Community development project initiated",
   "Quality certification renewed for another year",
   "Production capacity increased by {percent}%",
+  "New product line in development phase",
+  "Sustainable practices recognized by industry body",
+  "Customer satisfaction rating improved to {percent}%",
+  "Operational costs reduced through optimization",
+  "Market share growth reported in local region",
 ];
 
 function getRandomActivityMessage(): string {
@@ -40,13 +49,126 @@ Deno.serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const results = { investmentsMatured: 0, activitiesGenerated: 0, cpiUpdated: 0 };
+    const results = {
+      tradesClosed: 0,
+      tradesExpired: 0,
+      investmentsMatured: 0,
+      activitiesGenerated: 0,
+    };
+
+    // ============ GET CURRENT MARKET PRICE ============
+    const { data: latestCandle } = await supabase
+      .from('market_candles')
+      .select('close_price')
+      .order('timestamp', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    const currentPrice = latestCandle ? Number(latestCandle.close_price) : 1000;
     const now = new Date();
 
-    // ============ MATURE INVESTMENTS ============
+    // ============ CLOSE TRADES HITTING TP/SL ============
+    const { data: openTrades } = await supabase
+      .from('forex_trades')
+      .select('*')
+      .eq('status', 'open');
+
+    if (openTrades && openTrades.length > 0) {
+      for (const trade of openTrades) {
+        const entryPrice = Number(trade.entry_price);
+        const takeProfit = Number(trade.take_profit);
+        const stopLoss = Number(trade.stop_loss);
+        const amount = Number(trade.amount);
+        const expiresAt = new Date(trade.expires_at);
+
+        let shouldClose = false;
+        let exitPrice = currentPrice;
+        let closeReason = '';
+
+        // Check TP hit
+        if (currentPrice >= takeProfit) {
+          shouldClose = true;
+          exitPrice = takeProfit;
+          closeReason = 'take_profit';
+        }
+        // Check SL hit
+        else if (currentPrice <= stopLoss) {
+          shouldClose = true;
+          exitPrice = stopLoss;
+          closeReason = 'stop_loss';
+        }
+        // Check expiry
+        else if (expiresAt <= now) {
+          shouldClose = true;
+          exitPrice = currentPrice;
+          closeReason = 'expired';
+        }
+
+        if (shouldClose) {
+          const profitLoss = ((exitPrice - entryPrice) / entryPrice) * amount;
+          const finalAmount = amount + profitLoss;
+
+          // Update trade
+          await supabase
+            .from('forex_trades')
+            .update({
+              status: 'closed',
+              exit_price: exitPrice,
+              profit_loss: profitLoss,
+              closed_at: now.toISOString(),
+            })
+            .eq('id', trade.id);
+
+          // Update user wallet
+          const { data: wallet } = await supabase
+            .from('wallets')
+            .select('*')
+            .eq('user_id', trade.user_id)
+            .single();
+
+          if (wallet) {
+            const newBalance = Number(wallet.balance) + finalAmount;
+            const updates: Record<string, number> = { balance: newBalance };
+            
+            if (profitLoss > 0) {
+              updates.total_profit = Number(wallet.total_profit) + profitLoss;
+            } else {
+              updates.total_loss = Number(wallet.total_loss) + Math.abs(profitLoss);
+            }
+
+            await supabase
+              .from('wallets')
+              .update(updates)
+              .eq('user_id', trade.user_id);
+          }
+
+          // Record transaction
+          await supabase.from('transactions').insert({
+            user_id: trade.user_id,
+            type: profitLoss >= 0 ? 'trade_profit' : 'trade_loss',
+            amount: finalAmount,
+            description: `Trade closed (${closeReason}): ${profitLoss >= 0 ? '+' : ''}${profitLoss.toFixed(2)} SLE`,
+          });
+
+          if (closeReason === 'expired') {
+            results.tradesExpired++;
+          } else {
+            results.tradesClosed++;
+          }
+        }
+      }
+    }
+
+    // ============ MATURE INVESTMENTS (GUARANTEED RETURNS) ============
     const { data: maturingInvestments } = await supabase
       .from('investments')
-      .select(`*, companies (name, guaranteed_return_percent)`)
+      .select(`
+        *,
+        companies (
+          name,
+          guaranteed_return_percent
+        )
+      `)
       .eq('status', 'active')
       .eq('is_matured', false)
       .lte('maturity_date', now.toISOString());
@@ -64,6 +186,7 @@ Deno.serve(async (req) => {
         const finalValue = amount + guaranteedReturn;
         const companyName = inv.companies?.name || 'Company';
 
+        // Update investment
         await supabase
           .from('investments')
           .update({
@@ -78,6 +201,7 @@ Deno.serve(async (req) => {
           })
           .eq('id', inv.id);
 
+        // Update wallet
         const { data: wallet } = await supabase
           .from('wallets')
           .select('*')
@@ -95,77 +219,65 @@ Deno.serve(async (req) => {
             .eq('user_id', inv.user_id);
         }
 
+        // Record transaction
         await supabase.from('transactions').insert({
           user_id: inv.user_id,
           type: 'investment_profit',
           amount: finalValue,
-          description: `Investment Maturity Credit - ${companyName}: +${guaranteedReturn.toFixed(2)} SLE (${guaranteedPercent}% guaranteed)`,
+          description: `${companyName} matured: +${guaranteedReturn.toFixed(2)} SLE (${guaranteedPercent}% guaranteed)`,
         });
 
         results.investmentsMatured++;
       }
     }
 
-    // ============ UPDATE CPI SCORES ============
-    const { data: companies } = await supabase.from('companies').select('id');
-    
-    if (companies) {
-      for (const company of companies) {
-        const { count: activeCount } = await supabase
-          .from('investments')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', company.id)
-          .eq('status', 'active');
+    // ============ GENERATE RANDOM COMPANY ACTIVITIES ============
+    // Only generate ~20% of the time to avoid spam
+    if (Math.random() < 0.2) {
+      const { data: companies } = await supabase
+        .from('companies')
+        .select('id')
+        .limit(100);
 
-        const { count: completedCount } = await supabase
-          .from('investments')
-          .select('*', { count: 'exact', head: true })
-          .eq('company_id', company.id)
-          .eq('is_matured', true);
+      if (companies && companies.length > 0) {
+        // Pick 1-3 random companies
+        const numActivities = Math.floor(Math.random() * 3) + 1;
+        const shuffled = companies.sort(() => 0.5 - Math.random());
+        const selected = shuffled.slice(0, numActivities);
 
-        const newCPI = Math.max(10, Math.min(100, 
-          50 + ((activeCount || 0) * 3) + ((completedCount || 0) * 1.5)
-        ));
-
-        await supabase
-          .from('companies')
-          .update({ cpi_score: newCPI, cpi_updated_at: now.toISOString() })
-          .eq('id', company.id);
-
-        // Record CPI history
-        await supabase.from('cpi_history').insert({
-          company_id: company.id,
-          cpi_score: newCPI,
-          recorded_at: now.toISOString(),
-        });
-
-        results.cpiUpdated++;
-      }
-    }
-
-    // ============ GENERATE ACTIVITIES ============
-    if (Math.random() < 0.3 && companies) {
-      const shuffled = companies.sort(() => 0.5 - Math.random()).slice(0, 2);
-      for (const company of shuffled) {
-        await supabase.from('company_activities').insert({
+        const activityInserts = selected.map(company => ({
           company_id: company.id,
           message: getRandomActivityMessage(),
           activity_type: 'update',
-        });
-        results.activitiesGenerated++;
+        }));
+
+        const { error } = await supabase
+          .from('company_activities')
+          .insert(activityInserts);
+
+        if (!error) {
+          results.activitiesGenerated = activityInserts.length;
+        }
       }
     }
 
-    console.log(`Monitor completed: investments_matured=${results.investmentsMatured}, cpi_updated=${results.cpiUpdated}, activities=${results.activitiesGenerated}`);
+    console.log(
+      `Trade monitor completed: trades_closed=${results.tradesClosed}, expired=${results.tradesExpired}, investments_matured=${results.investmentsMatured}, activities=${results.activitiesGenerated}`
+    );
 
     return new Response(
-      JSON.stringify({ success: true, results, timestamp: now.toISOString() }),
+      JSON.stringify({
+        success: true,
+        results,
+        currentPrice,
+        timestamp: now.toISOString(),
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error('Monitor error:', error);
+    console.error('Trade monitor error:', error);
     return new Response(
       JSON.stringify({ error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
