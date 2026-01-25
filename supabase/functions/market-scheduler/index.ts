@@ -11,6 +11,49 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const MS_PER_CANDLE = 2000;
+const MAX_MARKET_CANDLES_PER_RUN = 30; // ~1 minute of 2s candles
+
+type MarketCandleInsert = {
+  timestamp: string;
+  open_price: number;
+  high_price: number;
+  low_price: number;
+  close_price: number;
+  volume: number;
+};
+
+function generateNextMarketCandle(prevClose: number, timestampIso: string): MarketCandleInsert {
+  const trend = Math.random();
+  let priceChange: number;
+
+  if (trend > 0.65) {
+    priceChange = prevClose * (Math.random() * 0.02 + 0.003);
+  } else if (trend < 0.35) {
+    priceChange = -prevClose * (Math.random() * 0.02 + 0.003);
+  } else {
+    priceChange = prevClose * (Math.random() - 0.45) * 0.012;
+  }
+
+  const newClose = Math.max(600, Math.min(1600, prevClose + priceChange));
+  const marketVolatility = Math.random() * 0.008;
+
+  const open = prevClose;
+  const close = Math.round(newClose * 100) / 100;
+  const high = Math.round(Math.max(open, close) * (1 + marketVolatility) * 100) / 100;
+  const low = Math.round(Math.min(open, close) * (1 - marketVolatility) * 100) / 100;
+  const volume = Math.round(Math.random() * 100000 + 50000);
+
+  return {
+    timestamp: timestampIso,
+    open_price: open,
+    high_price: high,
+    low_price: low,
+    close_price: close,
+    volume,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -22,7 +65,7 @@ Deno.serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
 
     const results = {
-      marketCandle: { success: false, skipped: false },
+      marketCandle: { success: false, skipped: false, generated: 0 },
       companyCandles: { success: false, count: 0 },
     };
 
@@ -34,46 +77,47 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const prevMarketClose = latestMarketCandle ? Number(latestMarketCandle.close_price) : 1000;
+    const nowMs = Date.now();
+    const lastTsMs = latestMarketCandle
+      ? new Date((latestMarketCandle as { timestamp: string }).timestamp).getTime()
+      : nowMs - MS_PER_CANDLE;
+    const prevMarketClose = latestMarketCandle
+      ? Number((latestMarketCandle as { close_price: number }).close_price)
+      : 1000;
 
-    // Generate realistic market movement with trends
-    const trend = Math.random();
-    let priceChange: number;
-    
-    if (trend > 0.65) {
-      priceChange = prevMarketClose * (Math.random() * 0.02 + 0.003);
-    } else if (trend < 0.35) {
-      priceChange = -prevMarketClose * (Math.random() * 0.02 + 0.003);
+    // Backfill missing candles at strict 2-second cadence.
+    // This is the key fix: candles keep moving even when nobody has the app open,
+    // and when users return there is no "random jump" — it's the same continuous timeline.
+    const missing = Math.floor((nowMs - lastTsMs) / MS_PER_CANDLE);
+
+    if (missing <= 0) {
+      results.marketCandle.skipped = true;
     } else {
-      priceChange = prevMarketClose * (Math.random() - 0.45) * 0.012;
-    }
+      const toGenerate = Math.max(1, Math.min(MAX_MARKET_CANDLES_PER_RUN, missing));
+      const inserts: MarketCandleInsert[] = [];
 
-    const newMarketClose = Math.max(600, Math.min(1600, prevMarketClose + priceChange));
-    const marketVolatility = Math.random() * 0.008;
-    
-    const marketOpen = prevMarketClose;
-    const marketClose = Math.round(newMarketClose * 100) / 100;
-    const marketHigh = Math.round(Math.max(marketOpen, marketClose) * (1 + marketVolatility) * 100) / 100;
-    const marketLow = Math.round(Math.min(marketOpen, marketClose) * (1 - marketVolatility) * 100) / 100;
-    const marketVolume = Math.round(Math.random() * 100000 + 50000);
+      let prevClose = prevMarketClose;
+      for (let i = 1; i <= toGenerate; i++) {
+        const ts = new Date(lastTsMs + i * MS_PER_CANDLE).toISOString();
+        const next = generateNextMarketCandle(prevClose, ts);
+        inserts.push(next);
+        prevClose = next.close_price;
+      }
 
-    const { error: marketInsertError } = await supabase
-      .from('market_candles')
-      .insert({
-        open_price: marketOpen,
-        high_price: marketHigh,
-        low_price: marketLow,
-        close_price: marketClose,
-        volume: marketVolume,
-      });
+      const { error: marketInsertError } = await supabase
+        .from('market_candles')
+        .insert(inserts);
 
-    if (!marketInsertError) {
-      results.marketCandle.success = true;
-      // Cleanup old market candles
-      try {
-        await supabase.rpc('cleanup_old_candles');
-      } catch (e) {
-        console.error('Market cleanup error:', e);
+      if (!marketInsertError) {
+        results.marketCandle.success = true;
+        results.marketCandle.generated = inserts.length;
+        try {
+          await supabase.rpc('cleanup_old_candles');
+        } catch (e) {
+          console.error('Market cleanup error:', e);
+        }
+      } else {
+        console.error('Market candle insert error:', marketInsertError);
       }
     }
 
@@ -169,7 +213,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Market scheduler completed: market=${results.marketCandle.success}, companies=${results.companyCandles.count}`);
+    console.log(
+      `Market scheduler completed: market_success=${results.marketCandle.success}, market_generated=${results.marketCandle.generated}, market_skipped=${results.marketCandle.skipped}, companies=${results.companyCandles.count}`
+    );
 
     return new Response(
       JSON.stringify({
