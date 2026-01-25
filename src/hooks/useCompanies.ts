@@ -12,6 +12,8 @@ interface Company {
   min_return_percent: number;
   max_return_percent: number;
   is_trending: boolean;
+  min_investment: number;
+  guaranteed_return_percent: number;
 }
 
 export const useCompanies = () => {
@@ -31,6 +33,8 @@ export const useCompanies = () => {
         price_change_percent: Number(c.price_change_percent),
         min_return_percent: Number(c.min_return_percent),
         max_return_percent: Number(c.max_return_percent),
+        min_investment: Number(c.min_investment) || 50,
+        guaranteed_return_percent: Number(c.guaranteed_return_percent) || 25,
         risk_level: c.risk_level as 'Low' | 'Medium' | 'High',
       })));
     }
