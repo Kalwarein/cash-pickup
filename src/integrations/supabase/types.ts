@@ -38,14 +38,20 @@ export type Database = {
       companies: {
         Row: {
           banner_url: string | null
-          cpi_score: number | null
-          cpi_updated_at: string | null
+          cpr_30day_avg: number | null
+          cpr_7day_avg: number | null
+          cpr_best: number | null
+          cpr_last_generated_date: string | null
+          cpr_today: number | null
+          cpr_trend: string | null
+          cpr_volatility: number | null
+          cpr_worst: number | null
+          cpr_yesterday: number | null
           created_at: string | null
           current_price: number
           description: string | null
           employees: number | null
           founded_year: number | null
-          guaranteed_return_percent: number | null
           headquarters: string | null
           id: string
           image_url: string | null
@@ -62,14 +68,20 @@ export type Database = {
         }
         Insert: {
           banner_url?: string | null
-          cpi_score?: number | null
-          cpi_updated_at?: string | null
+          cpr_30day_avg?: number | null
+          cpr_7day_avg?: number | null
+          cpr_best?: number | null
+          cpr_last_generated_date?: string | null
+          cpr_today?: number | null
+          cpr_trend?: string | null
+          cpr_volatility?: number | null
+          cpr_worst?: number | null
+          cpr_yesterday?: number | null
           created_at?: string | null
           current_price: number
           description?: string | null
           employees?: number | null
           founded_year?: number | null
-          guaranteed_return_percent?: number | null
           headquarters?: string | null
           id?: string
           image_url?: string | null
@@ -86,14 +98,20 @@ export type Database = {
         }
         Update: {
           banner_url?: string | null
-          cpi_score?: number | null
-          cpi_updated_at?: string | null
+          cpr_30day_avg?: number | null
+          cpr_7day_avg?: number | null
+          cpr_best?: number | null
+          cpr_last_generated_date?: string | null
+          cpr_today?: number | null
+          cpr_trend?: string | null
+          cpr_volatility?: number | null
+          cpr_worst?: number | null
+          cpr_yesterday?: number | null
           created_at?: string | null
           current_price?: number
           description?: string | null
           employees?: number | null
           founded_year?: number | null
-          guaranteed_return_percent?: number | null
           headquarters?: string | null
           id?: string
           image_url?: string | null
@@ -221,31 +239,31 @@ export type Database = {
           },
         ]
       }
-      cpi_history: {
+      cpr_history: {
         Row: {
           company_id: string
-          cpi_score: number
+          cpr_value: number
           created_at: string | null
           id: string
-          recorded_at: string
+          recorded_date: string
         }
         Insert: {
           company_id: string
-          cpi_score: number
+          cpr_value: number
           created_at?: string | null
           id?: string
-          recorded_at?: string
+          recorded_date?: string
         }
         Update: {
           company_id?: string
-          cpi_score?: number
+          cpr_value?: number
           created_at?: string | null
           id?: string
-          recorded_at?: string
+          recorded_date?: string
         }
         Relationships: [
           {
-            foreignKeyName: "cpi_history_company_id_fkey"
+            foreignKeyName: "cpr_history_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -261,14 +279,15 @@ export type Database = {
           current_value: number
           final_profit_loss: number | null
           final_value: number | null
-          guaranteed_return: number | null
-          guaranteed_return_percent: number | null
           id: string
           is_matured: boolean | null
           matured_at: string | null
+          maturity_cpr: number | null
           maturity_date: string | null
           maturity_days: number
           profit_loss: number | null
+          promo_code_id: string | null
+          promo_effect_applied: string | null
           status: string | null
           updated_at: string | null
           user_id: string
@@ -280,14 +299,15 @@ export type Database = {
           current_value: number
           final_profit_loss?: number | null
           final_value?: number | null
-          guaranteed_return?: number | null
-          guaranteed_return_percent?: number | null
           id?: string
           is_matured?: boolean | null
           matured_at?: string | null
+          maturity_cpr?: number | null
           maturity_date?: string | null
           maturity_days?: number
           profit_loss?: number | null
+          promo_code_id?: string | null
+          promo_effect_applied?: string | null
           status?: string | null
           updated_at?: string | null
           user_id: string
@@ -299,14 +319,15 @@ export type Database = {
           current_value?: number
           final_profit_loss?: number | null
           final_value?: number | null
-          guaranteed_return?: number | null
-          guaranteed_return_percent?: number | null
           id?: string
           is_matured?: boolean | null
           matured_at?: string | null
+          maturity_cpr?: number | null
           maturity_date?: string | null
           maturity_days?: number
           profit_loss?: number | null
+          promo_code_id?: string | null
+          promo_effect_applied?: string | null
           status?: string | null
           updated_at?: string | null
           user_id?: string
@@ -414,6 +435,48 @@ export type Database = {
         }
         Relationships: []
       }
+      promo_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          description: string
+          duration_days: number
+          effect_type: string
+          effect_value: number
+          id: string
+          is_active: boolean | null
+          max_uses: number | null
+          name: string
+          price: number
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          description: string
+          duration_days: number
+          effect_type: string
+          effect_value: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          name: string
+          price: number
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          description?: string
+          duration_days?: number
+          effect_type?: string
+          effect_value?: number
+          id?: string
+          is_active?: boolean | null
+          max_uses?: number | null
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -440,6 +503,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_promo_codes: {
+        Row: {
+          created_at: string | null
+          expires_at: string
+          id: string
+          is_active: boolean | null
+          promo_code_id: string
+          purchased_at: string | null
+          user_id: string
+          uses_remaining: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          expires_at: string
+          id?: string
+          is_active?: boolean | null
+          promo_code_id: string
+          purchased_at?: string | null
+          user_id: string
+          uses_remaining?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          expires_at?: string
+          id?: string
+          is_active?: boolean | null
+          promo_code_id?: string
+          purchased_at?: string | null
+          user_id?: string
+          uses_remaining?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_promo_codes_promo_code_id_fkey"
+            columns: ["promo_code_id"]
+            isOneToOne: false
+            referencedRelation: "promo_codes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       wallets: {
         Row: {

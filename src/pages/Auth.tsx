@@ -105,15 +105,15 @@ const Auth = () => {
               </div>
               <div>
                 <div className="text-lg font-bold text-foreground">Cash Pickup</div>
-                <div className="text-xs text-muted-foreground">Trade • Invest • Grow</div>
+                <div className="text-xs text-muted-foreground">Invest • Grow • Prosper</div>
               </div>
             </div>
             <div className="max-w-md">
               <h1 className="text-4xl font-bold tracking-tight text-foreground">
-                A real-time market that never sleeps.
+                Risk-based investing with real outcomes.
               </h1>
               <p className="mt-3 text-sm text-muted-foreground">
-                Open trades, close your phone, and come back later — your chart history stays continuous and synced.
+                Invest in companies, track performance rates, and earn returns based on daily CPR. All investments carry risk.
               </p>
             </div>
           </div>
@@ -169,7 +169,7 @@ const Auth = () => {
               <div className="mb-5">
                 <h1 className="text-2xl font-bold text-foreground">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {isLogin ? 'Sign in to continue trading.' : 'Start with your welcome bonus and invest today.'}
+                  {isLogin ? 'Sign in to continue investing.' : 'Start with your welcome bonus and invest today.'}
                 </p>
               </div>
 

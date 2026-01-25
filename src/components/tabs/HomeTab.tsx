@@ -1,34 +1,37 @@
-import { TrendingUp, Users, Activity, Flame, Award } from 'lucide-react';
+import { useState } from 'react';
+import { TrendingUp, TrendingDown, Users, Activity, Flame, Ticket, AlertTriangle } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
-import { useCPI } from '@/hooks/useCPI';
+import { useCPR } from '@/hooks/useCPR';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { CPIGauge } from '@/components/CPIGauge';
+import { CPRIndicator } from '@/components/CPRIndicator';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
+import { RiskWarning } from '@/components/RiskWarning';
+import { PromoCodeMarketplace } from '@/components/PromoCodeMarketplace';
 import { cn } from '@/lib/utils';
 import { formatSLE, sle } from '@/lib/currency';
 
 export const HomeTab = () => {
-  const { topPerformers, averageCPI, loading: cpiLoading } = useCPI();
+  const { topPerformers, averageCPR, loading: cprLoading } = useCPR();
   const { companies } = useCompanies();
   const { investments, completedInvestments } = useInvestments();
+  const [showPromoMarketplace, setShowPromoMarketplace] = useState(false);
 
   const trendingCompanies = companies.filter(c => c.is_trending).slice(0, 4);
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
   const totalProfitLoss = investments.reduce((sum, inv) => sum + inv.profit_loss, 0);
   const totalCurrentValue = investments.reduce((sum, inv) => sum + inv.current_value, 0);
   
-  // Only show profits from completed investments
+  // Calculate net profit from completed investments
   const completedProfit = completedInvestments
-    .filter(inv => (inv.final_profit_loss || 0) > 0)
     .reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
 
-  // Determine market status based on average CPI
+  // Determine market status based on average CPR
   const getMarketStatus = () => {
-    if (averageCPI >= 60) return { status: 'strong', message: 'Market Strong', color: 'text-success bg-success/20' };
-    if (averageCPI >= 45) return { status: 'stable', message: 'Market Stable', color: 'text-warning bg-warning/20' };
-    return { status: 'cautious', message: 'Market Cautious', color: 'text-destructive bg-destructive/20' };
+    if (averageCPR >= 5) return { status: 'positive', message: 'Market Positive', color: 'text-success bg-success/20' };
+    if (averageCPR >= -10) return { status: 'stable', message: 'Market Mixed', color: 'text-warning bg-warning/20' };
+    return { status: 'negative', message: 'Market Down', color: 'text-destructive bg-destructive/20' };
   };
 
   const marketStatus = getMarketStatus();
@@ -42,6 +45,13 @@ export const HomeTab = () => {
           <p className="text-muted-foreground text-sm">Welcome back, investor</p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowPromoMarketplace(true)}
+            className="p-2 bg-primary/10 text-primary rounded-xl hover:bg-primary/20 transition-colors"
+            title="Promo Codes"
+          >
+            <Ticket className="w-5 h-5" />
+          </button>
           <ThemeToggle />
           <div className={cn(
             "px-3 py-1.5 rounded-full text-sm font-medium flex items-center gap-2",
@@ -53,20 +63,33 @@ export const HomeTab = () => {
         </div>
       </div>
 
-      {/* CPI Overview */}
-      <div className="glass-card p-4 glow-primary">
+      {/* Risk Warning */}
+      <RiskWarning variant="inline" />
+
+      {/* CPR Overview */}
+      <div className="glass-card p-4">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <p className="text-sm text-muted-foreground">Market Performance Index</p>
-            <p className="text-3xl font-bold">
-              {averageCPI.toFixed(1)} <span className="text-lg text-muted-foreground">/ 100</span>
-            </p>
+            <p className="text-sm text-muted-foreground">Platform Average CPR</p>
+            <div className="flex items-center gap-2">
+              <p className={cn(
+                "text-3xl font-bold",
+                averageCPR >= 0 ? "text-success" : "text-destructive"
+              )}>
+                {averageCPR >= 0 ? '+' : ''}{averageCPR.toFixed(1)}%
+              </p>
+              {averageCPR >= 0 ? (
+                <TrendingUp className="w-5 h-5 text-success" />
+              ) : (
+                <TrendingDown className="w-5 h-5 text-destructive" />
+              )}
+            </div>
           </div>
-          <CPIGauge score={averageCPI} size="md" />
+          <CPRIndicator value={averageCPR} size="lg" showLabel />
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Award className="w-4 h-4" />
-          <span>CPI reflects overall company performance and investor activity</span>
+          <AlertTriangle className="w-4 h-4" />
+          <span>CPR determines investment outcomes at maturity. Negative CPR = potential loss.</span>
         </div>
       </div>
 
@@ -85,10 +108,10 @@ export const HomeTab = () => {
               <p className="text-lg font-bold">{sle(totalInvested)}</p>
             </div>
             <div className="p-3 bg-muted/50 rounded-xl">
-              <p className="text-xs text-muted-foreground">Current Value</p>
+              <p className="text-xs text-muted-foreground">Est. Current Value</p>
               <p className={cn(
                 "text-lg font-bold",
-                totalCurrentValue >= totalInvested ? "text-success" : "text-muted-foreground"
+                totalCurrentValue >= totalInvested ? "text-success" : "text-destructive"
               )}>
                 {sle(totalCurrentValue)}
               </p>
@@ -118,7 +141,7 @@ export const HomeTab = () => {
                       <p className="font-semibold">{sle(inv.current_value)}</p>
                       <p className={cn(
                         "text-sm font-medium",
-                        inv.profit_loss >= 0 ? "text-success" : "text-muted-foreground"
+                        inv.profit_loss >= 0 ? "text-success" : "text-destructive"
                       )}>
                         {inv.profit_loss >= 0 ? '+' : ''}{profitPercent.toFixed(1)}%
                       </p>
@@ -140,13 +163,16 @@ export const HomeTab = () => {
         </div>
       )}
 
-      {/* Completed Investments - Show only profits */}
+      {/* Completed Investments */}
       {completedInvestments.length > 0 && (
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Recently Completed</h2>
-            <span className="text-sm font-medium text-success">
-              +{sle(completedProfit)} earned
+            <span className={cn(
+              "text-sm font-medium",
+              completedProfit >= 0 ? "text-success" : "text-destructive"
+            )}>
+              {completedProfit >= 0 ? '+' : ''}{sle(completedProfit)} net
             </span>
           </div>
           <div className="space-y-2">
@@ -155,20 +181,21 @@ export const HomeTab = () => {
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center",
-                    (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-muted"
+                    (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-destructive/20"
                   )}>
-                    <TrendingUp className={cn(
-                      "w-3 h-3",
-                      (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
-                    )} />
+                    {(inv.final_profit_loss || 0) >= 0 ? (
+                      <TrendingUp className="w-3 h-3 text-success" />
+                    ) : (
+                      <TrendingDown className="w-3 h-3 text-destructive" />
+                    )}
                   </div>
                   <span className="text-sm">{inv.company_name}</span>
                 </div>
                 <span className={cn(
                   "text-sm font-semibold",
-                  (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
+                  (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
                 )}>
-                  {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}{sle(Math.abs(inv.final_profit_loss || 0))}
+                  {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}{sle(inv.final_profit_loss || 0)}
                 </span>
               </div>
             ))}
@@ -200,11 +227,11 @@ export const HomeTab = () => {
         />
       </div>
 
-      {/* Top Performers by CPI */}
+      {/* Top Performers by CPR */}
       <div>
         <div className="flex items-center gap-2 mb-4">
           <Flame className="w-5 h-5 text-warning" />
-          <h2 className="text-lg font-semibold">Top Performers</h2>
+          <h2 className="text-lg font-semibold">Top Performers Today</h2>
         </div>
         <div className="space-y-3">
           {topPerformers.slice(0, 4).map((company) => (
@@ -224,16 +251,18 @@ export const HomeTab = () => {
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="text-right">
-                  <p className="font-semibold">{sle(company.current_price)}</p>
-                  <p className="text-xs text-success">+{company.guaranteed_return_percent}%</p>
-                </div>
-                <CPIGauge score={company.cpi_score} size="sm" showLabel={false} />
+                <CPRIndicator value={company.cpr_today} size="md" />
               </div>
             </div>
           ))}
         </div>
       </div>
+
+      {/* Promo Code Marketplace Modal */}
+      <PromoCodeMarketplace 
+        isOpen={showPromoMarketplace} 
+        onClose={() => setShowPromoMarketplace(false)} 
+      />
     </div>
   );
 };

@@ -29,14 +29,14 @@ export const WalletTab = () => {
 
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
   
-  // Calculate only profits from completed investments (no losses shown)
-  const totalProfit = completedInvestments
-    .filter(inv => (inv.final_profit_loss || 0) > 0)
+  // Calculate net profit/loss from completed investments
+  const netProfitLoss = completedInvestments
     .reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
   
-  const successfulInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
+  const profitableInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
+  const lossInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) < 0).length;
   const winRate = completedInvestments.length > 0
-    ? (successfulInvestments / completedInvestments.length) * 100
+    ? (profitableInvestments / completedInvestments.length) * 100
     : 0;
 
   if (loading) {
@@ -84,9 +84,12 @@ export const WalletTab = () => {
                 <p className="text-lg font-semibold">{sle(wallet?.invested_amount || 0)}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Total Profit</p>
-                <p className="text-lg font-semibold text-success">
-                  +{sle(wallet?.total_profit || 0)}
+                <p className="text-xs text-muted-foreground">Net Profit/Loss</p>
+                <p className={cn(
+                  "text-lg font-semibold",
+                  netProfitLoss >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}
                 </p>
               </div>
             </div>
@@ -226,19 +229,34 @@ export const WalletTab = () => {
             </div>
           </div>
 
-          {/* Investment Stats - Only Profits */}
+          {/* Investment Stats */}
           <div className="glass-card p-4">
             <h3 className="font-semibold mb-4">Investment Performance</h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 bg-success/10 rounded-xl">
-                <TrendingUp className="w-5 h-5 text-success mb-2" />
-                <p className="text-xs text-muted-foreground">Total Profit Earned</p>
-                <p className="text-xl font-bold text-success">+{sle(totalProfit)}</p>
+              <div className={cn(
+                "p-4 rounded-xl",
+                netProfitLoss >= 0 ? "bg-success/10" : "bg-destructive/10"
+              )}>
+                {netProfitLoss >= 0 ? (
+                  <TrendingUp className="w-5 h-5 text-success mb-2" />
+                ) : (
+                  <TrendingUp className="w-5 h-5 text-destructive mb-2 rotate-180" />
+                )}
+                <p className="text-xs text-muted-foreground">Net Profit/Loss</p>
+                <p className={cn(
+                  "text-xl font-bold",
+                  netProfitLoss >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}
+                </p>
               </div>
               <div className="p-4 bg-primary/10 rounded-xl">
                 <Award className="w-5 h-5 text-primary mb-2" />
-                <p className="text-xs text-muted-foreground">Successful Investments</p>
-                <p className="text-xl font-bold text-primary">{successfulInvestments}</p>
+                <p className="text-xs text-muted-foreground">Win Rate</p>
+                <p className="text-xl font-bold text-primary">{winRate.toFixed(0)}%</p>
+                <p className="text-xs text-muted-foreground">
+                  {profitableInvestments}W / {lossInvestments}L
+                </p>
               </div>
             </div>
           </div>
@@ -248,8 +266,11 @@ export const WalletTab = () => {
             <div className="glass-card p-4">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold">Investment History</h3>
-                <span className="text-sm font-medium text-success">
-                  +{sle(totalProfit)} earned
+                <span className={cn(
+                  "text-sm font-medium",
+                  netProfitLoss >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)} net
                 </span>
               </div>
               <div className="space-y-2">
@@ -306,7 +327,7 @@ export const WalletTab = () => {
             )}
           </div>
 
-          {/* Account Info - Remove loss display */}
+          {/* Account Info */}
           <div className="glass-card p-4">
             <h3 className="font-semibold mb-3">Account Details</h3>
             <div className="space-y-3">
@@ -319,9 +340,12 @@ export const WalletTab = () => {
                 <span className="text-success">Verified</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Earnings</span>
-                <span className="text-success font-semibold">
-                  +{sle(wallet?.total_profit || 0)}
+                <span className="text-muted-foreground">Net Earnings</span>
+                <span className={cn(
+                  "font-semibold",
+                  netProfitLoss >= 0 ? "text-success" : "text-destructive"
+                )}>
+                  {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}
                 </span>
               </div>
             </div>
