@@ -274,12 +274,14 @@ export type Database = {
       investments: {
         Row: {
           amount: number
+          claimed_at: string | null
           company_id: string
           created_at: string | null
           current_value: number
           final_profit_loss: number | null
           final_value: number | null
           id: string
+          is_claimed: boolean | null
           is_matured: boolean | null
           matured_at: string | null
           maturity_cpr: number | null
@@ -294,12 +296,14 @@ export type Database = {
         }
         Insert: {
           amount: number
+          claimed_at?: string | null
           company_id: string
           created_at?: string | null
           current_value: number
           final_profit_loss?: number | null
           final_value?: number | null
           id?: string
+          is_claimed?: boolean | null
           is_matured?: boolean | null
           matured_at?: string | null
           maturity_cpr?: number | null
@@ -314,12 +318,14 @@ export type Database = {
         }
         Update: {
           amount?: number
+          claimed_at?: string | null
           company_id?: string
           created_at?: string | null
           current_value?: number
           final_profit_loss?: number | null
           final_value?: number | null
           id?: string
+          is_claimed?: boolean | null
           is_matured?: boolean | null
           matured_at?: string | null
           maturity_cpr?: number | null
@@ -506,9 +512,11 @@ export type Database = {
       }
       user_promo_codes: {
         Row: {
+          activated_at: string | null
           created_at: string | null
           expires_at: string
           id: string
+          is_activated: boolean | null
           is_active: boolean | null
           promo_code_id: string
           purchased_at: string | null
@@ -516,9 +524,11 @@ export type Database = {
           uses_remaining: number | null
         }
         Insert: {
+          activated_at?: string | null
           created_at?: string | null
           expires_at: string
           id?: string
+          is_activated?: boolean | null
           is_active?: boolean | null
           promo_code_id: string
           purchased_at?: string | null
@@ -526,9 +536,11 @@ export type Database = {
           uses_remaining?: number | null
         }
         Update: {
+          activated_at?: string | null
           created_at?: string | null
           expires_at?: string
           id?: string
+          is_activated?: boolean | null
           is_active?: boolean | null
           promo_code_id?: string
           purchased_at?: string | null

@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { User, Wallet, TrendingUp, Award, LogOut, ArrowUpDown, Gift, Building2, ArrowDownLeft, ArrowUpRight, Plus, Minus } from 'lucide-react';
+import { User, Wallet, TrendingUp, Award, LogOut, ArrowUpDown, Gift, Building2, ArrowDownLeft, ArrowUpRight, Plus, Minus, Clock, Sparkles } from 'lucide-react';
 import { TransactionItem } from '@/components/TransactionItem';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { DepositWithdrawModal } from '@/components/DepositWithdrawModal';
+import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
+import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -13,8 +15,11 @@ import { sle, formatSLE } from '@/lib/currency';
 
 export const WalletTab = () => {
   const { wallet, transactions, loading, refetch: refetchWallet } = useWallet();
-  const { investments, completedInvestments } = useInvestments();
+  const { investments, maturedInvestments, claimedInvestments, refetch: refetchInvestments } = useInvestments();
+  const { getActivePromoCodes, userPromoCodes } = usePromoCodes();
   const { profile, updateViewPreference } = useProfile();
+  const activePromoCodes = getActivePromoCodes();
+  const completedInvestments = claimedInvestments;
   const { signOut } = useAuth();
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
@@ -310,20 +315,61 @@ export const WalletTab = () => {
 
           {/* Promo Codes */}
           <div className="glass-card p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <Gift className="w-5 h-5 text-primary" />
-              <h3 className="font-semibold">Promo Codes</h3>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">My Promo Codes</h3>
+              </div>
+              {activePromoCodes.length > 0 && (
+                <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-xs font-medium">
+                  {activePromoCodes.length} active
+                </span>
+              )}
             </div>
-            {profile?.promo_codes && profile.promo_codes.length > 0 ? (
+            {userPromoCodes.length > 0 ? (
               <div className="space-y-2">
-                {profile.promo_codes.map((code, i) => (
-                  <div key={i} className="p-2 bg-primary/10 rounded-lg text-sm font-medium text-primary">
-                    {code}
-                  </div>
-                ))}
+                {userPromoCodes.map((upc) => {
+                  const isExpired = new Date(upc.expires_at) < new Date();
+                  const isActive = upc.is_active && !isExpired;
+                  
+                  return (
+                    <div 
+                      key={upc.id} 
+                      className={cn(
+                        "p-3 rounded-xl border transition-all",
+                        isActive 
+                          ? "bg-primary/10 border-primary/30" 
+                          : "bg-muted/50 border-border opacity-60"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                          <span className="font-medium">{upc.promo_code?.name || upc.promo_code?.code}</span>
+                        </div>
+                        <span className={cn(
+                          "text-xs px-2 py-0.5 rounded-full",
+                          isActive ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
+                        )}>
+                          {isActive ? 'Active' : isExpired ? 'Expired' : 'Used'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{upc.promo_code?.description}</p>
+                      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        <span>
+                          {isExpired 
+                            ? 'Expired' 
+                            : `Expires ${new Date(upc.expires_at).toLocaleDateString()}`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             ) : (
-              <p className="text-sm text-muted-foreground">No promo codes yet. Stay tuned for special offers!</p>
+              <p className="text-sm text-muted-foreground">No promo codes yet. Purchase from the marketplace!</p>
             )}
           </div>
 
