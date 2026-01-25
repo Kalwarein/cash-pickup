@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { History, TrendingUp, TrendingDown, Target, XCircle, Clock, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useForexTrades } from '@/hooks/useForexTrades';
+import { sle, formatSLE } from '@/lib/currency';
 
 interface TradeDetailModalProps {
   trade: {
@@ -52,7 +53,7 @@ const TradeDetailModal = ({ trade, onClose }: TradeDetailModalProps) => {
               isProfit ? "bg-success/20 text-success" : "bg-destructive/20 text-destructive"
             )}>
               {isProfit ? <TrendingUp className="w-5 h-5" /> : <TrendingDown className="w-5 h-5" />}
-              {isProfit ? '+' : ''}${trade.profit_loss.toFixed(2)}
+              {formatSLE(trade.profit_loss, true)}
             </div>
           </div>
 
@@ -60,7 +61,7 @@ const TradeDetailModal = ({ trade, onClose }: TradeDetailModalProps) => {
           <div className="grid grid-cols-2 gap-3">
             <div className="glass-card p-3">
               <p className="text-xs text-muted-foreground mb-1">Amount</p>
-              <p className="font-semibold">${trade.amount.toFixed(2)}</p>
+              <p className="font-semibold">{sle(trade.amount)}</p>
             </div>
             <div className="glass-card p-3">
               <p className="text-xs text-muted-foreground mb-1">Status</p>
@@ -68,11 +69,11 @@ const TradeDetailModal = ({ trade, onClose }: TradeDetailModalProps) => {
             </div>
             <div className="glass-card p-3">
               <p className="text-xs text-muted-foreground mb-1">Entry Price</p>
-              <p className="font-semibold">${trade.entry_price.toFixed(2)}</p>
+              <p className="font-semibold">{sle(trade.entry_price)}</p>
             </div>
             <div className="glass-card p-3">
               <p className="text-xs text-muted-foreground mb-1">Exit Price</p>
-              <p className="font-semibold">${trade.exit_price?.toFixed(2) || '-'}</p>
+              <p className="font-semibold">{trade.exit_price ? sle(trade.exit_price) : '-'}</p>
             </div>
           </div>
 
@@ -81,11 +82,11 @@ const TradeDetailModal = ({ trade, onClose }: TradeDetailModalProps) => {
             <div className="flex items-center justify-between">
               <span className="flex items-center gap-2 text-success text-sm">
                 <Target className="w-4 h-4" />
-                Take Profit: ${trade.take_profit.toFixed(2)}
+                Take Profit: {sle(trade.take_profit)}
               </span>
               <span className="flex items-center gap-2 text-destructive text-sm">
                 <XCircle className="w-4 h-4" />
-                Stop Loss: ${trade.stop_loss.toFixed(2)}
+                Stop Loss: {sle(trade.stop_loss)}
               </span>
             </div>
           </div>
@@ -116,7 +117,7 @@ const TradeDetailModal = ({ trade, onClose }: TradeDetailModalProps) => {
                 "font-bold",
                 isProfit ? "text-success" : "text-destructive"
               )}>
-                ${(trade.amount + trade.profit_loss).toFixed(2)}
+                {sle(trade.amount + trade.profit_loss)}
               </span>
             </div>
             <div className="flex items-center justify-between mt-1">
@@ -186,11 +187,11 @@ export const TradeHistory = () => {
             </div>
             <div className="text-center p-2 bg-success/10 rounded-lg">
               <p className="text-xs text-success">Profits</p>
-              <p className="font-bold text-sm text-success">+${totalProfit.toFixed(2)}</p>
+              <p className="font-bold text-sm text-success">+{sle(totalProfit)}</p>
             </div>
             <div className="text-center p-2 bg-destructive/10 rounded-lg">
               <p className="text-xs text-destructive">Losses</p>
-              <p className="font-bold text-sm text-destructive">-${totalLoss.toFixed(2)}</p>
+              <p className="font-bold text-sm text-destructive">-{sle(totalLoss)}</p>
             </div>
           </div>
         )}
@@ -214,7 +215,7 @@ export const TradeHistory = () => {
                       {getStatusIcon(trade.status)}
                     </div>
                     <div>
-                      <p className="font-medium text-sm">${trade.amount.toFixed(2)}</p>
+                      <p className="font-medium text-sm">{sle(trade.amount)}</p>
                       <p className="text-xs text-muted-foreground">
                         {new Date(trade.closed_at || trade.created_at).toLocaleDateString()}
                       </p>
@@ -225,7 +226,7 @@ export const TradeHistory = () => {
                       "font-bold",
                       isProfit ? "text-success" : "text-destructive"
                     )}>
-                      {isProfit ? '+' : ''}${trade.profit_loss.toFixed(2)}
+                      {formatSLE(trade.profit_loss, true)}
                     </span>
                     <ChevronRight className="w-4 h-4 text-muted-foreground" />
                   </div>

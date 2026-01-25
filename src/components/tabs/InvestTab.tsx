@@ -36,7 +36,7 @@ export const InvestTab = () => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success(`Successfully invested $${amount} in ${selectedCompany.ticker} for ${maturityDays} days`);
+      toast.success(`Successfully invested ${amount} SLE in ${selectedCompany.ticker} for ${maturityDays} days`);
       await refetchWallet();
       await refetchInvestments();
     }
@@ -164,8 +164,8 @@ export const InvestTab = () => {
             ticker: selectedCompany.ticker,
             price: selectedCompany.current_price,
             riskLevel: selectedCompany.risk_level,
-            minReturn: selectedCompany.min_return_percent,
-            maxReturn: selectedCompany.max_return_percent,
+            minInvestment: Number(selectedCompany.min_investment) || 50,
+            guaranteedReturnPercent: Number(selectedCompany.guaranteed_return_percent) || 25,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}

@@ -246,7 +246,7 @@ const Auth = () => {
 
               <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <p className="text-xs text-muted-foreground">
-                  Welcome bonus: <span className="text-primary font-semibold">$10,000</span> credited to your wallet after sign up.
+                  Welcome bonus: <span className="text-primary font-semibold">10,000 SLE</span> credited to your wallet after sign up.
                 </p>
               </div>
             </div>

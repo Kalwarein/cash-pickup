@@ -1,13 +1,15 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, Users, Clock, Calendar, Building2 } from 'lucide-react';
+import { ArrowLeft, TrendingUp, TrendingDown, Shield, Users, Clock, Calendar, Building2, MessageSquare } from 'lucide-react';
 import { CandlestickChart } from '@/components/CandlestickChart';
 import { useCompanyCandles } from '@/hooks/useCompanyCandles';
+import { useCompanyActivities } from '@/hooks/useCompanyActivities';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
 import { InvestModal } from '@/components/InvestModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { sle, formatSLE } from '@/lib/currency';
 
 interface Company {
   id: string;
@@ -19,8 +21,11 @@ interface Company {
   price_change_percent: number;
   min_return_percent: number;
   max_return_percent: number;
+  min_investment: number;
+  guaranteed_return_percent: number;
   description?: string;
   image_url?: string;
+  banner_url?: string;
   founded_year?: number;
   headquarters?: string;
   employees?: number;
@@ -39,6 +44,7 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
   
   // Use the new candlestick hook for OHLC data
   const { chartData, currentPrice, loading: chartLoading } = useCompanyCandles(companyId);
+  const { activities, loading: activitiesLoading } = useCompanyActivities(companyId);
   const { investments, createInvestment, refetch: refetchInvestments } = useInvestments();
   const { wallet, refetch: refetchWallet } = useWallet();
 
@@ -62,8 +68,11 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
           price_change_percent: Number(data.price_change_percent),
           min_return_percent: Number(data.min_return_percent),
           max_return_percent: Number(data.max_return_percent),
-          description: data.description || `${data.name} is a leading ${data.sector.toLowerCase()} company based in Sierra Leone.`,
+          min_investment: Number(data.min_investment) || 50,
+          guaranteed_return_percent: Number(data.guaranteed_return_percent) || 25,
+          description: data.description || `${data.name} is a leading ${data.sector.toLowerCase()} company based in Sierra Leone with guaranteed investment returns.`,
           image_url: data.image_url,
+          banner_url: data.banner_url,
           founded_year: data.founded_year || 2015,
           headquarters: data.headquarters || 'Freetown, Sierra Leone',
           employees: data.employees || Math.floor(Math.random() * 5000) + 100,
@@ -83,7 +92,7 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success(`Successfully invested $${amount} in ${company.ticker}`);
+      toast.success(`Successfully invested ${sle(amount)} in ${company.ticker}`);
       await refetchWallet();
       await refetchInvestments();
     }
@@ -135,7 +144,7 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
         <div className="flex items-start justify-between mb-4">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Current Price</p>
-            <p className="text-3xl font-bold">${displayPrice.toFixed(2)}</p>
+            <p className="text-3xl font-bold">{sle(displayPrice)}</p>
             <div className={cn(
               "flex items-center gap-2 mt-1",
               isPositive ? "text-success" : "text-destructive"
@@ -165,6 +174,17 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
       {/* Invest Button */}
       {!isChartFullscreen && (
         <>
+          {/* Guaranteed Return Banner */}
+          <div className="glass-card p-4 flex items-start gap-3 bg-success/10 border-success/20">
+            <Shield className="w-5 h-5 text-success flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-success">Guaranteed {company.guaranteed_return_percent}% Return</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Your investment is guaranteed. Minimum investment: {sle(company.min_investment)}
+              </p>
+            </div>
+          </div>
+
           <button
             onClick={() => setShowInvestModal(true)}
             className="w-full py-4 bg-primary text-primary-foreground rounded-xl font-semibold text-lg hover:bg-primary/90 transition-all"
@@ -179,15 +199,15 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
               <div className="grid grid-cols-2 gap-3 mb-4">
                 <div className="p-3 bg-muted/50 rounded-xl">
                   <p className="text-xs text-muted-foreground">Total Invested</p>
-                  <p className="font-bold">${totalInvested.toFixed(2)}</p>
+                  <p className="font-bold">{sle(totalInvested)}</p>
                 </div>
                 <div className="p-3 bg-muted/50 rounded-xl">
-                  <p className="text-xs text-muted-foreground">Total P/L</p>
+                  <p className="text-xs text-muted-foreground">Expected Profit</p>
                   <p className={cn(
                     "font-bold",
                     totalProfitLoss >= 0 ? "text-success" : "text-destructive"
                   )}>
-                    {totalProfitLoss >= 0 ? '+' : ''}${totalProfitLoss.toFixed(2)}
+                    {formatSLE(totalProfitLoss, true)}
                   </p>
                 </div>
               </div>
@@ -197,24 +217,34 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
                   const daysRemaining = Math.max(0, Math.ceil(
                     (new Date(inv.maturity_date).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
                   ));
+                  const progress = Math.min(100, ((inv.maturity_days - daysRemaining) / inv.maturity_days) * 100);
                   
                   return (
-                    <div key={inv.id} className="p-3 bg-muted/30 rounded-xl flex items-center justify-between">
-                      <div>
-                        <p className="font-medium">${inv.amount.toFixed(2)}</p>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          {inv.is_matured ? 'Matured' : `${daysRemaining}d remaining`}
+                    <div key={inv.id} className="p-3 bg-muted/30 rounded-xl">
+                      <div className="flex items-center justify-between mb-2">
+                        <div>
+                          <p className="font-medium">{sle(inv.amount)}</p>
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <Clock className="w-3 h-3" />
+                            {inv.is_matured ? 'Matured' : `${daysRemaining}d remaining`}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-success">{sle(inv.current_value)}</p>
+                          <p className="text-xs text-success">
+                            +{formatSLE(inv.profit_loss, false)}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold">${inv.current_value.toFixed(2)}</p>
-                        <p className={cn(
-                          "text-xs",
-                          inv.profit_loss >= 0 ? "text-success" : "text-destructive"
-                        )}>
-                          {inv.profit_loss >= 0 ? '+' : ''}${inv.profit_loss.toFixed(2)}
-                        </p>
+                      {/* Progress bar */}
+                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            inv.is_matured ? "bg-success" : "bg-primary"
+                          )}
+                          style={{ width: `${progress}%` }}
+                        />
                       </div>
                     </div>
                   );
@@ -222,6 +252,36 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
               </div>
             </div>
           )}
+
+          {/* Company Activity Feed */}
+          <div className="glass-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <MessageSquare className="w-5 h-5 text-primary" />
+              <h3 className="font-semibold">Company Updates</h3>
+            </div>
+            {activitiesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="h-12 loading-pulse rounded-lg" />
+                ))}
+              </div>
+            ) : activities.length > 0 ? (
+              <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                {activities.map((activity) => (
+                  <div key={activity.id} className="p-3 bg-muted/30 rounded-lg">
+                    <p className="text-sm">{activity.message}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {new Date(activity.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No updates yet. Check back soon!
+              </p>
+            )}
+          </div>
 
           {/* Company Info */}
           <div className="glass-card p-4">
@@ -243,18 +303,6 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
               </div>
             </div>
           </div>
-
-          {/* Risk Info */}
-          <div className="glass-card p-4 flex items-start gap-3 bg-warning/5 border-warning/20">
-            <AlertTriangle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-warning">Investment Risk</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Expected returns: {company.min_return_percent}% to +{company.max_return_percent}%. 
-                Longer investment periods (30-90 days) generally provide better returns and lower risk.
-              </p>
-            </div>
-          </div>
         </>
       )}
 
@@ -269,8 +317,8 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
             ticker: company.ticker,
             price: displayPrice,
             riskLevel: company.risk_level,
-            minReturn: company.min_return_percent,
-            maxReturn: company.max_return_percent,
+            minInvestment: company.min_investment,
+            guaranteedReturnPercent: company.guaranteed_return_percent,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}

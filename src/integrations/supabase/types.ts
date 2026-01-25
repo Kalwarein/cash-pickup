@@ -37,16 +37,20 @@ export type Database = {
       }
       companies: {
         Row: {
+          banner_url: string | null
           created_at: string | null
           current_price: number
           description: string | null
           employees: number | null
           founded_year: number | null
+          guaranteed_return_percent: number | null
           headquarters: string | null
           id: string
           image_url: string | null
+          investment_durations: Json | null
           is_trending: boolean | null
           max_return_percent: number | null
+          min_investment: number | null
           min_return_percent: number | null
           name: string
           price_change_percent: number | null
@@ -55,16 +59,20 @@ export type Database = {
           ticker: string
         }
         Insert: {
+          banner_url?: string | null
           created_at?: string | null
           current_price: number
           description?: string | null
           employees?: number | null
           founded_year?: number | null
+          guaranteed_return_percent?: number | null
           headquarters?: string | null
           id?: string
           image_url?: string | null
+          investment_durations?: Json | null
           is_trending?: boolean | null
           max_return_percent?: number | null
+          min_investment?: number | null
           min_return_percent?: number | null
           name: string
           price_change_percent?: number | null
@@ -73,16 +81,20 @@ export type Database = {
           ticker: string
         }
         Update: {
+          banner_url?: string | null
           created_at?: string | null
           current_price?: number
           description?: string | null
           employees?: number | null
           founded_year?: number | null
+          guaranteed_return_percent?: number | null
           headquarters?: string | null
           id?: string
           image_url?: string | null
+          investment_durations?: Json | null
           is_trending?: boolean | null
           max_return_percent?: number | null
+          min_investment?: number | null
           min_return_percent?: number | null
           name?: string
           price_change_percent?: number | null
@@ -91,6 +103,38 @@ export type Database = {
           ticker?: string
         }
         Relationships: []
+      }
+      company_activities: {
+        Row: {
+          activity_type: string | null
+          company_id: string
+          created_at: string | null
+          id: string
+          message: string
+        }
+        Insert: {
+          activity_type?: string | null
+          company_id: string
+          created_at?: string | null
+          id?: string
+          message: string
+        }
+        Update: {
+          activity_type?: string | null
+          company_id?: string
+          created_at?: string | null
+          id?: string
+          message?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_activities_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_candles: {
         Row: {
@@ -227,6 +271,8 @@ export type Database = {
           current_value: number
           final_profit_loss: number | null
           final_value: number | null
+          guaranteed_return: number | null
+          guaranteed_return_percent: number | null
           id: string
           is_matured: boolean | null
           matured_at: string | null
@@ -244,6 +290,8 @@ export type Database = {
           current_value: number
           final_profit_loss?: number | null
           final_value?: number | null
+          guaranteed_return?: number | null
+          guaranteed_return_percent?: number | null
           id?: string
           is_matured?: boolean | null
           matured_at?: string | null
@@ -261,6 +309,8 @@ export type Database = {
           current_value?: number
           final_profit_loss?: number | null
           final_value?: number | null
+          guaranteed_return?: number | null
+          guaranteed_return_percent?: number | null
           id?: string
           is_matured?: boolean | null
           matured_at?: string | null

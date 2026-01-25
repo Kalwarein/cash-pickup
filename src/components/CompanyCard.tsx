@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Flame, Eye } from 'lucide-react';
+import { sle } from '@/lib/currency';
 
 interface CompanyCardProps {
   name: string;
@@ -55,7 +56,7 @@ export const CompanyCard = ({
       
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-lg font-bold">${price.toFixed(2)}</p>
+          <p className="text-lg font-bold">{sle(price)}</p>
           <div className={cn(
             "flex items-center gap-1 text-sm",
             isPositive ? "text-success" : "text-destructive"

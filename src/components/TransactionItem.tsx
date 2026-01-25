@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils';
-import { ArrowDownRight, ArrowUpRight, DollarSign, TrendingUp } from 'lucide-react';
+import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, RefreshCw, Coins } from 'lucide-react';
+import { sle } from '@/lib/currency';
 
 interface TransactionItemProps {
   type: string;
@@ -8,41 +9,44 @@ interface TransactionItemProps {
   date: string;
 }
 
-const typeConfig: Record<string, { icon: typeof DollarSign; color: string }> = {
-  deposit: { icon: ArrowDownRight, color: 'text-success' },
-  investment: { icon: TrendingUp, color: 'text-primary' },
-  profit: { icon: ArrowUpRight, color: 'text-success' },
-  loss: { icon: ArrowDownRight, color: 'text-destructive' },
-  withdrawal: { icon: ArrowUpRight, color: 'text-warning' },
-  trade_open: { icon: TrendingUp, color: 'text-primary' },
-  trade_profit: { icon: ArrowUpRight, color: 'text-success' },
-  trade_loss: { icon: ArrowDownRight, color: 'text-destructive' },
+const getIcon = (type: string) => {
+  switch (type) {
+    case 'deposit':
+      return <ArrowDownLeft className="w-4 h-4 text-success" />;
+    case 'investment':
+      return <ArrowUpRight className="w-4 h-4 text-primary" />;
+    case 'investment_profit':
+    case 'trade_profit':
+      return <TrendingUp className="w-4 h-4 text-success" />;
+    case 'investment_loss':
+    case 'trade_loss':
+      return <TrendingDown className="w-4 h-4 text-destructive" />;
+    case 'trade_open':
+      return <Coins className="w-4 h-4 text-warning" />;
+    default:
+      return <RefreshCw className="w-4 h-4" />;
+  }
 };
 
 export const TransactionItem = ({ type, amount, description, date }: TransactionItemProps) => {
-  const config = typeConfig[type] || typeConfig.deposit;
-  const Icon = config.icon;
-  
   return (
     <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
       <div className="flex items-center gap-3">
-        <div className={cn(
-          "w-10 h-10 rounded-full flex items-center justify-center bg-muted",
-        )}>
-          <Icon className={cn("w-5 h-5", config.color)} />
+        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+          {getIcon(type)}
         </div>
         <div>
-          <p className="font-medium capitalize">{type}</p>
-          <p className="text-xs text-muted-foreground">{description}</p>
+          <p className="text-sm font-medium">{description || type.replace('_', ' ')}</p>
+          <p className="text-xs text-muted-foreground capitalize">{type.replace('_', ' ')}</p>
         </div>
       </div>
       <div className="text-right">
         <p className={cn(
           "font-semibold",
-          (type === 'profit' || type === 'deposit' || type === 'trade_profit') ? 'text-success' : 
-          (type === 'loss' || type === 'trade_loss') ? 'text-destructive' : 'text-foreground'
+          (type === 'profit' || type === 'deposit' || type === 'trade_profit' || type === 'investment_profit') ? 'text-success' : 
+          (type === 'loss' || type === 'trade_loss' || type === 'investment_loss') ? 'text-destructive' : 'text-foreground'
         )}>
-          {amount >= 0 ? '+' : ''}${amount.toFixed(2)}
+          {amount >= 0 ? '+' : ''}{sle(amount)}
         </p>
         <p className="text-xs text-muted-foreground">
           {new Date(date).toLocaleDateString()}

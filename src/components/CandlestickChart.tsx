@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Maximize2, Minimize2, Play, Pause } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { sle } from '@/lib/currency';
 
 interface CandleData {
   time: string;
@@ -308,17 +309,17 @@ export const CandlestickChart = ({
           <p className="text-xs text-muted-foreground mb-2">{hoveredCandle.time}</p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
             <span className="text-muted-foreground">Open:</span>
-            <span className="font-mono text-right">${hoveredCandle.open.toFixed(2)}</span>
+            <span className="font-mono text-right">{sle(hoveredCandle.open)}</span>
             <span className="text-muted-foreground">High:</span>
-            <span className="font-mono text-right text-success">${hoveredCandle.high.toFixed(2)}</span>
+            <span className="font-mono text-right text-success">{sle(hoveredCandle.high)}</span>
             <span className="text-muted-foreground">Low:</span>
-            <span className="font-mono text-right text-destructive">${hoveredCandle.low.toFixed(2)}</span>
+            <span className="font-mono text-right text-destructive">{sle(hoveredCandle.low)}</span>
             <span className="text-muted-foreground">Close:</span>
             <span className={cn(
               "font-mono text-right font-semibold",
               hoveredCandle.close >= hoveredCandle.open ? "text-success" : "text-destructive"
             )}>
-              ${hoveredCandle.close.toFixed(2)}
+              {sle(hoveredCandle.close)}
             </span>
           </div>
         </div>

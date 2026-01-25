@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Trophy, TrendingUp, Medal, Users, Building2, RefreshCw } from 'lucide-react';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 import { cn } from '@/lib/utils';
+import { sle, formatSLE } from '@/lib/currency';
 
 type TabType = 'profit' | 'volume' | 'companies';
 
@@ -116,7 +117,7 @@ export const LeaderboardTab = () => {
                         "font-bold",
                         entry.total_profit >= 0 ? "text-success" : "text-destructive"
                       )}>
-                        {entry.total_profit >= 0 ? '+' : ''}${entry.total_profit.toFixed(2)}
+                        {formatSLE(entry.total_profit, true)}
                       </p>
                       <p className="text-xs text-muted-foreground">Total Profit</p>
                     </div>
@@ -187,7 +188,7 @@ export const LeaderboardTab = () => {
                       </p>
                     </div>
                     <div className="text-right">
-                      <p className="font-bold">${company.total_invested.toFixed(0)}</p>
+                      <p className="font-bold">{sle(company.total_invested)}</p>
                       <p className={cn(
                         "text-xs",
                         company.avg_return >= 0 ? "text-success" : "text-destructive"

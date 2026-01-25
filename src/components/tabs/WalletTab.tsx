@@ -11,6 +11,7 @@ import { useMarketCandles } from '@/hooks/useMarketCandles';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { sle, formatSLE } from '@/lib/currency';
 
 export const WalletTab = () => {
   const { wallet, transactions, loading, deposit, refetch: refetchWallet } = useWallet();
@@ -43,7 +44,7 @@ export const WalletTab = () => {
     if (error) {
       toast.error(error);
     } else {
-      toast.success(`Trade closed: ${profitLoss && profitLoss >= 0 ? '+' : ''}$${profitLoss?.toFixed(2)}`);
+      toast.success(`Trade closed: ${formatSLE(profitLoss || 0, true)}`);
       await refetchWallet();
     }
   };
@@ -103,14 +104,14 @@ export const WalletTab = () => {
             <div className="flex items-start justify-between mb-4">
               <div>
                 <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
-                <p className="text-4xl font-bold">${wallet?.balance.toFixed(2)}</p>
+                <p className="text-4xl font-bold">{sle(wallet?.balance || 0)}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border/50">
               <div>
                 <p className="text-xs text-muted-foreground">Invested</p>
-                <p className="text-lg font-semibold">${wallet?.invested_amount.toFixed(2)}</p>
+                <p className="text-lg font-semibold">{sle(wallet?.invested_amount || 0)}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Profit</p>
@@ -118,7 +119,7 @@ export const WalletTab = () => {
                   "text-lg font-semibold",
                   (wallet?.total_profit || 0) >= (wallet?.total_loss || 0) ? "text-success" : "text-destructive"
                 )}>
-                  +${wallet?.total_profit.toFixed(2)}
+                  +{sle(wallet?.total_profit || 0)}
                 </p>
               </div>
             </div>
@@ -133,7 +134,7 @@ export const WalletTab = () => {
                   "text-sm font-medium",
                   unrealizedPL >= 0 ? "text-success" : "text-destructive"
                 )}>
-                  P/L: {unrealizedPL >= 0 ? '+' : ''}${unrealizedPL.toFixed(2)}
+                  P/L: {formatSLE(unrealizedPL, true)}
                 </span>
               </div>
               
@@ -153,8 +154,8 @@ export const WalletTab = () => {
                             {currentPL >= 0 ? <TrendingUp className="w-4 h-4 text-success" /> : <TrendingDown className="w-4 h-4 text-destructive" />}
                           </div>
                           <div>
-                            <p className="text-sm font-medium">${trade.amount.toFixed(2)}</p>
-                            <p className="text-xs text-muted-foreground">Entry: ${trade.entry_price.toFixed(2)}</p>
+                            <p className="text-sm font-medium">{sle(trade.amount)}</p>
+                            <p className="text-xs text-muted-foreground">Entry: {sle(trade.entry_price)}</p>
                           </div>
                         </div>
                         <div className="text-right">
@@ -162,7 +163,7 @@ export const WalletTab = () => {
                             "font-bold",
                             currentPL >= 0 ? "text-success" : "text-destructive"
                           )}>
-                            {currentPL >= 0 ? '+' : ''}${currentPL.toFixed(2)}
+                            {formatSLE(currentPL, true)}
                           </p>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Timer className="w-3 h-3" />
@@ -174,11 +175,11 @@ export const WalletTab = () => {
                       <div className="flex items-center justify-between text-xs mb-2">
                         <span className="flex items-center gap-1 text-success">
                           <Target className="w-3 h-3" />
-                          TP: ${trade.take_profit.toFixed(2)}
+                          TP: {sle(trade.take_profit)}
                         </span>
                         <span className="flex items-center gap-1 text-destructive">
                           <XCircle className="w-3 h-3" />
-                          SL: ${trade.stop_loss.toFixed(2)}
+                          SL: {sle(trade.stop_loss)}
                         </span>
                       </div>
                       
@@ -211,18 +212,18 @@ export const WalletTab = () => {
                       <div>
                         <p className="font-medium">{inv.company_name}</p>
                         <p className="text-xs text-muted-foreground">
-                          ${inv.amount.toFixed(2)} invested
+                          {sle(inv.amount)} invested
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="font-semibold">${inv.current_value.toFixed(2)}</p>
+                      <p className="font-semibold">{sle(inv.current_value)}</p>
                       <p className={cn(
                         "text-sm flex items-center gap-1 justify-end",
                         inv.profit_loss >= 0 ? "text-success" : "text-destructive"
                       )}>
                         {inv.profit_loss >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                        {inv.profit_loss >= 0 ? '+' : ''}${inv.profit_loss.toFixed(2)}
+                        {formatSLE(inv.profit_loss, true)}
                       </p>
                     </div>
                   </div>
@@ -272,7 +273,7 @@ export const WalletTab = () => {
               <div className="glass-card p-4">
                 <Wallet className="w-5 h-5 text-primary mb-2" />
                 <p className="text-xs text-muted-foreground">Total Balance</p>
-                <p className="font-bold">${wallet?.balance.toFixed(2)}</p>
+                <p className="font-bold">{sle(wallet?.balance || 0)}</p>
               </div>
               <div className="glass-card p-4">
                 <TrendingUp className="w-5 h-5 text-success mb-2" />
@@ -329,13 +330,13 @@ export const WalletTab = () => {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Profit</span>
                 <span className="text-success">
-                  +${wallet?.total_profit.toFixed(2)}
+                  +{sle(wallet?.total_profit || 0)}
                 </span>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Total Loss</span>
                 <span className="text-destructive">
-                  -${wallet?.total_loss.toFixed(2)}
+                  -{sle(wallet?.total_loss || 0)}
                 </span>
               </div>
             </div>
