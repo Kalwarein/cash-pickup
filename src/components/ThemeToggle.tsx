@@ -1,12 +1,14 @@
+import { forwardRef } from 'react';
 import { Sun, Moon } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { cn } from '@/lib/utils';
 
-export const ThemeToggle = () => {
+export const ThemeToggle = forwardRef<HTMLButtonElement>((_, ref) => {
   const { theme, toggleTheme } = useTheme();
 
   return (
     <button
+      ref={ref}
       onClick={toggleTheme}
       className={cn(
         "p-2 rounded-xl transition-all duration-300",
@@ -22,4 +24,6 @@ export const ThemeToggle = () => {
       )}
     </button>
   );
-};
+});
+
+ThemeToggle.displayName = 'ThemeToggle';

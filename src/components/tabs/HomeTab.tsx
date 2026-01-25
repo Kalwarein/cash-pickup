@@ -1,10 +1,11 @@
-import { TrendingUp, Users, Activity, Flame, Clock, Award } from 'lucide-react';
+import { TrendingUp, Users, Activity, Flame, Award } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { useCPI } from '@/hooks/useCPI';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { CPIGauge } from '@/components/CPIGauge';
+import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { cn } from '@/lib/utils';
 import { formatSLE, sle } from '@/lib/currency';
 
@@ -17,14 +18,11 @@ export const HomeTab = () => {
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
   const totalProfitLoss = investments.reduce((sum, inv) => sum + inv.profit_loss, 0);
   const totalCurrentValue = investments.reduce((sum, inv) => sum + inv.current_value, 0);
-  const completedPL = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
-
-  const getDaysRemaining = (maturityDate: string) => {
-    const now = new Date();
-    const maturity = new Date(maturityDate);
-    const diff = Math.ceil((maturity.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff);
-  };
+  
+  // Only show profits from completed investments
+  const completedProfit = completedInvestments
+    .filter(inv => (inv.final_profit_loss || 0) > 0)
+    .reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
 
   // Determine market status based on average CPI
   const getMarketStatus = () => {
@@ -72,7 +70,7 @@ export const HomeTab = () => {
         </div>
       </div>
 
-      {/* My Investments Section */}
+      {/* My Investments Section with Animated Progress */}
       {investments.length > 0 && (
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-4">
@@ -90,22 +88,21 @@ export const HomeTab = () => {
               <p className="text-xs text-muted-foreground">Current Value</p>
               <p className={cn(
                 "text-lg font-bold",
-                totalCurrentValue >= totalInvested ? "text-success" : "text-destructive"
+                totalCurrentValue >= totalInvested ? "text-success" : "text-muted-foreground"
               )}>
                 {sle(totalCurrentValue)}
               </p>
             </div>
           </div>
 
-          {/* Investment Cards */}
-          <div className="space-y-3">
+          {/* Investment Cards with Animated Progress */}
+          <div className="space-y-4">
             {investments.slice(0, 4).map((inv) => {
-              const daysRemaining = getDaysRemaining(inv.maturity_date);
               const profitPercent = inv.amount > 0 ? (inv.profit_loss / inv.amount) * 100 : 0;
               
               return (
-                <div key={inv.id} className="p-3 bg-muted/30 rounded-xl">
-                  <div className="flex items-center justify-between mb-2">
+                <div key={inv.id} className="p-4 bg-muted/30 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
                         <span className="text-xs font-bold text-primary-foreground">
@@ -121,36 +118,21 @@ export const HomeTab = () => {
                       <p className="font-semibold">{sle(inv.current_value)}</p>
                       <p className={cn(
                         "text-sm font-medium",
-                        inv.profit_loss >= 0 ? "text-success" : "text-destructive"
+                        inv.profit_loss >= 0 ? "text-success" : "text-muted-foreground"
                       )}>
                         {inv.profit_loss >= 0 ? '+' : ''}{profitPercent.toFixed(1)}%
                       </p>
                     </div>
                   </div>
                   
-                  {/* Maturity Progress */}
-                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border/50">
-                    <Clock className="w-3 h-3 text-muted-foreground" />
-                    <div className="flex-1">
-                      <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div 
-                          className={cn(
-                            "h-full rounded-full transition-all",
-                            daysRemaining <= 0 ? "bg-success" : "bg-primary"
-                          )}
-                          style={{ 
-                            width: `${Math.min(100, ((inv.maturity_days - daysRemaining) / inv.maturity_days) * 100)}%` 
-                          }}
-                        />
-                      </div>
-                    </div>
-                    <span className={cn(
-                      "text-xs font-medium",
-                      daysRemaining <= 0 ? "text-success" : "text-muted-foreground"
-                    )}>
-                      {daysRemaining <= 0 ? 'Maturing...' : `${daysRemaining}d left`}
-                    </span>
-                  </div>
+                  {/* Animated Maturity Progress Bar */}
+                  <InvestmentProgressBar
+                    maturityDate={inv.maturity_date}
+                    maturityDays={inv.maturity_days}
+                    createdAt={inv.created_at}
+                    companyName={inv.company_name || ''}
+                    amount={inv.amount}
+                  />
                 </div>
               );
             })}
@@ -158,16 +140,13 @@ export const HomeTab = () => {
         </div>
       )}
 
-      {/* Completed Investments */}
+      {/* Completed Investments - Show only profits */}
       {completedInvestments.length > 0 && (
         <div className="glass-card p-4">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-lg font-semibold">Recently Completed</h2>
-            <span className={cn(
-              "text-sm font-medium",
-              completedPL >= 0 ? "text-success" : "text-destructive"
-            )}>
-              Total: {formatSLE(completedPL, true)}
+            <span className="text-sm font-medium text-success">
+              +{sle(completedProfit)} earned
             </span>
           </div>
           <div className="space-y-2">
@@ -176,20 +155,20 @@ export const HomeTab = () => {
                 <div className="flex items-center gap-2">
                   <div className={cn(
                     "w-6 h-6 rounded-full flex items-center justify-center",
-                    (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-destructive/20"
+                    (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-muted"
                   )}>
                     <TrendingUp className={cn(
                       "w-3 h-3",
-                      (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
+                      (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
                     )} />
                   </div>
                   <span className="text-sm">{inv.company_name}</span>
                 </div>
                 <span className={cn(
                   "text-sm font-semibold",
-                  (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
+                  (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
                 )}>
-                  {formatSLE(inv.final_profit_loss || 0, true)}
+                  {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}{sle(Math.abs(inv.final_profit_loss || 0))}
                 </span>
               </div>
             ))}
@@ -224,7 +203,7 @@ export const HomeTab = () => {
       {/* Top Performers by CPI */}
       <div>
         <div className="flex items-center gap-2 mb-4">
-          <Flame className="w-5 h-5 text-orange-400" />
+          <Flame className="w-5 h-5 text-warning" />
           <h2 className="text-lg font-semibold">Top Performers</h2>
         </div>
         <div className="space-y-3">

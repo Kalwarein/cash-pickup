@@ -1,5 +1,8 @@
-import { User, Wallet, TrendingUp, TrendingDown, Award, LogOut, ArrowUpDown, Gift, Clock, Building2 } from 'lucide-react';
+import { useState } from 'react';
+import { User, Wallet, TrendingUp, Award, LogOut, ArrowUpDown, Gift, Building2, ArrowDownLeft, ArrowUpRight, Plus, Minus } from 'lucide-react';
 import { TransactionItem } from '@/components/TransactionItem';
+import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
+import { DepositWithdrawModal } from '@/components/DepositWithdrawModal';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useProfile } from '@/hooks/useProfile';
@@ -13,6 +16,8 @@ export const WalletTab = () => {
   const { investments, completedInvestments } = useInvestments();
   const { profile, updateViewPreference } = useProfile();
   const { signOut } = useAuth();
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
   // Use database-persisted view preference
   const showProfile = profile?.wallet_view_preference === 'profile';
@@ -23,17 +28,16 @@ export const WalletTab = () => {
   };
 
   const totalInvested = investments.reduce((sum, inv) => sum + inv.amount, 0);
-  const totalProfitLoss = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
+  
+  // Calculate only profits from completed investments (no losses shown)
+  const totalProfit = completedInvestments
+    .filter(inv => (inv.final_profit_loss || 0) > 0)
+    .reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
+  
+  const successfulInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
   const winRate = completedInvestments.length > 0
-    ? (completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length / completedInvestments.length) * 100
+    ? (successfulInvestments / completedInvestments.length) * 100
     : 0;
-
-  const getDaysRemaining = (maturityDate: string) => {
-    const now = new Date();
-    const maturity = new Date(maturityDate);
-    const diff = Math.ceil((maturity.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    return Math.max(0, diff);
-  };
 
   if (loading) {
     return (
@@ -81,81 +85,82 @@ export const WalletTab = () => {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground">Total Profit</p>
-                <p className={cn(
-                  "text-lg font-semibold",
-                  (wallet?.total_profit || 0) >= (wallet?.total_loss || 0) ? "text-success" : "text-destructive"
-                )}>
+                <p className="text-lg font-semibold text-success">
                   +{sle(wallet?.total_profit || 0)}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Active Investments */}
+          {/* Deposit/Withdraw Buttons */}
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setDepositModalOpen(true)}
+              className="glass-card p-4 flex items-center justify-center gap-3 hover:bg-success/10 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-5 h-5 text-success" />
+              </div>
+              <span className="font-semibold">Deposit</span>
+            </button>
+            <button
+              onClick={() => setWithdrawModalOpen(true)}
+              className="glass-card p-4 flex items-center justify-center gap-3 hover:bg-primary/10 transition-colors group"
+            >
+              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Minus className="w-5 h-5 text-primary" />
+              </div>
+              <span className="font-semibold">Withdraw</span>
+            </button>
+          </div>
+
+          {/* Active Investments with Animated Progress */}
           {investments.length > 0 && (
             <div className="glass-card p-4">
-              <div className="flex items-center gap-2 mb-3">
+              <div className="flex items-center gap-2 mb-4">
                 <Building2 className="w-5 h-5 text-primary" />
                 <h3 className="font-semibold">Active Investments</h3>
+                <span className="ml-auto text-sm text-muted-foreground">{investments.length} active</span>
               </div>
-              <div className="space-y-3">
-                {investments.slice(0, 5).map((inv) => {
-                  const daysRemaining = getDaysRemaining(inv.maturity_date);
-                  
-                  return (
-                    <div key={inv.id} className="p-3 bg-muted/50 rounded-xl">
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                            <span className="text-xs font-bold text-primary-foreground">
-                              {inv.company_ticker?.slice(0, 2)}
-                            </span>
-                          </div>
-                          <div>
-                            <p className="font-medium">{inv.company_name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {sle(inv.amount)} invested
-                            </p>
-                          </div>
+              <div className="space-y-4">
+                {investments.slice(0, 5).map((inv) => (
+                  <div key={inv.id} className="p-4 bg-muted/50 rounded-xl space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
+                          <span className="text-xs font-bold text-primary-foreground">
+                            {inv.company_ticker?.slice(0, 2)}
+                          </span>
                         </div>
-                        <div className="text-right">
-                          <p className="font-semibold">{sle(inv.current_value)}</p>
-                          <p className={cn(
-                            "text-sm flex items-center gap-1 justify-end",
-                            inv.profit_loss >= 0 ? "text-success" : "text-destructive"
-                          )}>
-                            {inv.profit_loss >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                            {formatSLE(inv.profit_loss, true)}
+                        <div>
+                          <p className="font-medium">{inv.company_name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {sle(inv.amount)} invested • {inv.maturity_days} days
                           </p>
                         </div>
                       </div>
-                      
-                      {/* Maturity Progress */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-border/30">
-                        <Clock className="w-3 h-3 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                            <div 
-                              className={cn(
-                                "h-full rounded-full transition-all",
-                                daysRemaining <= 0 ? "bg-success" : "bg-primary"
-                              )}
-                              style={{ 
-                                width: `${Math.min(100, ((inv.maturity_days - daysRemaining) / inv.maturity_days) * 100)}%` 
-                              }}
-                            />
-                          </div>
-                        </div>
-                        <span className={cn(
-                          "text-xs font-medium",
-                          daysRemaining <= 0 ? "text-success" : "text-muted-foreground"
+                      <div className="text-right">
+                        <p className="font-semibold">{sle(inv.current_value)}</p>
+                        <p className={cn(
+                          "text-sm flex items-center gap-1 justify-end",
+                          inv.profit_loss >= 0 ? "text-success" : "text-muted-foreground"
                         )}>
-                          {daysRemaining <= 0 ? 'Maturing...' : `${daysRemaining}d left`}
-                        </span>
+                          {inv.profit_loss >= 0 ? <TrendingUp className="w-3 h-3" /> : null}
+                          {formatSLE(Math.abs(inv.profit_loss), true)}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                    
+                    {/* Animated Progress Bar */}
+                    <InvestmentProgressBar
+                      maturityDate={inv.maturity_date}
+                      maturityDays={inv.maturity_days}
+                      createdAt={inv.created_at}
+                      companyName={inv.company_name || ''}
+                      amount={inv.amount}
+                    />
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -221,16 +226,30 @@ export const WalletTab = () => {
             </div>
           </div>
 
-          {/* Investment History */}
+          {/* Investment Stats - Only Profits */}
+          <div className="glass-card p-4">
+            <h3 className="font-semibold mb-4">Investment Performance</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-4 bg-success/10 rounded-xl">
+                <TrendingUp className="w-5 h-5 text-success mb-2" />
+                <p className="text-xs text-muted-foreground">Total Profit Earned</p>
+                <p className="text-xl font-bold text-success">+{sle(totalProfit)}</p>
+              </div>
+              <div className="p-4 bg-primary/10 rounded-xl">
+                <Award className="w-5 h-5 text-primary mb-2" />
+                <p className="text-xs text-muted-foreground">Successful Investments</p>
+                <p className="text-xl font-bold text-primary">{successfulInvestments}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Completed Investments - Only show profitable ones prominently */}
           {completedInvestments.length > 0 && (
             <div className="glass-card p-4">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Completed Investments</h3>
-                <span className={cn(
-                  "text-sm font-medium",
-                  totalProfitLoss >= 0 ? "text-success" : "text-destructive"
-                )}>
-                  Total: {formatSLE(totalProfitLoss, true)}
+                <h3 className="font-semibold">Investment History</h3>
+                <span className="text-sm font-medium text-success">
+                  +{sle(totalProfit)} earned
                 </span>
               </div>
               <div className="space-y-2">
@@ -239,12 +258,12 @@ export const WalletTab = () => {
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-8 h-8 rounded-full flex items-center justify-center",
-                        (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-destructive/20"
+                        (inv.final_profit_loss || 0) >= 0 ? "bg-success/20" : "bg-muted"
                       )}>
-                        {(inv.final_profit_loss || 0) >= 0 
-                          ? <TrendingUp className="w-4 h-4 text-success" /> 
-                          : <TrendingDown className="w-4 h-4 text-destructive" />
-                        }
+                        <TrendingUp className={cn(
+                          "w-4 h-4",
+                          (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
+                        )} />
                       </div>
                       <div>
                         <p className="font-medium text-sm">{inv.company_name}</p>
@@ -257,9 +276,9 @@ export const WalletTab = () => {
                       <p className="text-sm text-muted-foreground">{sle(inv.amount)}</p>
                       <p className={cn(
                         "font-bold",
-                        (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-destructive"
+                        (inv.final_profit_loss || 0) >= 0 ? "text-success" : "text-muted-foreground"
                       )}>
-                        {formatSLE(inv.final_profit_loss || 0, true)}
+                        {(inv.final_profit_loss || 0) >= 0 ? '+' : ''}{sle(Math.abs(inv.final_profit_loss || 0))}
                       </p>
                     </div>
                   </div>
@@ -287,7 +306,7 @@ export const WalletTab = () => {
             )}
           </div>
 
-          {/* Account Info */}
+          {/* Account Info - Remove loss display */}
           <div className="glass-card p-4">
             <h3 className="font-semibold mb-3">Account Details</h3>
             <div className="space-y-3">
@@ -300,15 +319,9 @@ export const WalletTab = () => {
                 <span className="text-success">Verified</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Profit</span>
-                <span className="text-success">
+                <span className="text-muted-foreground">Total Earnings</span>
+                <span className="text-success font-semibold">
                   +{sle(wallet?.total_profit || 0)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted-foreground">Total Loss</span>
-                <span className="text-destructive">
-                  -{sle(wallet?.total_loss || 0)}
                 </span>
               </div>
             </div>
@@ -324,6 +337,20 @@ export const WalletTab = () => {
           </button>
         </>
       )}
+
+      {/* Modals */}
+      <DepositWithdrawModal
+        isOpen={depositModalOpen}
+        onClose={() => setDepositModalOpen(false)}
+        type="deposit"
+        balance={wallet?.balance || 0}
+      />
+      <DepositWithdrawModal
+        isOpen={withdrawModalOpen}
+        onClose={() => setWithdrawModalOpen(false)}
+        type="withdraw"
+        balance={wallet?.balance || 0}
+      />
     </div>
   );
 };

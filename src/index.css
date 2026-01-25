@@ -270,6 +270,16 @@
   to { stroke-dashoffset: 0; }
 }
 
+@keyframes shimmer {
+  0% { transform: translateX(-100%) skewX(-20deg); }
+  100% { transform: translateX(200%) skewX(-20deg); }
+}
+
+@keyframes scale-in {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -284,6 +294,10 @@
 
 .animate-fade-in {
   animation: fade-in 0.3s ease-out;
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out;
 }
 
 /* Scrollbar styling */
