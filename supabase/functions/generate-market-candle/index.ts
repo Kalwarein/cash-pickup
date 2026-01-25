@@ -29,6 +29,11 @@ Deno.serve(async (req) => {
 
     const prevClose = latestCandle ? Number(latestCandle.close_price) : 1000;
 
+    // IMPORTANT: enforce a stable 2s cadence by writing the *next* timestamp
+    // rather than relying on DEFAULT now() (which causes gaps + "random jumps" on return).
+    const lastTs = latestCandle?.timestamp ? new Date(latestCandle.timestamp).getTime() : null;
+    const nextTsIso = lastTs ? new Date(lastTs + 2000).toISOString() : new Date().toISOString();
+
     // Guardrail: enforce a stable global cadence.
     // If multiple clients call this function, only append a new candle if the
     // latest one is older than ~2 seconds.
@@ -67,10 +72,11 @@ Deno.serve(async (req) => {
     const lowPrice = Math.round(Math.min(openPrice, closePrice) * (1 - volatility) * 100) / 100;
     const volume = Math.round(Math.random() * 100000 + 50000);
 
-    // Insert new candle
+    // Insert new candle (timestamp explicitly set for continuity)
     const { data: newCandle, error: insertError } = await supabase
       .from('market_candles')
       .insert({
+        timestamp: nextTsIso,
         open_price: openPrice,
         high_price: highPrice,
         low_price: lowPrice,
