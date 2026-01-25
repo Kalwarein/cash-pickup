@@ -68,7 +68,7 @@ export const InvestTab = () => {
       <div>
         <h1 className="text-2xl font-bold mb-1">Invest</h1>
         <p className="text-muted-foreground text-sm">
-          Long-term company investments (30-90 days). Balance: ${wallet?.balance.toFixed(2) || '0.00'}
+          Long-term company investments (7-90 days). Balance: {wallet?.balance.toFixed(2) || '0.00'} SLE
         </p>
       </div>
 

@@ -12,24 +12,28 @@ interface Investment {
   profit_loss: number;
   final_value: number | null;
   final_profit_loss: number | null;
+  maturity_cpr: number | null;
   status: string;
   created_at: string;
   maturity_days: number;
   maturity_date: string;
   is_matured: boolean;
+  is_claimed: boolean;
   matured_at: string | null;
+  claimed_at: string | null;
 }
 
 export const useInvestments = () => {
   const { user } = useAuth();
   const [investments, setInvestments] = useState<Investment[]>([]);
-  const [completedInvestments, setCompletedInvestments] = useState<Investment[]>([]);
+  const [maturedInvestments, setMaturedInvestments] = useState<Investment[]>([]);
+  const [claimedInvestments, setClaimedInvestments] = useState<Investment[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchInvestments = useCallback(async () => {
     if (!user) return;
 
-    // Fetch active investments
+    // Fetch active investments (not matured yet)
     const { data: activeData, error: activeError } = await supabase
       .from('investments')
       .select(`
@@ -41,7 +45,7 @@ export const useInvestments = () => {
         )
       `)
       .eq('user_id', user.id)
-      .eq('status', 'active')
+      .eq('is_matured', false)
       .order('created_at', { ascending: false });
 
     if (!activeError && activeData) {
@@ -55,17 +59,20 @@ export const useInvestments = () => {
         profit_loss: Number(inv.profit_loss),
         final_value: inv.final_value ? Number(inv.final_value) : null,
         final_profit_loss: inv.final_profit_loss ? Number(inv.final_profit_loss) : null,
+        maturity_cpr: inv.maturity_cpr ? Number(inv.maturity_cpr) : null,
         status: inv.status,
         created_at: inv.created_at,
-        maturity_days: inv.maturity_days || 30,
+        maturity_days: inv.maturity_days || 7,
         maturity_date: inv.maturity_date || inv.created_at,
         is_matured: inv.is_matured || false,
+        is_claimed: inv.is_claimed || false,
         matured_at: inv.matured_at,
+        claimed_at: inv.claimed_at,
       })));
     }
 
-    // Fetch completed investments
-    const { data: completedData, error: completedError } = await supabase
+    // Fetch matured but unclaimed investments
+    const { data: maturedData, error: maturedError } = await supabase
       .from('investments')
       .select(`
         *,
@@ -75,12 +82,12 @@ export const useInvestments = () => {
         )
       `)
       .eq('user_id', user.id)
-      .eq('status', 'closed')
-      .order('matured_at', { ascending: false })
-      .limit(20);
+      .eq('is_matured', true)
+      .eq('is_claimed', false)
+      .order('matured_at', { ascending: false });
 
-    if (!completedError && completedData) {
-      setCompletedInvestments(completedData.map(inv => ({
+    if (!maturedError && maturedData) {
+      setMaturedInvestments(maturedData.map(inv => ({
         id: inv.id,
         company_id: inv.company_id,
         company_name: inv.companies?.name,
@@ -90,23 +97,61 @@ export const useInvestments = () => {
         profit_loss: Number(inv.profit_loss),
         final_value: inv.final_value ? Number(inv.final_value) : null,
         final_profit_loss: inv.final_profit_loss ? Number(inv.final_profit_loss) : null,
+        maturity_cpr: inv.maturity_cpr ? Number(inv.maturity_cpr) : null,
         status: inv.status,
         created_at: inv.created_at,
-        maturity_days: inv.maturity_days || 30,
+        maturity_days: inv.maturity_days || 7,
         maturity_date: inv.maturity_date || inv.created_at,
         is_matured: true,
+        is_claimed: false,
         matured_at: inv.matured_at,
+        claimed_at: inv.claimed_at,
+      })));
+    }
+
+    // Fetch claimed investments
+    const { data: claimedData, error: claimedError } = await supabase
+      .from('investments')
+      .select(`
+        *,
+        companies (
+          name,
+          ticker
+        )
+      `)
+      .eq('user_id', user.id)
+      .eq('is_claimed', true)
+      .order('claimed_at', { ascending: false })
+      .limit(20);
+
+    if (!claimedError && claimedData) {
+      setClaimedInvestments(claimedData.map(inv => ({
+        id: inv.id,
+        company_id: inv.company_id,
+        company_name: inv.companies?.name,
+        company_ticker: inv.companies?.ticker,
+        amount: Number(inv.amount),
+        current_value: Number(inv.current_value),
+        profit_loss: Number(inv.profit_loss),
+        final_value: inv.final_value ? Number(inv.final_value) : null,
+        final_profit_loss: inv.final_profit_loss ? Number(inv.final_profit_loss) : null,
+        maturity_cpr: inv.maturity_cpr ? Number(inv.maturity_cpr) : null,
+        status: inv.status,
+        created_at: inv.created_at,
+        maturity_days: inv.maturity_days || 7,
+        maturity_date: inv.maturity_date || inv.created_at,
+        is_matured: true,
+        is_claimed: true,
+        matured_at: inv.matured_at,
+        claimed_at: inv.claimed_at,
       })));
     }
 
     setLoading(false);
   }, [user]);
 
-  const createInvestment = useCallback(async (companyId: string, amount: number, maturityDays: number = 30) => {
+  const createInvestment = useCallback(async (companyId: string, amount: number, maturityDays: number = 7) => {
     if (!user) return { error: 'Not authenticated' };
-
-    // Enforce minimum 30 days for long-term investments
-    const finalMaturityDays = Math.max(30, maturityDays);
 
     // Get user's wallet
     const { data: wallet, error: walletError } = await supabase
@@ -129,7 +174,7 @@ export const useInvestments = () => {
 
     // Calculate maturity date
     const maturityDate = new Date();
-    maturityDate.setDate(maturityDate.getDate() + finalMaturityDays);
+    maturityDate.setDate(maturityDate.getDate() + maturityDays);
 
     // Create investment
     const { error: investError } = await supabase
@@ -141,9 +186,10 @@ export const useInvestments = () => {
         current_value: amount,
         profit_loss: 0,
         status: 'active',
-        maturity_days: finalMaturityDays,
+        maturity_days: maturityDays,
         maturity_date: maturityDate.toISOString(),
         is_matured: false,
+        is_claimed: false,
       });
 
     if (investError) return { error: investError.message };
@@ -166,115 +212,68 @@ export const useInvestments = () => {
         user_id: user.id,
         type: 'investment',
         amount,
-        description: `Investment in ${company.name} (${finalMaturityDays} days)`,
+        description: `Investment in ${company.name} (${maturityDays} days)`,
       });
 
     await fetchInvestments();
     return { error: null };
   }, [user, fetchInvestments]);
 
-  // Mature investment and calculate final value based on CPR
-  const matureInvestment = useCallback(async (investmentId: string) => {
-    if (!user) return { error: 'Not authenticated' };
+  // Check and mature investments that have reached maturity date
+  const checkAndMatureInvestments = useCallback(async () => {
+    if (!user) return;
 
-    const investment = investments.find(i => i.id === investmentId);
-    if (!investment) return { error: 'Investment not found' };
+    const now = new Date();
+    const investmentsToMature = investments.filter(inv => 
+      !inv.is_matured && new Date(inv.maturity_date) <= now
+    );
 
-    // Get company for CPR-based calculation
-    const { data: company } = await supabase
-      .from('companies')
-      .select('cpr_today, name')
-      .eq('id', investment.company_id)
-      .single();
+    for (const inv of investmentsToMature) {
+      // Get company CPR for final calculation
+      const { data: company } = await supabase
+        .from('companies')
+        .select('cpr_today, name')
+        .eq('id', inv.company_id)
+        .single();
 
-    if (!company) return { error: 'Company not found' };
+      if (!company) continue;
 
-    // Use the company's current CPR to determine outcome
-    const cprToday = Number(company.cpr_today) || 0;
-    
-    // Calculate final value based on CPR
-    // CPR ranges from -90% to +50%
-    const multiplier = 1 + (cprToday / 100);
-    const finalValue = Math.max(0, investment.amount * multiplier);
-    const finalProfitLoss = finalValue - investment.amount;
+      const cprToday = Number(company.cpr_today) || 0;
+      const multiplier = 1 + (cprToday / 100);
+      const finalValue = Math.max(0, inv.amount * multiplier);
+      const finalProfitLoss = finalValue - inv.amount;
 
-    // Update investment
-    await supabase
-      .from('investments')
-      .update({
-        current_value: finalValue,
-        profit_loss: finalProfitLoss,
-        final_value: finalValue,
-        final_profit_loss: finalProfitLoss,
-        maturity_cpr: cprToday,
-        is_matured: true,
-        matured_at: new Date().toISOString(),
-        status: 'closed',
-      })
-      .eq('id', investmentId);
-
-    // Update wallet
-    const { data: wallet } = await supabase
-      .from('wallets')
-      .select('*')
-      .eq('user_id', user.id)
-      .single();
-
-    if (wallet) {
-      const newBalance = Number(wallet.balance) + finalValue;
-      const newInvested = Math.max(0, Number(wallet.invested_amount) - investment.amount);
-      const newProfit = finalProfitLoss > 0 ? Number(wallet.total_profit) + finalProfitLoss : Number(wallet.total_profit);
-      const newLoss = finalProfitLoss < 0 ? Number(wallet.total_loss) + Math.abs(finalProfitLoss) : Number(wallet.total_loss);
-
+      // Update investment as matured (but NOT claimed yet)
       await supabase
-        .from('wallets')
+        .from('investments')
         .update({
-          balance: newBalance,
-          invested_amount: newInvested,
-          total_profit: newProfit,
-          total_loss: newLoss,
+          current_value: finalValue,
+          profit_loss: finalProfitLoss,
+          final_value: finalValue,
+          final_profit_loss: finalProfitLoss,
+          maturity_cpr: cprToday,
+          is_matured: true,
+          matured_at: new Date().toISOString(),
+          status: 'matured', // Changed from 'closed' to 'matured'
+          // is_claimed stays false - user must click Claim
         })
-        .eq('user_id', user.id);
+        .eq('id', inv.id);
     }
 
-    // Record transaction
-    const transactionType = finalProfitLoss >= 0 ? 'investment_profit' : 'investment_loss';
-    const resultText = finalProfitLoss >= 0 ? `+${finalProfitLoss.toFixed(2)}` : `${finalProfitLoss.toFixed(2)}`;
-    
-    await supabase
-      .from('transactions')
-      .insert({
-        user_id: user.id,
-        type: transactionType,
-        amount: finalValue,
-        description: `${investment.company_name} matured: ${resultText} SLE (CPR: ${cprToday >= 0 ? '+' : ''}${cprToday}%)`,
-      });
-
-    await fetchInvestments();
-    return { error: null, finalValue, finalProfitLoss };
+    if (investmentsToMature.length > 0) {
+      await fetchInvestments();
+    }
   }, [user, investments, fetchInvestments]);
 
   // Check for matured investments periodically
   useEffect(() => {
-    const checkMatured = async () => {
-      const now = new Date();
-      const maturedInvestments = investments.filter(inv => 
-        !inv.is_matured && new Date(inv.maturity_date) <= now
-      );
-
-      for (const inv of maturedInvestments) {
-        await matureInvestment(inv.id);
-      }
-    };
-
-    // Check every 30 seconds
-    const interval = setInterval(checkMatured, 30000);
-    checkMatured(); // Initial check
+    const interval = setInterval(checkAndMatureInvestments, 30000);
+    checkAndMatureInvestments(); // Initial check
 
     return () => clearInterval(interval);
-  }, [investments, matureInvestment]);
+  }, [checkAndMatureInvestments]);
 
-  // Update current values periodically (for display only, not persisted until maturity)
+  // Update current values periodically (for display only)
   useEffect(() => {
     const interval = setInterval(() => {
       setInvestments(prev => prev.map(inv => {
@@ -288,7 +287,6 @@ export const useInvestments = () => {
         const elapsed = now.getTime() - createdDate.getTime();
         const progress = Math.min(1, elapsed / totalDuration);
         
-        // Simulate gradual change toward final outcome
         const maturityBonus = inv.maturity_days >= 60 ? 0.12 : inv.maturity_days >= 30 ? 0.06 : 0;
         const baseChange = (Math.random() - 0.45 + maturityBonus) * 5;
         const changePercent = baseChange * (0.5 + progress * 0.5);
@@ -312,12 +310,16 @@ export const useInvestments = () => {
     fetchInvestments();
   }, [fetchInvestments]);
 
+  // For backwards compatibility
+  const completedInvestments = claimedInvestments;
+
   return { 
     investments, 
-    completedInvestments,
+    maturedInvestments, // Matured but unclaimed
+    claimedInvestments,
+    completedInvestments, // Alias for claimedInvestments
     loading, 
     createInvestment, 
-    matureInvestment,
     refetch: fetchInvestments 
   };
 };
