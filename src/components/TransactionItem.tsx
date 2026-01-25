@@ -1,3 +1,4 @@
+import { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, ArrowDownLeft, ArrowUpRight, RefreshCw, Coins } from 'lucide-react';
 import { sle } from '@/lib/currency';
@@ -28,30 +29,34 @@ const getIcon = (type: string) => {
   }
 };
 
-export const TransactionItem = ({ type, amount, description, date }: TransactionItemProps) => {
-  return (
-    <div className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
-      <div className="flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-          {getIcon(type)}
+export const TransactionItem = forwardRef<HTMLDivElement, TransactionItemProps>(
+  ({ type, amount, description, date }, ref) => {
+    return (
+      <div ref={ref} className="flex items-center justify-between py-3 border-b border-border/50 last:border-0">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+            {getIcon(type)}
+          </div>
+          <div>
+            <p className="text-sm font-medium">{description || type.replace('_', ' ')}</p>
+            <p className="text-xs text-muted-foreground capitalize">{type.replace('_', ' ')}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-sm font-medium">{description || type.replace('_', ' ')}</p>
-          <p className="text-xs text-muted-foreground capitalize">{type.replace('_', ' ')}</p>
+        <div className="text-right">
+          <p className={cn(
+            "font-semibold",
+            (type === 'profit' || type === 'deposit' || type === 'trade_profit' || type === 'investment_profit') ? 'text-success' : 
+            (type === 'loss' || type === 'trade_loss' || type === 'investment_loss') ? 'text-destructive' : 'text-foreground'
+          )}>
+            {amount >= 0 ? '+' : ''}{sle(amount)}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {new Date(date).toLocaleDateString()}
+          </p>
         </div>
       </div>
-      <div className="text-right">
-        <p className={cn(
-          "font-semibold",
-          (type === 'profit' || type === 'deposit' || type === 'trade_profit' || type === 'investment_profit') ? 'text-success' : 
-          (type === 'loss' || type === 'trade_loss' || type === 'investment_loss') ? 'text-destructive' : 'text-foreground'
-        )}>
-          {amount >= 0 ? '+' : ''}{sle(amount)}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {new Date(date).toLocaleDateString()}
-        </p>
-      </div>
-    </div>
-  );
-};
+    );
+  }
+);
+
+TransactionItem.displayName = 'TransactionItem';
