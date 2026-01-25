@@ -46,8 +46,8 @@ export const CandlestickChart = ({
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
-  // Track if user has interacted to prevent auto-scroll override
-  const userInteractedRef = useRef(false);
+  // Resize tracking so "jump to latest" uses the correct viewport width
+  const [viewportWidth, setViewportWidth] = useState(0);
 
   // Full-screen mode: use entire viewport minus bottom nav (~80px)
   const effectiveHeight = isFullscreen ? window.innerHeight - 120 : height;
@@ -58,9 +58,9 @@ export const CandlestickChart = ({
   const totalWidth = data.length * (candleWidth + candleGap);
 
   const getMaxScroll = useCallback(() => {
-    const viewportWidth = containerRef.current?.clientWidth || 0;
-    return Math.max(0, totalWidth - viewportWidth + 60);
-  }, [totalWidth]);
+    const w = containerRef.current?.clientWidth || viewportWidth || 0;
+    return Math.max(0, totalWidth - w + 60);
+  }, [totalWidth, viewportWidth]);
 
   const isAtLatest = useCallback(() => {
     const max = getMaxScroll();
@@ -71,6 +71,20 @@ export const CandlestickChart = ({
     const max = getMaxScroll();
     setScrollPosition(max);
   }, [getMaxScroll]);
+
+  // Track container width changes (prevents "random" scroll jumps after tab switching / returning)
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+
+    const ro = new ResizeObserver(() => {
+      setViewportWidth(el.clientWidth);
+    });
+    ro.observe(el);
+    setViewportWidth(el.clientWidth);
+
+    return () => ro.disconnect();
+  }, []);
 
   // Find price range for scaling (include trade lines in range)
   const { minPrice, maxPrice } = useMemo(() => {
@@ -108,7 +122,6 @@ export const CandlestickChart = ({
 
   // Handle drag scrolling
   const handleMouseDown = (e: React.MouseEvent) => {
-    userInteractedRef.current = true;
     // Disable auto-scroll when user drags
     if (autoScroll && onAutoScrollChange) {
       onAutoScrollChange(false);
@@ -135,7 +148,6 @@ export const CandlestickChart = ({
   // Handle wheel zoom and scroll
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
-    userInteractedRef.current = true;
     if (e.ctrlKey || e.metaKey) {
       const delta = e.deltaY > 0 ? 0.9 : 1.1;
       setZoomLevel(prev => Math.max(0.5, Math.min(4, prev * delta)));
@@ -155,7 +167,6 @@ export const CandlestickChart = ({
   // Touch support
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
-      userInteractedRef.current = true;
       // Disable auto-scroll when user touches
       if (autoScroll && onAutoScrollChange) {
         onAutoScrollChange(false);
@@ -181,18 +192,19 @@ export const CandlestickChart = ({
     if (!containerRef.current || data.length === 0) return;
 
     const max = getMaxScroll();
-    
-    // On first load (no user interaction), jump to latest
-    if (!userInteractedRef.current) {
-      setScrollPosition(max);
-      return;
-    }
 
-    // If autoScroll is enabled, follow latest candle
+    // Always clamp (prevents going out of bounds after resize)
+    setScrollPosition(prev => Math.max(0, Math.min(prev, max)));
+
+    // If autoScroll is enabled, follow latest candle deterministically.
     if (autoScroll) {
-      setScrollPosition(max);
+      // rAF ensures we use the post-layout width so we don't "jump".
+      requestAnimationFrame(() => {
+        const nextMax = getMaxScroll();
+        setScrollPosition(nextMax);
+      });
     }
-  }, [data.length, getMaxScroll, autoScroll]);
+  }, [data.length, getMaxScroll, autoScroll, viewportWidth, zoomLevel]);
 
   // Handle candle hover
   const handleCandleHover = (candle: CandleData, x: number, y: number) => {

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { z } from 'zod';
+import authInvestImage from '@/assets/auth-invest.jpg';
 
 const emailSchema = z.string().email('Please enter a valid email');
 const passwordSchema = z.string().min(6, 'Password must be at least 6 characters');
@@ -80,128 +81,181 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
+    <div className="min-h-screen bg-background">
       {/* Theme Toggle */}
-      <div className="absolute top-4 right-4">
+      <div className="absolute top-4 right-4 z-20">
         <ThemeToggle />
       </div>
 
-      {/* Header */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6">
-        <div className="w-full max-w-sm">
-          {/* Logo */}
-          <div className="text-center mb-8">
-            <div className="w-20 h-20 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center glow-primary">
-              <TrendingUp className="w-10 h-10 text-primary-foreground" />
-            </div>
-            <h1 className="text-3xl font-bold text-gradient">Cash Pickup</h1>
-            <p className="text-muted-foreground mt-2">Investment Platform for Sierra Leone</p>
-          </div>
-
-          {/* Tab Toggle */}
-          <div className="flex bg-muted p-1 rounded-xl mb-6">
-            <button
-              onClick={() => { setIsLogin(true); setError(''); }}
-              className={cn(
-                "flex-1 py-2.5 rounded-lg font-medium text-sm transition-all",
-                isLogin ? "bg-card shadow text-foreground" : "text-muted-foreground"
-              )}
-            >
-              Sign In
-            </button>
-            <button
-              onClick={() => { setIsLogin(false); setError(''); }}
-              className={cn(
-                "flex-1 py-2.5 rounded-lg font-medium text-sm transition-all",
-                !isLogin ? "bg-card shadow text-foreground" : "text-muted-foreground"
-              )}
-            >
-              Sign Up
-            </button>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {!isLogin && (
+      <div className="min-h-screen grid lg:grid-cols-2">
+        {/* Visual side */}
+        <div className="relative hidden lg:block">
+          <img
+            src={authInvestImage}
+            alt="Investment trading workspace"
+            className="absolute inset-0 h-full w-full object-cover"
+            loading="lazy"
+          />
+          <div className="absolute inset-0 bg-background/30" />
+          <div className="absolute inset-0 bg-gradient-to-tr from-background via-background/40 to-transparent" />
+          <div className="relative z-10 h-full p-10 flex flex-col justify-between">
+            <div className="inline-flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center glow-primary">
+                <TrendingUp className="w-6 h-6 text-primary-foreground" />
+              </div>
               <div>
-                <label className="text-sm text-muted-foreground mb-2 block">Full Name</label>
-                <input
-                  type="text"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="Enter your name..."
-                  className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+                <div className="text-lg font-bold text-foreground">Cash Pickup</div>
+                <div className="text-xs text-muted-foreground">Trade • Invest • Grow</div>
               </div>
-            )}
+            </div>
+            <div className="max-w-md">
+              <h1 className="text-4xl font-bold tracking-tight text-foreground">
+                A real-time market that never sleeps.
+              </h1>
+              <p className="mt-3 text-sm text-muted-foreground">
+                Open trades, close your phone, and come back later — your chart history stays continuous and synced.
+              </p>
+            </div>
+          </div>
+        </div>
 
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="Enter your email..."
-                className="w-full bg-input border border-border rounded-xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
+        {/* Form side */}
+        <div className="relative flex items-center justify-center p-6 lg:p-10">
+          {/* Mobile top brand */}
+          <div className="absolute left-6 top-6 lg:hidden">
+            <div className="inline-flex items-center gap-2">
+              <div className="w-10 h-10 rounded-2xl gradient-primary flex items-center justify-center glow-primary">
+                <TrendingUp className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <div>
+                <div className="text-sm font-bold text-foreground">Cash Pickup</div>
+                <div className="text-[11px] text-muted-foreground">Investment platform</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="w-full max-w-sm">
+            {/* Tab Toggle */}
+            <div className="flex bg-muted/70 p-1 rounded-2xl mb-6 border border-border">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(true);
+                  setError('');
+                }}
+                className={cn(
+                  "flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                  isLogin ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Sign In
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsLogin(false);
+                  setError('');
+                }}
+                className={cn(
+                  "flex-1 py-2.5 rounded-xl font-semibold text-sm transition-all",
+                  !isLogin ? "bg-card shadow text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Sign Up
+              </button>
             </div>
 
-            <div>
-              <label className="text-sm text-muted-foreground mb-2 block">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  placeholder="Enter your password..."
-                  className="w-full bg-input border border-border rounded-xl px-4 py-3 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-                />
+            <div className="rounded-3xl border border-border bg-card/60 backdrop-blur-sm p-6 shadow-sm">
+              <div className="mb-5">
+                <h1 className="text-2xl font-bold text-foreground">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {isLogin ? 'Sign in to continue trading.' : 'Start with your welcome bonus and invest today.'}
+                </p>
+              </div>
+
+              {/* Form */}
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {!isLogin && (
+                  <div>
+                    <label className="text-sm text-muted-foreground mb-2 block">Full Name</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Enter your name"
+                      className="w-full bg-input border border-border rounded-2xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      autoComplete="name"
+                    />
+                  </div>
+                )}
+
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">Email</label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    placeholder="you@example.com"
+                    className="w-full bg-input border border-border rounded-2xl px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                    autoComplete="email"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-sm text-muted-foreground mb-2 block">Password</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      placeholder="Enter your password"
+                      className="w-full bg-input border border-border rounded-2xl px-4 py-3 pr-12 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                      autoComplete={isLogin ? 'current-password' : 'new-password'}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                    >
+                      {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    </button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-2xl">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    <p className="text-sm">{error}</p>
+                  </div>
+                )}
+
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  type="submit"
+                  disabled={loading}
+                  className={cn(
+                    "w-full py-4 rounded-2xl font-semibold text-base transition-all",
+                    "bg-primary text-primary-foreground",
+                    "hover:bg-primary/90 active:scale-[0.98]",
+                    loading && "opacity-50 cursor-not-allowed"
+                  )}
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {loading ? 'Please wait…' : isLogin ? 'Sign In' : 'Create Account'}
                 </button>
+              </form>
+
+              <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
+                <p className="text-xs text-muted-foreground">
+                  Welcome bonus: <span className="text-primary font-semibold">$10,000</span> credited to your wallet after sign up.
+                </p>
               </div>
             </div>
 
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-destructive/10 text-destructive rounded-xl">
-                <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                <p className="text-sm">{error}</p>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={cn(
-                "w-full py-4 rounded-xl font-semibold text-lg transition-all",
-                "bg-primary text-primary-foreground",
-                "hover:bg-primary/90 active:scale-[0.98]",
-                loading && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              {loading ? 'Please wait...' : isLogin ? 'Sign In' : 'Create Account'}
-            </button>
-          </form>
-
-          {/* Info */}
-          <div className="mt-8 p-4 bg-primary/5 rounded-xl border border-primary/20">
-            <p className="text-xs text-center text-muted-foreground">
-              Start investing with a <span className="text-primary font-semibold">$10,000 welcome bonus</span>. 
-              Grow your wealth with Sierra Leone's top companies.
+            <p className="mt-6 text-center text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Cash Pickup
             </p>
           </div>
         </div>
-      </div>
-
-      {/* Footer */}
-      <div className="p-6 text-center">
-        <p className="text-xs text-muted-foreground">
-          © 2024 Cash Pickup. Serving Sierra Leone 🇸🇱
-        </p>
       </div>
     </div>
   );
