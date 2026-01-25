@@ -17,6 +17,9 @@ interface TradeOverlay {
   entryPrice: number;
   takeProfit: number;
   stopLoss: number;
+  expiresAt?: string;
+  status?: 'open' | 'closed_tp' | 'closed_sl' | 'closed_expired' | 'closed_manual';
+  profitLoss?: number;
 }
 
 interface CandlestickChartProps {
@@ -46,6 +49,13 @@ export const CandlestickChart = ({
   const [dragStart, setDragStart] = useState(0);
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  const [now, setNow] = useState(Date.now());
+
+  // Update countdown timer every second
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Resize tracking so "jump to latest" uses the correct viewport width
   const [viewportWidth, setViewportWidth] = useState(0);
@@ -213,6 +223,22 @@ export const CandlestickChart = ({
     setHoverPosition({ x, y });
   };
 
+  // Format countdown timer
+  const formatCountdown = (expiresAt: string) => {
+    const expiryMs = new Date(expiresAt).getTime();
+    const remainingMs = expiryMs - now;
+    
+    if (remainingMs <= 0) return 'Expired';
+    
+    const minutes = Math.floor(remainingMs / 60000);
+    const seconds = Math.floor((remainingMs % 60000) / 1000);
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
+
+  // Split trades into open and closed
+  const openTrades = trades.filter(t => t.status === 'open' || !t.status);
+  const closedTrades = trades.filter(t => t.status && t.status !== 'open');
+
   if (data.length === 0) {
     return (
       <div className="flex items-center justify-center h-[300px] text-muted-foreground">
@@ -327,14 +353,14 @@ export const CandlestickChart = ({
 
       <div className="flex">
         {/* Y-Axis */}
-        <div className="w-14 flex-shrink-0 relative" style={{ height: effectiveHeight }}>
+        <div className="w-16 flex-shrink-0 relative" style={{ height: effectiveHeight }}>
           {yAxisLabels.map((label, i) => (
             <div
               key={i}
               className="absolute right-2 text-xs text-muted-foreground font-mono"
               style={{ top: label.y - 6 }}
             >
-              ${label.price.toFixed(0)}
+              {sle(label.price, false)}
             </div>
           ))}
         </div>
@@ -372,10 +398,10 @@ export const CandlestickChart = ({
             ))}
           </svg>
 
-          {/* Trade overlay lines (Entry, TP, SL) */}
-          {trades.length > 0 && (
+          {/* Open Trade overlay lines (Entry, TP, SL) with countdown */}
+          {openTrades.length > 0 && (
             <svg className="absolute inset-0 w-full h-full pointer-events-none z-10">
-              {trades.map((trade) => (
+              {openTrades.map((trade) => (
                 <g key={trade.id}>
                   {/* Entry Price Line */}
                   <line
@@ -394,7 +420,7 @@ export const CandlestickChart = ({
                     fontSize="10"
                     fontWeight="bold"
                   >
-                    Entry ${trade.entryPrice.toFixed(2)}
+                    Entry {sle(trade.entryPrice, false)} {trade.expiresAt && `• ${formatCountdown(trade.expiresAt)}`}
                   </text>
 
                   {/* Take Profit Line */}
@@ -414,7 +440,7 @@ export const CandlestickChart = ({
                     fontSize="10"
                     fontWeight="bold"
                   >
-                    TP ${trade.takeProfit.toFixed(2)}
+                    TP {sle(trade.takeProfit, false)}
                   </text>
 
                   {/* Stop Loss Line */}
@@ -434,10 +460,47 @@ export const CandlestickChart = ({
                     fontSize="10"
                     fontWeight="bold"
                   >
-                    SL ${trade.stopLoss.toFixed(2)}
+                    SL {sle(trade.stopLoss, false)}
                   </text>
                 </g>
               ))}
+            </svg>
+          )}
+
+          {/* Closed Trade markers */}
+          {closedTrades.length > 0 && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none z-5">
+              {closedTrades.map((trade) => {
+                const isWin = trade.status === 'closed_tp';
+                const markerY = scaleY(trade.entryPrice);
+                const markerColor = isWin ? 'hsl(var(--success))' : 'hsl(var(--destructive))';
+                const label = trade.status === 'closed_tp' ? '✓ TP Hit' : 
+                              trade.status === 'closed_sl' ? '✗ SL Hit' :
+                              trade.status === 'closed_expired' ? '⏱ Expired' : '↩ Manual';
+                
+                return (
+                  <g key={trade.id}>
+                    {/* Entry marker (circle) */}
+                    <circle
+                      cx="20"
+                      cy={markerY}
+                      r="6"
+                      fill={markerColor}
+                      opacity="0.6"
+                    />
+                    <text
+                      x="30"
+                      y={markerY + 4}
+                      fill={markerColor}
+                      fontSize="9"
+                      fontWeight="500"
+                      opacity="0.8"
+                    >
+                      {label} {trade.profitLoss !== undefined && (trade.profitLoss >= 0 ? '+' : '')}{sle(trade.profitLoss || 0, false)}
+                    </text>
+                  </g>
+                );
+              })}
             </svg>
           )}
 

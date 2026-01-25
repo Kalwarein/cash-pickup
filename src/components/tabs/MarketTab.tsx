@@ -28,13 +28,16 @@ export const MarketTab = () => {
     return () => clearInterval(interval);
   }, [currentPrice, checkAndCloseTrades]);
 
-  // Convert open trades to overlay format for the chart
+  // Convert trades to overlay format for the chart (includes expiry for countdown)
   const tradeOverlays = useMemo(() => {
     return openTrades.map(trade => ({
       id: trade.id,
       entryPrice: trade.entry_price,
       takeProfit: trade.take_profit,
       stopLoss: trade.stop_loss,
+      expiresAt: trade.expires_at,
+      status: trade.status,
+      profitLoss: trade.profit_loss,
     }));
   }, [openTrades]);
 

@@ -5,6 +5,13 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+/**
+ * Generate a single market candle. Uses strict 2-second cadence to ensure
+ * seamless continuity (no breaks/jumps when users return).
+ * 
+ * Uses ON CONFLICT DO NOTHING to avoid duplicate key errors when multiple
+ * clients call this function simultaneously.
+ */
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -21,45 +28,50 @@ Deno.serve(async (req) => {
       .select('*')
       .order('timestamp', { ascending: false })
       .limit(1)
-      .single();
+      .maybeSingle();
 
     if (fetchError) {
       throw new Error(`Failed to fetch latest candle: ${fetchError.message}`);
     }
 
+    const MS_PER_CANDLE = 2000;
+    const nowMs = Date.now();
+    
+    // Determine the last candle timestamp and close price
+    const lastTsMs = latestCandle?.timestamp 
+      ? new Date(latestCandle.timestamp).getTime() 
+      : nowMs - MS_PER_CANDLE;
     const prevClose = latestCandle ? Number(latestCandle.close_price) : 1000;
 
-    // IMPORTANT: enforce a stable 2s cadence by writing the *next* timestamp
-    // rather than relying on DEFAULT now() (which causes gaps + "random jumps" on return).
-    const lastTs = latestCandle?.timestamp ? new Date(latestCandle.timestamp).getTime() : null;
-    const nextTsIso = lastTs ? new Date(lastTs + 2000).toISOString() : new Date().toISOString();
+    // Calculate how many candles are missing
+    const gap = nowMs - lastTsMs;
+    const missingCount = Math.floor(gap / MS_PER_CANDLE);
 
-    // Guardrail: enforce a stable global cadence.
-    // If multiple clients call this function, only append a new candle if the
-    // latest one is older than ~2 seconds.
-    if (latestCandle?.timestamp) {
-      const lastTs = new Date(latestCandle.timestamp).getTime();
-      const nowTs = Date.now();
-      if (nowTs - lastTs < 1500) {
-        return new Response(
-          JSON.stringify({ success: true, skipped: true, reason: 'rate_limited' }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
-        );
-      }
+    // If no candles are needed (gap < 2s), skip
+    if (missingCount <= 0) {
+      return new Response(
+        JSON.stringify({ success: true, skipped: true, reason: 'no_gap' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
+
+    // Rate limit: only generate 1 candle per call from client heartbeat
+    // The full backfill is handled by market-scheduler (pg_cron)
+    const toGenerate = Math.min(1, missingCount);
     
-    // Generate realistic market movement with trends
+    // Calculate exact next timestamp (strict cadence)
+    const nextTsMs = lastTsMs + MS_PER_CANDLE;
+    const nextTsIso = new Date(nextTsMs).toISOString();
+
+    // Generate realistic market movement
     const trend = Math.random();
     let priceChange: number;
     
     if (trend > 0.65) {
-      // Strong up movement (35% chance)
       priceChange = prevClose * (Math.random() * 0.02 + 0.003);
     } else if (trend < 0.35) {
-      // Strong down movement (35% chance)
       priceChange = -prevClose * (Math.random() * 0.02 + 0.003);
     } else {
-      // Sideways with slight up bias (30% chance)
       priceChange = prevClose * (Math.random() - 0.45) * 0.012;
     }
 
@@ -72,26 +84,46 @@ Deno.serve(async (req) => {
     const lowPrice = Math.round(Math.min(openPrice, closePrice) * (1 - volatility) * 100) / 100;
     const volume = Math.round(Math.random() * 100000 + 50000);
 
-    // Insert new candle (timestamp explicitly set for continuity)
+    // Insert new candle with ON CONFLICT DO NOTHING to handle race conditions
     const { data: newCandle, error: insertError } = await supabase
       .from('market_candles')
-      .insert({
-        timestamp: nextTsIso,
-        open_price: openPrice,
-        high_price: highPrice,
-        low_price: lowPrice,
-        close_price: closePrice,
-        volume: volume,
-      })
+      .upsert(
+        {
+          timestamp: nextTsIso,
+          open_price: openPrice,
+          high_price: highPrice,
+          low_price: lowPrice,
+          close_price: closePrice,
+          volume: volume,
+        },
+        { 
+          onConflict: 'timestamp',
+          ignoreDuplicates: true 
+        }
+      )
       .select()
-      .single();
+      .maybeSingle();
 
+    // Even if upsert returned nothing (duplicate), that's okay
     if (insertError) {
+      // If it's a duplicate key error, just skip gracefully
+      if (insertError.message.includes('duplicate key')) {
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: 'duplicate_timestamp' }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        );
+      }
       throw new Error(`Failed to insert candle: ${insertError.message}`);
     }
 
-    // Keep only the last 500 candles to prevent table bloat
-    const { error: cleanupError } = await supabase.rpc('cleanup_old_candles');
+    // Cleanup old candles periodically (not every call)
+    if (Math.random() < 0.1) {
+      try {
+        await supabase.rpc('cleanup_old_candles');
+      } catch (e) {
+        console.error('Cleanup error:', e);
+      }
+    }
     
     return new Response(
       JSON.stringify({ 
