@@ -1,9 +1,13 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.91.1';
 
 /**
- * Unified market scheduler that generates both global market candles
- * and company candles. This is called by pg_cron every minute to ensure
- * 24/7 market movement even when no users are online.
+ * Unified market scheduler - runs via pg_cron every minute.
+ * Generates global market candles and company candles at a strict 2-second cadence.
+ * 
+ * KEY FEATURES:
+ * - Backfills missing candles to ensure gapless timeline
+ * - Uses upsert with ON CONFLICT to prevent duplicate key errors
+ * - Runs 24/7 even when no users are online
  */
 
 const corsHeaders = {
@@ -13,7 +17,7 @@ const corsHeaders = {
 
 const MS_PER_CANDLE = 2000;
 const MAX_MARKET_CANDLES_PER_RUN = 30; // ~1 minute of 2s candles
-const MAX_COMPANY_CANDLES_PER_COMPANY_PER_RUN = 5; // caps work per cron run
+const MAX_COMPANY_CANDLES_PER_COMPANY_PER_RUN = 10;
 
 type MarketCandleInsert = {
   timestamp: string;
@@ -126,7 +130,7 @@ Deno.serve(async (req) => {
       companyCandles: { success: false, count: 0 },
     };
 
-    // ============ GENERATE GLOBAL MARKET CANDLE ============
+    // ============ GENERATE GLOBAL MARKET CANDLES ============
     const { data: latestMarketCandle } = await supabase
       .from('market_candles')
       .select('*')
@@ -142,9 +146,7 @@ Deno.serve(async (req) => {
       ? Number((latestMarketCandle as { close_price: number }).close_price)
       : 1000;
 
-    // Backfill missing candles at strict 2-second cadence.
-    // This is the key fix: candles keep moving even when nobody has the app open,
-    // and when users return there is no "random jump" — it's the same continuous timeline.
+    // Calculate missing candles (strict 2-second cadence)
     const missing = Math.floor((nowMs - lastTsMs) / MS_PER_CANDLE);
 
     if (missing <= 0) {
@@ -161,9 +163,13 @@ Deno.serve(async (req) => {
         prevClose = next.close_price;
       }
 
+      // Use upsert with ignoreDuplicates to handle concurrent writes
       const { error: marketInsertError } = await supabase
         .from('market_candles')
-        .insert(inserts);
+        .upsert(inserts, { 
+          onConflict: 'timestamp',
+          ignoreDuplicates: true 
+        });
 
       if (!marketInsertError) {
         results.marketCandle.success = true;
@@ -232,7 +238,13 @@ Deno.serve(async (req) => {
     }
 
     if (candleInserts.length > 0) {
-      const { error: insertError } = await supabase.from('company_candles').insert(candleInserts);
+      // Use upsert to handle duplicates gracefully
+      const { error: insertError } = await supabase
+        .from('company_candles')
+        .upsert(candleInserts, {
+          onConflict: 'company_id,timestamp',
+          ignoreDuplicates: true
+        });
 
       if (!insertError) {
         results.companyCandles.success = true;

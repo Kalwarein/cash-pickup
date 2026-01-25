@@ -40,11 +40,13 @@ export function formatSLECompact(amount: number): string {
 /**
  * Format just the number with SLE suffix (no sign handling)
  * @param amount - The amount to format
- * @returns Formatted string like "1,234.56 SLE"
+ * @param showSuffix - Whether to show " SLE" suffix (default: true)
+ * @returns Formatted string like "1,234.56 SLE" or "1,234.56"
  */
-export function sle(amount: number): string {
-  return `${amount.toLocaleString('en-US', {
+export function sle(amount: number, showSuffix = true): string {
+  const formatted = amount.toLocaleString('en-US', {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
-  })} ${CURRENCY_SYMBOL}`;
+  });
+  return showSuffix ? `${formatted} ${CURRENCY_SYMBOL}` : formatted;
 }
