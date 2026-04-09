@@ -37,9 +37,8 @@ export const usePushNotifications = () => {
           await reg.showNotification(title, {
             icon: '/logo-192.png',
             badge: '/logo-192.png',
-            vibrate: [200, 100, 200],
             ...options,
-          });
+          } as NotificationOptions);
           return;
         }
       } catch {
