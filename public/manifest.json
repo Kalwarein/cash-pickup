@@ -1,0 +1,26 @@
+{
+  "name": "Cash Pickup - Investment Platform",
+  "short_name": "Cash Pickup",
+  "description": "Invest in Sierra Leone's top companies. Track CPR, manage your portfolio, and grow your wealth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a1628",
+  "theme_color": "#2563eb",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/logo-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/logo-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "categories": ["finance", "business"]
+}
