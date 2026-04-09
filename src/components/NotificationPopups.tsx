@@ -34,7 +34,7 @@ export const NotificationPopups = () => {
 
       // 2. Check for unused promo codes (purchased but not activated)
       const unusedPromos = userPromoCodes.filter(up => 
-        up.is_active && !up.is_activated && new Date(up.expires_at) > new Date()
+        up.is_active && new Date(up.expires_at) > new Date()
       );
       if (unusedPromos.length > 0 && !dismissed.has('promo_activate')) {
         const promoDetail = promoCodes.find(p => p.id === unusedPromos[0].promo_code_id);

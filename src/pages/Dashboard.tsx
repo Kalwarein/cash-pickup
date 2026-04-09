@@ -7,6 +7,7 @@ import { MarketTab } from '@/components/tabs/MarketTab';
 import { LeaderboardTab } from '@/components/tabs/LeaderboardTab';
 import { WalletTab } from '@/components/tabs/WalletTab';
 import { useAuth } from '@/contexts/AuthContext';
+import { NotificationPopups } from '@/components/NotificationPopups';
 
 const Dashboard = () => {
   const { user, loading } = useAuth();
@@ -58,6 +59,7 @@ const Dashboard = () => {
       <main className="max-w-lg mx-auto px-4 py-6">
         {renderTab()}
       </main>
+      <NotificationPopups />
       <BottomNav activeTab={activeTab} onTabChange={setActiveTab} />
     </div>
   );

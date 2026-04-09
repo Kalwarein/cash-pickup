@@ -11,7 +11,13 @@ const Index = () => {
       if (user) {
         navigate('/dashboard');
       } else {
-        navigate('/auth');
+        // Check if user has seen onboarding
+        const onboarded = localStorage.getItem('cp_onboarded');
+        if (onboarded) {
+          navigate('/auth');
+        } else {
+          navigate('/get-started');
+        }
       }
     }
   }, [user, loading, navigate]);
