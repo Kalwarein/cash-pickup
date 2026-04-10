@@ -56,6 +56,7 @@ export type Database = {
           id: string
           image_url: string | null
           investment_durations: Json | null
+          is_silent_performer: boolean | null
           is_trending: boolean | null
           max_return_percent: number | null
           min_investment: number | null
@@ -86,6 +87,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           investment_durations?: Json | null
+          is_silent_performer?: boolean | null
           is_trending?: boolean | null
           max_return_percent?: number | null
           min_investment?: number | null
@@ -116,6 +118,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           investment_durations?: Json | null
+          is_silent_performer?: boolean | null
           is_trending?: boolean | null
           max_return_percent?: number | null
           min_investment?: number | null
