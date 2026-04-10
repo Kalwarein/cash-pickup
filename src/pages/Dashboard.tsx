@@ -11,6 +11,7 @@ import { NotificationPopups } from '@/components/NotificationPopups';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { useInvestments } from '@/hooks/useInvestments';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { useBackgroundSync } from '@/hooks/useBackgroundSync';
 import { sle } from '@/lib/currency';
 
 const Dashboard = () => {
@@ -20,6 +21,7 @@ const Dashboard = () => {
   const { maturedInvestments } = useInvestments();
   const { permission, sendNotification } = usePushNotifications();
   const prevMaturedCount = useRef(0);
+  useBackgroundSync();
 
   useEffect(() => {
     if (!loading && !user) {
