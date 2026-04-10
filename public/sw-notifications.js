@@ -1,15 +1,30 @@
-// Lightweight service worker for showing push-style notifications
-// This runs in a separate thread and can show notifications even when the tab isn't focused.
+// Service Worker for Push Notifications and Background Sync
+const CACHE_NAME = 'cash-pickup-v2';
 
 self.addEventListener('install', (event) => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(['/', '/logo-192.png', '/logo-512.png']))
+  );
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim());
+  event.waitUntil(
+    caches.keys().then((keys) => Promise.all(
+      keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+    ))
+  );
+  self.clients.claim();
 });
 
-// Listen for messages from the main app to trigger notifications
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match('/'))
+    );
+  }
+});
+
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
     const { title, body, tag, data } = event.data;
@@ -24,7 +39,6 @@ self.addEventListener('message', (event) => {
   }
 });
 
-// When user clicks a notification, focus the app
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   event.waitUntil(
@@ -37,4 +51,14 @@ self.addEventListener('notificationclick', (event) => {
       return self.clients.openWindow('/dashboard');
     })
   );
+});
+
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'sync-investments') {
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window' }).then((clients) => {
+        clients.forEach((client) => client.postMessage({ type: 'SYNC_DATA' }));
+      })
+    );
+  }
 });

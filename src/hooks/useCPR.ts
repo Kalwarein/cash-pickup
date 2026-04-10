@@ -23,6 +23,7 @@ interface CompanyCPR {
   cpr_trend: 'improving' | 'declining' | 'stable' | 'unstable';
   cpr_last_generated_date: string;
   is_trending: boolean;
+  is_silent_performer: boolean;
   current_price: number;
   min_investment: number;
 }
@@ -34,7 +35,7 @@ export const useCPR = () => {
   const fetchCompanies = useCallback(async () => {
     const { data, error } = await supabase
       .from('companies')
-      .select('id, name, ticker, sector, risk_level, cpr_today, cpr_yesterday, cpr_7day_avg, cpr_30day_avg, cpr_best, cpr_worst, cpr_volatility, cpr_trend, cpr_last_generated_date, is_trending, current_price, min_investment')
+      .select('id, name, ticker, sector, risk_level, cpr_today, cpr_yesterday, cpr_7day_avg, cpr_30day_avg, cpr_best, cpr_worst, cpr_volatility, cpr_trend, cpr_last_generated_date, is_trending, is_silent_performer, current_price, min_investment')
       .order('cpr_today', { ascending: false });
 
     if (!error && data) {
@@ -54,6 +55,7 @@ export const useCPR = () => {
         cpr_trend: (c.cpr_trend as 'improving' | 'declining' | 'stable' | 'unstable') || 'stable',
         cpr_last_generated_date: c.cpr_last_generated_date || new Date().toISOString().split('T')[0],
         is_trending: c.is_trending || false,
+        is_silent_performer: c.is_silent_performer || false,
         current_price: Number(c.current_price) || 0,
         min_investment: Number(c.min_investment) || 50,
       })));
