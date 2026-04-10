@@ -112,7 +112,11 @@ export const WalletTab = () => {
           </div>
           <div className="space-y-3">
             {maturedInvestments.map((inv) => (
-              <ClaimInvestmentCard key={inv.id} investment={inv} onClaimed={handleClaimed} />
+              <ClaimInvestmentCard key={inv.id} investment={{
+                ...inv,
+                company_name: inv.company_name ?? null,
+                company_ticker: inv.company_ticker ?? null,
+              }} onClaimed={handleClaimed} />
             ))}
           </div>
         </div>
