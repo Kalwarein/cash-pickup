@@ -1,12 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.91.1';
 
-/**
- * Investment monitor that runs periodically to:
- * 1. Generate daily CPR values for all companies (biased toward negative)
- * 2. Mature investments using maturity-day CPR
- * 3. Generate random company activity feed messages
- */
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -16,51 +9,50 @@ const ACTIVITY_TEMPLATES = [
   "Quarterly review shows mixed performance results 📊",
   "Management announces strategic restructuring",
   "New market conditions affecting operations",
-  "Staff optimization program initiated",
   "Regional expansion plans under review",
   "Efficiency improvements showing early results",
-  "Market volatility impacting projections",
   "Stakeholder meeting scheduled for next quarter",
   "Operational adjustments in progress",
   "Performance metrics being recalculated",
+  "New partnerships being explored 🤝",
+  "Revenue targets exceeded expectations 🎯",
 ];
 
 function getRandomActivityMessage(): string {
-  const template = ACTIVITY_TEMPLATES[Math.floor(Math.random() * ACTIVITY_TEMPLATES.length)];
-  return template;
+  return ACTIVITY_TEMPLATES[Math.floor(Math.random() * ACTIVITY_TEMPLATES.length)];
 }
 
 /**
- * Generate CPR value biased toward negative outcomes
- * Range: -90% to +50%, with most values being negative
+ * Generate CPR biased more positively. Cap weekly loss at -10%.
+ * Silent performers get much better odds (80% positive).
  */
-function generateDailyCPR(): number {
-  // 70% chance of negative, 30% chance of positive
-  const isNegative = Math.random() < 0.70;
-  
+function generateDailyCPR(isSilentPerformer: boolean): number {
+  if (isSilentPerformer) {
+    // Silent performers: 80% positive, small consistent gains
+    const isPositive = Math.random() < 0.80;
+    if (isPositive) {
+      return Math.round((3 + Math.random() * 20) * 10) / 10; // +3% to +23%
+    } else {
+      return Math.round((-1 - Math.random() * 5) * 10) / 10; // -1% to -6%
+    }
+  }
+
+  // Regular companies: 50% positive (up from 30%), capped at -10%
+  const isNegative = Math.random() < 0.50;
   if (isNegative) {
-    // Negative range: -90 to 0, weighted toward moderate negatives
-    const base = Math.random();
-    // Use exponential distribution for more moderate negatives
-    const value = -90 * Math.pow(base, 0.5); // sqrt gives more values near -40 to -60
+    // Cap at -10% max loss
+    const value = -10 * Math.random();
     return Math.round(value * 10) / 10;
   } else {
-    // Positive range: 0 to +50, weighted toward lower positives
     const base = Math.random();
-    // Most positive days should be small gains
-    const value = 50 * Math.pow(base, 2); // squared gives more values near 0-15
+    const value = 50 * Math.pow(base, 1.5);
     return Math.round(value * 10) / 10;
   }
 }
 
-/**
- * Calculate final payout based on CPR
- * Minimum payout is 0 (can't go negative)
- */
 function calculatePayout(amount: number, cpr: number): number {
   const multiplier = 1 + (cpr / 100);
-  const payout = amount * multiplier;
-  return Math.max(0, payout); // Never negative payout
+  return Math.max(0, amount * multiplier);
 }
 
 Deno.serve(async (req) => {
@@ -78,16 +70,15 @@ Deno.serve(async (req) => {
     const today = now.toISOString().split('T')[0];
 
     // ============ GENERATE DAILY CPR FOR ALL COMPANIES ============
-    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today');
+    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today, is_silent_performer');
     
     if (companies) {
       for (const company of companies) {
-        // Only generate new CPR if it hasn't been generated today
         if (company.cpr_last_generated_date !== today) {
-          const newCPR = generateDailyCPR();
+          const isSilent = company.is_silent_performer || false;
+          const newCPR = generateDailyCPR(isSilent);
           const oldCPR = Number(company.cpr_today) || 0;
           
-          // Get existing history for averages
           const { data: history } = await supabase
             .from('cpr_history')
             .select('cpr_value')
@@ -104,13 +95,11 @@ Deno.serve(async (req) => {
           const best = Math.max(newCPR, ...historyValues);
           const worst = Math.min(newCPR, ...historyValues);
           
-          // Calculate volatility (standard deviation)
           const allValues = [newCPR, ...historyValues.slice(0, 6)];
           const mean = allValues.reduce((a, b) => a + b, 0) / allValues.length;
           const variance = allValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / allValues.length;
           const volatility = Math.sqrt(variance);
           
-          // Determine trend
           let trend = 'stable';
           if (last7.length >= 3) {
             const recentAvg = last7.slice(0, 3).reduce((a, b) => a + b, 0) / 3;
@@ -120,7 +109,6 @@ Deno.serve(async (req) => {
             else if (volatility > 25) trend = 'unstable';
           }
           
-          // Update company CPR data
           await supabase
             .from('companies')
             .update({
@@ -129,14 +117,13 @@ Deno.serve(async (req) => {
               cpr_7day_avg: Math.round(avg7 * 10) / 10,
               cpr_30day_avg: Math.round(avg30 * 10) / 10,
               cpr_best: Math.round(best * 10) / 10,
-              cpr_worst: Math.round(worst * 10) / 10,
+              cpr_worst: Math.round(Math.max(worst, -10) * 10) / 10,
               cpr_volatility: Math.round(volatility * 10) / 10,
               cpr_trend: trend,
               cpr_last_generated_date: today,
             })
             .eq('id', company.id);
           
-          // Record in history
           await supabase.from('cpr_history').upsert({
             company_id: company.id,
             cpr_value: newCPR,
@@ -148,10 +135,10 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ============ MATURE INVESTMENTS USING CPR ============
+    // ============ MATURE INVESTMENTS (do NOT auto-credit wallet) ============
     const { data: maturingInvestments } = await supabase
       .from('investments')
-      .select(`*, companies (name, cpr_today, risk_level)`)
+      .select(`*, companies (name, cpr_today, risk_level, is_silent_performer)`)
       .eq('status', 'active')
       .eq('is_matured', false)
       .lte('maturity_date', now.toISOString());
@@ -160,12 +147,11 @@ Deno.serve(async (req) => {
       for (const inv of maturingInvestments) {
         const amount = Number(inv.amount);
         const companyCPR = Number(inv.companies?.cpr_today) || 0;
-        const companyName = inv.companies?.name || 'Company';
         
-        // Calculate final payout based on maturity-day CPR
         const finalValue = calculatePayout(amount, companyCPR);
         const profitLoss = finalValue - amount;
 
+        // Mark as matured but NOT claimed — user must click Claim
         await supabase
           .from('investments')
           .update({
@@ -176,42 +162,10 @@ Deno.serve(async (req) => {
             maturity_cpr: companyCPR,
             is_matured: true,
             matured_at: now.toISOString(),
-            status: 'closed',
+            status: 'matured',
+            // is_claimed stays false
           })
           .eq('id', inv.id);
-
-        const { data: wallet } = await supabase
-          .from('wallets')
-          .select('*')
-          .eq('user_id', inv.user_id)
-          .single();
-
-        if (wallet) {
-          const newBalance = Number(wallet.balance) + finalValue;
-          const newInvested = Math.max(0, Number(wallet.invested_amount) - amount);
-          const newProfit = profitLoss > 0 ? Number(wallet.total_profit) + profitLoss : Number(wallet.total_profit);
-          const newLoss = profitLoss < 0 ? Number(wallet.total_loss) + Math.abs(profitLoss) : Number(wallet.total_loss);
-          
-          await supabase
-            .from('wallets')
-            .update({
-              balance: newBalance,
-              invested_amount: newInvested,
-              total_profit: newProfit,
-              total_loss: newLoss,
-            })
-            .eq('user_id', inv.user_id);
-        }
-
-        const transactionType = profitLoss >= 0 ? 'investment_profit' : 'investment_loss';
-        const resultText = profitLoss >= 0 ? `+${profitLoss.toFixed(2)}` : `${profitLoss.toFixed(2)}`;
-        
-        await supabase.from('transactions').insert({
-          user_id: inv.user_id,
-          type: transactionType,
-          amount: finalValue,
-          description: `Investment Matured - ${companyName}: ${resultText} SLE (CPR: ${companyCPR >= 0 ? '+' : ''}${companyCPR}%)`,
-        });
 
         results.investmentsMatured++;
       }
@@ -230,7 +184,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`Monitor completed: investments_matured=${results.investmentsMatured}, cpr_generated=${results.cprGenerated}, activities=${results.activitiesGenerated}`);
+    console.log(`Monitor: matured=${results.investmentsMatured}, cpr=${results.cprGenerated}, activities=${results.activitiesGenerated}`);
 
     return new Response(
       JSON.stringify({ success: true, results, timestamp: now.toISOString() }),
