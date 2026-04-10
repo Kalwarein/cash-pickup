@@ -23,6 +23,7 @@ interface CompanyCPR {
   cpr_trend: 'improving' | 'declining' | 'stable' | 'unstable';
   cpr_last_generated_date: string;
   is_trending: boolean;
+  is_silent_performer: boolean;
   current_price: number;
   min_investment: number;
 }
