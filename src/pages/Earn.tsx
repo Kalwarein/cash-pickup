@@ -186,7 +186,7 @@ const Earn = () => {
                     </div>
                   </div>
 
-                  {inv._type === 'active' && (
+                  {invType === 'active' && (
                     <InvestmentProgressBar 
                       maturityDate={inv.maturity_date} 
                       maturityDays={inv.maturity_days} 
@@ -196,7 +196,7 @@ const Earn = () => {
                     />
                   )}
 
-                  {inv._type === 'claimed' && (
+                  {isClaimed && (
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <CheckCircle className="w-3 h-3" />
                       <span>Claimed {inv.claimed_at ? new Date(inv.claimed_at).toLocaleDateString() : ''}</span>
