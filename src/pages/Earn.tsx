@@ -32,7 +32,7 @@ const Earn = () => {
     ...investments.map(i => ({ ...i, _type: 'active' as const })),
     ...(maturedInvestments || []).map(i => ({ ...i, _type: 'matured' as const })),
     ...claimedInvestments.map(i => ({ ...i, _type: 'claimed' as const })),
-  ];
+  ] as Array<typeof investments[0] & { _type: 'active' | 'matured' | 'claimed' }>;
 
   const filtered = filter === 'all' ? allInvestments 
     : allInvestments.filter(i => i._type === filter);
