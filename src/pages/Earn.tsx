@@ -143,8 +143,10 @@ const Earn = () => {
                 );
               }
 
-              const profitPercent = inv.amount > 0 ? ((inv._type === 'claimed' ? (inv.final_profit_loss || 0) : inv.profit_loss) / inv.amount) * 100 : 0;
-              const displayPL = inv._type === 'claimed' ? (inv.final_profit_loss || 0) : inv.profit_loss;
+              const invType = inv._type;
+              const isClaimed = invType === 'claimed';
+              const profitPercent = inv.amount > 0 ? ((isClaimed ? (inv.final_profit_loss || 0) : inv.profit_loss) / inv.amount) * 100 : 0;
+              const displayPL = isClaimed ? (inv.final_profit_loss || 0) : inv.profit_loss;
 
               return (
                 <div key={inv.id} className="glass-card p-4 space-y-3">
@@ -163,11 +165,10 @@ const Earn = () => {
                           <span>{inv.maturity_days}d</span>
                           <span className={cn(
                             "px-1.5 py-0.5 rounded-full font-medium",
-                            inv._type === 'active' && "bg-blue-500/10 text-blue-500",
-                            inv._type === 'matured' && "bg-amber-500/10 text-amber-500",
-                            inv._type === 'claimed' && "bg-muted text-muted-foreground"
+                            invType === 'active' ? "bg-blue-500/10 text-blue-500" :
+                            isClaimed ? "bg-muted text-muted-foreground" : "bg-amber-500/10 text-amber-500"
                           )}>
-                            {inv._type === 'active' ? 'Active' : inv._type === 'matured' ? 'Ready' : 'Claimed'}
+                            {invType === 'active' ? 'Active' : isClaimed ? 'Claimed' : 'Ready'}
                           </span>
                         </div>
                       </div>
