@@ -110,7 +110,7 @@ export const HomeTab = () => {
               <TrendingUp className="cp-logo-icon" />
             </div>
             <div>
-              <p className="cp-header-sub"></p>
+              <p className="cp-header-sub">Investment Platform</p>
               <h1 className="cp-header-title">Cash Pickup</h1>
             </div>
           </div>
@@ -437,88 +437,84 @@ export const HomeTab = () => {
       </div>{/* end cp-body */}
 
       {/* ════════════════════════════════════════════
-          CPR INFO MODAL (edge-to-edge)
+          CPR INFO MODAL
       ════════════════════════════════════════════ */}
       {showCprInfo && (
         <div className="cp-overlay" onClick={() => setShowCprInfo(false)}>
           <div className="cp-sheet" onClick={e => e.stopPropagation()}>
             <div className="cp-sheet-handle" />
-            <div className="cp-sheet-content">
-              <div className="cp-sheet-head">
-                <div className="cp-sheet-icon-wrap" style={{ background: 'rgba(99,102,241,0.1)' }}>
-                  <Activity className="w-5 h-5" style={{ color: '#6366f1' }} />
-                </div>
-                <div>
-                  <p className="cp-sheet-title">Understanding CPR</p>
-                  <p className="cp-sheet-sub">How your returns are calculated</p>
-                </div>
-                <button className="cp-sheet-close" onClick={() => setShowCprInfo(false)}>✕</button>
+            <div className="cp-sheet-head">
+              <div className="cp-sheet-icon-wrap" style={{ background: 'rgba(99,102,241,0.1)' }}>
+                <Activity className="w-5 h-5" style={{ color: '#6366f1' }} />
               </div>
-
-              <div className="cp-sheet-rows">
-                {[
-                  { icon: '📈', label: 'Positive CPR (≥ 5%)', desc: 'Market is performing well. Your investment grows at or above the CPR rate at maturity. Best time to invest more.', color: '#22c55e' },
-                  { icon: '⚖️', label: 'Mixed CPR (−10% to 5%)', desc: 'Market is volatile. Returns vary and may be lower than expected. Consider smaller positions.', color: '#f59e0b' },
-                  { icon: '📉', label: 'Negative CPR (< −10%)', desc: 'Market is underperforming. You risk losing a portion of your invested capital when your investment matures.', color: '#ef4444' },
-                ].map(item => (
-                  <div key={item.label} className="cp-info-row">
-                    <span className="cp-info-emoji">{item.icon}</span>
-                    <div className="flex-1">
-                      <p className="cp-info-label" style={{ color: item.color }}>{item.label}</p>
-                      <p className="cp-info-desc">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+              <div>
+                <p className="cp-sheet-title">Understanding CPR</p>
+                <p className="cp-sheet-sub">How your returns are calculated</p>
               </div>
-
-              <button className="cp-sheet-cta" onClick={() => setShowCprInfo(false)}>
-                Understood
-              </button>
+              <button className="cp-sheet-close" onClick={() => setShowCprInfo(false)}>✕</button>
             </div>
+
+            <div className="cp-sheet-rows">
+              {[
+                { icon: '📈', label: 'Positive CPR (≥ 5%)', desc: 'Market is performing well. Your investment grows at or above the CPR rate at maturity. Best time to invest more.', color: '#22c55e' },
+                { icon: '⚖️', label: 'Mixed CPR (−10% to 5%)', desc: 'Market is volatile. Returns vary and may be lower than expected. Consider smaller positions.', color: '#f59e0b' },
+                { icon: '📉', label: 'Negative CPR (< −10%)', desc: 'Market is underperforming. You risk losing a portion of your invested capital when your investment matures.', color: '#ef4444' },
+              ].map(item => (
+                <div key={item.label} className="cp-info-row">
+                  <span className="cp-info-emoji">{item.icon}</span>
+                  <div className="flex-1">
+                    <p className="cp-info-label" style={{ color: item.color }}>{item.label}</p>
+                    <p className="cp-info-desc">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button className="cp-sheet-cta" onClick={() => setShowCprInfo(false)}>
+              Understood
+            </button>
           </div>
         </div>
       )}
 
       {/* ════════════════════════════════════════════
-          RISK DETAIL MODAL (edge-to-edge)
+          RISK DETAIL MODAL
       ════════════════════════════════════════════ */}
       {showRisk && (
         <div className="cp-overlay" onClick={() => setShowRisk(false)}>
           <div className="cp-sheet" onClick={e => e.stopPropagation()}>
             <div className="cp-sheet-handle" />
-            <div className="cp-sheet-content">
-              <div className="cp-sheet-head">
-                <div className="cp-sheet-icon-wrap" style={{ background: 'rgba(245,158,11,0.1)' }}>
-                  <Shield className="w-5 h-5 text-amber-500" />
-                </div>
-                <div>
-                  <p className="cp-sheet-title">Risk Disclosure</p>
-                  <p className="cp-sheet-sub">Read before you invest</p>
-                </div>
-                <button className="cp-sheet-close" onClick={() => setShowRisk(false)}>✕</button>
+            <div className="cp-sheet-head">
+              <div className="cp-sheet-icon-wrap" style={{ background: 'rgba(245,158,11,0.1)' }}>
+                <Shield className="w-5 h-5 text-amber-500" />
               </div>
-
-              <div className="cp-sheet-rows">
-                {[
-                  { icon: '⚠️', label: 'Capital at Risk', desc: 'Investments can decrease in value. You may receive back less than the amount you invested.' },
-                  { icon: '📊', label: 'CPR-Linked Returns', desc: 'Your final return is directly tied to the Current Profit Rate at the time your investment matures.' },
-                  { icon: '🔒', label: 'Lock-in Period', desc: 'Funds are locked for the selected duration. Early withdrawals are subject to terms and fees.' },
-                  { icon: '📋', label: 'No Guaranteed Returns', desc: 'Past performance of any company or the platform does not guarantee future results.' },
-                ].map(item => (
-                  <div key={item.label} className="cp-info-row">
-                    <span className="cp-info-emoji">{item.icon}</span>
-                    <div className="flex-1">
-                      <p className="cp-info-label">{item.label}</p>
-                      <p className="cp-info-desc">{item.desc}</p>
-                    </div>
-                  </div>
-                ))}
+              <div>
+                <p className="cp-sheet-title">Risk Disclosure</p>
+                <p className="cp-sheet-sub">Read before you invest</p>
               </div>
-
-              <button className="cp-sheet-cta" onClick={() => setShowRisk(false)}>
-                I Understand, Continue
-              </button>
+              <button className="cp-sheet-close" onClick={() => setShowRisk(false)}>✕</button>
             </div>
+
+            <div className="cp-sheet-rows">
+              {[
+                { icon: '⚠️', label: 'Capital at Risk', desc: 'Investments can decrease in value. You may receive back less than the amount you invested.' },
+                { icon: '📊', label: 'CPR-Linked Returns', desc: 'Your final return is directly tied to the Current Profit Rate at the time your investment matures.' },
+                { icon: '🔒', label: 'Lock-in Period', desc: 'Funds are locked for the selected duration. Early withdrawals are subject to terms and fees.' },
+                { icon: '📋', label: 'No Guaranteed Returns', desc: 'Past performance of any company or the platform does not guarantee future results.' },
+              ].map(item => (
+                <div key={item.label} className="cp-info-row">
+                  <span className="cp-info-emoji">{item.icon}</span>
+                  <div className="flex-1">
+                    <p className="cp-info-label">{item.label}</p>
+                    <p className="cp-info-desc">{item.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <button className="cp-sheet-cta" onClick={() => setShowRisk(false)}>
+              I Understand, Continue
+            </button>
           </div>
         </div>
       )}
@@ -529,7 +525,7 @@ export const HomeTab = () => {
       <PromoCodeMarketplace isOpen={showPromo} onClose={() => setShowPromo(false)} />
 
       {/* ════════════════════════════════════════════
-          ALL STYLES (UPGRADED)
+          ALL STYLES
       ════════════════════════════════════════════ */}
       <style>{`
         /* ── Layout ── */
@@ -543,8 +539,8 @@ export const HomeTab = () => {
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 16px;
-          padding: 16px 16px 32px;
+          gap: 14px;
+          padding: 14px 16px 32px;
         }
 
         /* ── Header ── */
@@ -552,7 +548,7 @@ export const HomeTab = () => {
           position: sticky;
           top: 0;
           z-index: 40;
-          background: hsl(var(--background)/0.9);
+          background: hsl(var(--background)/0.97);
           backdrop-filter: blur(20px);
           -webkit-backdrop-filter: blur(20px);
           border-bottom: 1px solid hsl(var(--border));
@@ -566,72 +562,70 @@ export const HomeTab = () => {
         }
         .cp-header-brand { display: flex; align-items: center; gap: 10px; }
         .cp-logo-ring {
-          width: 40px; height: 40px; border-radius: 14px; flex-shrink: 0;
-          background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.8));
+          width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+          background: hsl(var(--primary));
           display: flex; align-items: center; justify-content: center;
-          box-shadow: 0 6px 16px hsl(var(--primary)/0.3);
+          box-shadow: 0 4px 12px hsl(var(--primary)/0.4);
         }
-        .cp-logo-icon { width: 20px; height: 20px; color: hsl(var(--primary-foreground)); }
+        .cp-logo-icon { width: 18px; height: 18px; color: hsl(var(--primary-foreground)); }
         .cp-header-sub   { font-size: 10px; color: hsl(var(--muted-foreground)); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-        .cp-header-title { font-size: 20px; font-weight: 900; color: hsl(var(--foreground)); line-height: 1.15; letter-spacing: -0.5px; }
-        .cp-header-actions { display: flex; align-items: center; gap: 8px; }
+        .cp-header-title { font-size: 18px; font-weight: 900; color: hsl(var(--foreground)); line-height: 1.15; letter-spacing: -0.3px; }
+        .cp-header-actions { display: flex; align-items: center; gap: 6px; }
 
         .cp-market-chip {
           display: inline-flex; align-items: center; gap: 5px;
-          padding: 6px 12px; border-radius: 9999px;
-          font-size: 12px; font-weight: 800; letter-spacing: 0.02em;
-          backdrop-filter: blur(4px);
+          padding: 5px 10px; border-radius: 9999px;
+          font-size: 11px; font-weight: 800; letter-spacing: 0.02em;
         }
         .cp-market-pulse {
-          width: 8px; height: 8px; border-radius: 9999px;
+          width: 6px; height: 6px; border-radius: 9999px;
           animation: cpPulse 2s ease-in-out infinite;
         }
-        @keyframes cpPulse { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+        @keyframes cpPulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
 
         .cp-hdr-btn {
           position: relative;
-          width: 40px; height: 40px; border-radius: 14px;
+          width: 36px; height: 36px; border-radius: 11px;
           border: 1px solid hsl(var(--border));
           background: hsl(var(--card));
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; color: hsl(var(--foreground));
-          transition: all 0.2s; -webkit-tap-highlight-color: transparent;
-          box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+          transition: transform 0.15s; -webkit-tap-highlight-color: transparent;
         }
-        .cp-hdr-btn:active { transform: scale(0.88); background: hsl(var(--muted)); }
-        .cp-hdr-icon { width: 18px; height: 18px; }
+        .cp-hdr-btn:active { transform: scale(0.88); }
+        .cp-hdr-icon { width: 16px; height: 16px; }
         .cp-notif-dot {
-          position: absolute; top: 8px; right: 8px;
-          width: 8px; height: 8px; border-radius: 9999px;
-          background: #ef4444; border: 2px solid hsl(var(--card));
+          position: absolute; top: 7px; right: 7px;
+          width: 7px; height: 7px; border-radius: 9999px;
+          background: #ef4444; border: 1.5px solid hsl(var(--card));
         }
 
         /* ── Hero — full bleed ── */
         .cp-hero {
           position: relative;
           overflow: hidden;
-          background: linear-gradient(145deg,
+          background: linear-gradient(160deg,
             hsl(var(--primary)) 0%,
-            hsl(var(--primary)/0.9) 40%,
-            hsl(var(--primary)/0.7) 100%
+            hsl(var(--primary)/0.85) 50%,
+            hsl(var(--primary)/0.6) 100%
           );
-          padding: 32px 20px 28px;
+          padding: 28px 20px 24px;
         }
         .cp-hero-orb {
           pointer-events: none;
           position: absolute;
           border-radius: 9999px;
-          filter: blur(70px);
+          filter: blur(60px);
         }
         .cp-hero-orb--1 {
-          width: 300px; height: 300px;
-          top: -120px; right: -100px;
-          background: rgba(255,255,255,0.15);
+          width: 280px; height: 280px;
+          top: -100px; right: -80px;
+          background: rgba(255,255,255,0.12);
         }
         .cp-hero-orb--2 {
-          width: 220px; height: 220px;
-          bottom: -80px; left: -60px;
-          background: rgba(255,255,255,0.08);
+          width: 180px; height: 180px;
+          bottom: -60px; left: -40px;
+          background: rgba(255,255,255,0.06);
         }
         .cp-hero-shimmer {
           pointer-events: none;
@@ -639,9 +633,9 @@ export const HomeTab = () => {
           background: linear-gradient(
             110deg,
             transparent 20%,
-            rgba(255,255,255,0.1) 45%,
-            rgba(255,255,255,0.18) 50%,
-            rgba(255,255,255,0.1) 55%,
+            rgba(255,255,255,0.08) 45%,
+            rgba(255,255,255,0.15) 50%,
+            rgba(255,255,255,0.08) 55%,
             transparent 80%
           );
           background-size: 200% 100%;
@@ -657,41 +651,38 @@ export const HomeTab = () => {
         .cp-hero-balance-row {
           display: flex; align-items: flex-start;
           justify-content: space-between; gap: 12px;
-          margin-bottom: 26px;
+          margin-bottom: 22px;
         }
         .cp-hero-label {
-          font-size: 12px; color: rgba(255,255,255,0.7);
-          font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em;
-          margin-bottom: 8px;
+          font-size: 11px; color: rgba(255,255,255,0.65);
+          font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em;
+          margin-bottom: 6px;
         }
-        .cp-hero-amount-row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .cp-hero-amount-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
         .cp-hero-amount {
-          font-size: 36px; font-weight: 900; color: white;
-          letter-spacing: -1.8px; line-height: 1;
+          font-size: 32px; font-weight: 900; color: white;
+          letter-spacing: -1.5px; line-height: 1;
         }
         .cp-vis-btn {
-          background: rgba(255,255,255,0.2); border: none; border-radius: 10px;
-          padding: 6px; display: flex; align-items: center; cursor: pointer;
-          color: rgba(255,255,255,0.9); transition: background 0.15s;
-          backdrop-filter: blur(4px);
+          background: rgba(255,255,255,0.18); border: none; border-radius: 8px;
+          padding: 5px; display: flex; align-items: center; cursor: pointer;
+          color: rgba(255,255,255,0.8); transition: background 0.15s;
         }
-        .cp-vis-btn:active { background: rgba(255,255,255,0.35); }
+        .cp-vis-btn:active { background: rgba(255,255,255,0.3); }
         .cp-hero-return {
           display: inline-flex; align-items: center; gap: 4px;
-          font-size: 14px; font-weight: 700;
-          background: rgba(0,0,0,0.2); padding: 6px 12px; border-radius: 9999px;
-          backdrop-filter: blur(4px);
+          font-size: 13px; font-weight: 700;
+          background: rgba(0,0,0,0.15); padding: 4px 10px; border-radius: 9999px;
         }
         .cp-hero-strip {
           display: flex; align-items: center;
-          background: rgba(0,0,0,0.25); border-radius: 20px;
-          padding: 16px 18px;
-          backdrop-filter: blur(8px);
+          background: rgba(0,0,0,0.2); border-radius: 16px;
+          padding: 14px 16px;
         }
         .cp-hero-stat { flex: 1; text-align: center; }
-        .cp-hero-stat-lbl { font-size: 10px; color: rgba(255,255,255,0.6); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
-        .cp-hero-stat-val { font-size: 16px; font-weight: 800; color: white; margin-top: 4px; }
-        .cp-hero-sep { width: 1px; height: 34px; background: rgba(255,255,255,0.2); flex-shrink: 0; }
+        .cp-hero-stat-lbl { font-size: 9px; color: rgba(255,255,255,0.55); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; }
+        .cp-hero-stat-val { font-size: 14px; font-weight: 800; color: white; margin-top: 3px; }
+        .cp-hero-sep { width: 1px; height: 30px; background: rgba(255,255,255,0.18); flex-shrink: 0; }
 
         /* colour helpers */
         .cp-up   { color: #22c55e; }
@@ -699,219 +690,204 @@ export const HomeTab = () => {
 
         /* ── Quick Actions ── */
         .cp-quick-grid {
-          display: grid; grid-template-columns: repeat(4,1fr); gap: 12px;
+          display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
         }
         .cp-qa-tile {
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
-          padding: 16px 8px; border-radius: 20px;
+          display: flex; flex-direction: column; align-items: center; gap: 7px;
+          padding: 14px 8px; border-radius: 18px;
           border: 1px solid hsl(var(--border)); background: hsl(var(--card));
           cursor: pointer; -webkit-tap-highlight-color: transparent;
-          transition: all 0.2s; box-shadow: 0 4px 8px rgba(0,0,0,0.02);
+          transition: all 0.15s;
         }
-        .cp-qa-tile:active { transform: scale(0.94); background: hsl(var(--muted)); }
+        .cp-qa-tile:active { transform: scale(0.93); background: hsl(var(--muted)); }
         .cp-qa-icon-wrap {
-          width: 48px; height: 48px; border-radius: 16px;
+          width: 44px; height: 44px; border-radius: 14px;
           display: flex; align-items: center; justify-content: center;
         }
-        .cp-qa-lbl { font-size: 12px; font-weight: 700; color: hsl(var(--foreground)); }
+        .cp-qa-lbl { font-size: 11px; font-weight: 700; color: hsl(var(--foreground)); }
 
         /* ── Cards ── */
         .cp-card {
           background: hsl(var(--card));
           border: 1px solid hsl(var(--border));
-          border-radius: 24px;
-          padding: 18px;
-          box-shadow: 0 6px 18px rgba(0,0,0,0.04);
-          transition: transform 0.2s;
+          border-radius: 22px;
+          padding: 16px;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.04);
         }
         .cp-card-header {
-          display: flex; align-items: center; gap: 12px; margin-bottom: 16px;
+          display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
         }
         .cp-card-icon-wrap {
-          width: 38px; height: 38px; border-radius: 12px; flex-shrink: 0;
+          width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
         }
-        .cp-card-title { font-size: 16px; font-weight: 800; color: hsl(var(--foreground)); line-height: 1.2; }
-        .cp-card-sub   { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+        .cp-card-title { font-size: 15px; font-weight: 800; color: hsl(var(--foreground)); line-height: 1.2; }
+        .cp-card-sub   { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
         .cp-see-all {
-          display: inline-flex; align-items: center; gap: 4px;
-          font-size: 12px; font-weight: 700; color: hsl(var(--primary));
-          background: none; border: none; cursor: pointer; padding: 6px 8px; border-radius: 10px;
-          transition: background 0.15s;
+          display: inline-flex; align-items: center; gap: 2px;
+          font-size: 11px; font-weight: 700; color: hsl(var(--primary));
+          background: none; border: none; cursor: pointer; padding: 4px 6px; border-radius: 8px;
         }
-        .cp-see-all:hover { background: hsl(var(--muted)/0.5); }
         .cp-info-btn {
-          width: 34px; height: 34px; border-radius: 10px; flex-shrink: 0;
+          width: 30px; height: 30px; border-radius: 9px; flex-shrink: 0;
           border: 1px solid hsl(var(--border)); background: hsl(var(--card));
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; color: hsl(var(--muted-foreground));
-          transition: all 0.15s;
         }
-        .cp-info-btn:active { background: hsl(var(--muted)); }
 
         /* ── CPR block ── */
-        .cp-cpr-body { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-        .cp-cpr-big { font-size: 42px; font-weight: 900; letter-spacing: -1.5px; line-height: 1; }
-        .cp-cpr-status { font-size: 13px; font-weight: 700; margin-top: 6px; }
+        .cp-cpr-body { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .cp-cpr-big { font-size: 36px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
+        .cp-cpr-status { font-size: 12px; font-weight: 700; margin-top: 4px; }
         .cp-cpr-alert {
-          display: flex; align-items: flex-start; gap: 8px;
-          padding: 12px 14px; border-radius: 14px;
-          background: rgba(245,158,11,0.08); border: 1px solid rgba(245,158,11,0.25);
-          font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.5;
+          display: flex; align-items: flex-start; gap: 7px;
+          padding: 10px 12px; border-radius: 12px;
+          background: rgba(245,158,11,0.07); border: 1px solid rgba(245,158,11,0.2);
+          font-size: 11px; color: hsl(var(--muted-foreground)); line-height: 1.5;
         }
-        .cp-link-btn { color: hsl(var(--primary)); font-weight: 700; background: none; border: none; cursor: pointer; font-size: 12px; flex-shrink: 0; padding: 0; }
+        .cp-link-btn { color: hsl(var(--primary)); font-weight: 700; background: none; border: none; cursor: pointer; font-size: 11px; flex-shrink: 0; padding: 0; }
 
         /* ── Allocation row ── */
-        .cp-alloc-row { display: flex; align-items: center; gap: 18px; background: hsl(var(--muted)/0.3); border-radius: 18px; padding: 16px; margin-bottom: 16px; }
-        .cp-alloc-stats { flex: 1; display: flex; flex-direction: column; gap: 10px; }
-        .cp-alloc-line { display: flex; align-items: center; gap: 8px; }
-        .cp-alloc-dot  { width: 8px; height: 8px; border-radius: 9999px; flex-shrink: 0; }
-        .cp-alloc-lbl  { font-size: 12px; color: hsl(var(--muted-foreground)); flex: 1; }
-        .cp-alloc-val  { font-size: 13px; font-weight: 800; color: hsl(var(--foreground)); }
+        .cp-alloc-row { display: flex; align-items: center; gap: 16px; background: hsl(var(--muted)/0.4); border-radius: 16px; padding: 14px; margin-bottom: 14px; }
+        .cp-alloc-stats { flex: 1; display: flex; flex-direction: column; gap: 9px; }
+        .cp-alloc-line { display: flex; align-items: center; gap: 7px; }
+        .cp-alloc-dot  { width: 7px; height: 7px; border-radius: 9999px; flex-shrink: 0; }
+        .cp-alloc-lbl  { font-size: 11px; color: hsl(var(--muted-foreground)); flex: 1; }
+        .cp-alloc-val  { font-size: 12px; font-weight: 800; color: hsl(var(--foreground)); }
 
         /* ── Positions ── */
-        .cp-positions { display: flex; flex-direction: column; gap: 12px; }
+        .cp-positions { display: flex; flex-direction: column; gap: 10px; }
         .cp-position {
-          display: flex; align-items: flex-start; gap: 12px;
-          padding: 14px 16px; border-radius: 18px;
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 12px 14px; border-radius: 16px;
           border: 1px solid hsl(var(--border)); background: hsl(var(--background));
-          transition: all 0.2s; box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+          transition: transform 0.15s;
         }
-        .cp-position:active { transform: scale(0.99); background: hsl(var(--muted)/0.5); }
+        .cp-position:active { transform: scale(0.98); }
         .cp-pos-avatar {
-          width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0;
+          width: 42px; height: 42px; border-radius: 13px; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
-          font-size: 14px; font-weight: 900;
+          font-size: 12px; font-weight: 900;
         }
         .cp-pos-info { flex: 1; min-width: 0; }
-        .cp-pos-top  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
-        .cp-pos-bot  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
-        .cp-pos-name   { font-size: 14px; font-weight: 700; color: hsl(var(--foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
-        .cp-pos-ticker { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 600; }
-        .cp-pos-value  { font-size: 15px; font-weight: 800; color: hsl(var(--foreground)); }
-        .cp-pos-change { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; }
-        .cp-pos-progress { margin-top: 4px; }
+        .cp-pos-top  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 3px; }
+        .cp-pos-bot  { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+        .cp-pos-name   { font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px; }
+        .cp-pos-ticker { font-size: 10px; color: hsl(var(--muted-foreground)); font-weight: 600; }
+        .cp-pos-value  { font-size: 14px; font-weight: 800; color: hsl(var(--foreground)); }
+        .cp-pos-change { display: inline-flex; align-items: center; gap: 2px; font-size: 11px; font-weight: 700; }
+        .cp-pos-progress { margin-top: 2px; }
 
         /* ── Completed ── */
-        .cp-completed-list { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+        .cp-completed-list { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
         .cp-completed-row {
-          display: flex; align-items: center; gap: 12px;
-          padding: 12px 14px; border-radius: 16px;
-          background: hsl(var(--muted)/0.3);
+          display: flex; align-items: center; gap: 10px;
+          padding: 10px 12px; border-radius: 14px;
+          background: hsl(var(--muted)/0.35);
         }
         .cp-completed-icon {
-          width: 34px; height: 34px; border-radius: 9999px; flex-shrink: 0;
+          width: 30px; height: 30px; border-radius: 9999px; flex-shrink: 0;
           display: flex; align-items: center; justify-content: center;
         }
-        .cp-completed-name { font-size: 14px; font-weight: 600; color: hsl(var(--foreground)); }
-        .cp-completed-tag  { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
-        .cp-completed-pl   { font-size: 14px; font-weight: 800; flex-shrink: 0; }
-        .cp-net-tag { display: inline-flex; padding: 5px 12px; border-radius: 9999px; font-size: 13px; font-weight: 800; }
-        .cp-net-up   { background: rgba(34,197,94,0.12);  color: #22c55e; }
-        .cp-net-down { background: rgba(239,68,68,0.12); color: #ef4444; }
+        .cp-completed-name { font-size: 13px; font-weight: 600; color: hsl(var(--foreground)); }
+        .cp-completed-tag  { font-size: 10px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
+        .cp-completed-pl   { font-size: 13px; font-weight: 800; flex-shrink: 0; }
+        .cp-net-tag { display: inline-flex; padding: 4px 10px; border-radius: 9999px; font-size: 12px; font-weight: 800; }
+        .cp-net-up   { background: rgba(34,197,94,0.1);  color: #22c55e; }
+        .cp-net-down { background: rgba(239,68,68,0.1); color: #ef4444; }
 
         /* ── Stats grid ── */
-        .cp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+        .cp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 4px; }
 
         /* ── Performers ── */
-        .cp-performers { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+        .cp-performers { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
         .cp-performer {
-          display: flex; align-items: center; gap: 12px;
-          padding: 14px 16px; border-radius: 18px;
+          display: flex; align-items: center; gap: 10px;
+          padding: 12px 14px; border-radius: 16px;
           border: 1px solid hsl(var(--border)); background: hsl(var(--background));
-          transition: all 0.2s;
+          transition: transform 0.15s;
         }
-        .cp-performer:active { transform: scale(0.99); }
-        .cp-performer-rank { font-size: 12px; font-weight: 800; color: hsl(var(--muted-foreground)); min-width: 26px; }
+        .cp-performer:active { transform: scale(0.98); }
+        .cp-performer-rank { font-size: 11px; font-weight: 800; color: hsl(var(--muted-foreground)); min-width: 22px; }
         .cp-performer-logo {
-          width: 44px; height: 44px; border-radius: 14px; flex-shrink: 0;
-          background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.8));
+          width: 40px; height: 40px; border-radius: 12px; flex-shrink: 0;
+          background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.7));
           display: flex; align-items: center; justify-content: center;
         }
-        .cp-performer-ticker { font-size: 13px; font-weight: 900; color: hsl(var(--primary-foreground)); }
-        .cp-performer-name   { font-size: 14px; font-weight: 700; color: hsl(var(--foreground)); }
-        .cp-performer-sector { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
+        .cp-performer-ticker { font-size: 12px; font-weight: 900; color: hsl(var(--primary-foreground)); }
+        .cp-performer-name   { font-size: 13px; font-weight: 700; color: hsl(var(--foreground)); }
+        .cp-performer-sector { font-size: 10px; color: hsl(var(--muted-foreground)); margin-top: 1px; }
 
         /* ── Risk banner ── */
         .cp-risk-banner {
           position: relative; overflow: hidden;
-          display: flex; align-items: center; gap: 14px;
-          padding: 18px 18px;
-          border-radius: 20px;
-          background: linear-gradient(135deg, rgba(245,158,11,0.12), rgba(234,179,8,0.06));
-          border: 1px solid rgba(245,158,11,0.3);
+          display: flex; align-items: center; gap: 12px;
+          padding: 16px 16px;
+          border-radius: 18px;
+          background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(234,179,8,0.05));
+          border: 1px solid rgba(245,158,11,0.25);
           cursor: pointer; -webkit-tap-highlight-color: transparent;
           width: 100%; text-align: left;
-          transition: transform 0.15s;
         }
-        .cp-risk-banner:active { transform: scale(0.99); }
         .cp-risk-shimmer {
           pointer-events: none; position: absolute; inset: 0;
-          background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.08) 50%, transparent 80%);
+          background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.06) 50%, transparent 80%);
           background-size: 200% 100%; animation: cpShimmer 5s ease-in-out infinite;
         }
-        .cp-risk-title { font-size: 14px; font-weight: 800; color: hsl(var(--foreground)); }
-        .cp-risk-body  { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 3px; line-height: 1.5; }
+        .cp-risk-title { font-size: 13px; font-weight: 800; color: hsl(var(--foreground)); }
+        .cp-risk-body  { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 2px; line-height: 1.5; }
 
-        /* ── Bottom sheets / modals (EDGE-TO-EDGE) ── */
+        /* ── Bottom sheets / modals ── */
         .cp-overlay {
           position: fixed; inset: 0; z-index: 9999;
-          background: rgba(0,0,0,0.65); backdrop-filter: blur(12px);
+          background: rgba(0,0,0,0.55); backdrop-filter: blur(8px);
           display: flex; align-items: flex-end;
-          animation: cpFade 0.2s ease;
+          animation: cpFade 0.18s ease;
         }
         @keyframes cpFade { from { opacity: 0; } to { opacity: 1; } }
 
         .cp-sheet {
-          width: 100%; max-height: 90vh; overflow-y: auto;
+          width: 100%; max-height: 88vh; overflow-y: auto;
           background: hsl(var(--card));
           border-radius: 28px 28px 0 0;
           border-top: 1px solid hsl(var(--border));
-          padding: 12px 0 28px;  /* horizontal padding removed for edge-to-edge */
-          animation: cpSlide 0.3s cubic-bezier(0.34,1.2,0.64,1);
-          box-shadow: 0 -8px 30px rgba(0,0,0,0.1);
+          padding: 12px 18px 28px;
+          animation: cpSlide 0.25s cubic-bezier(0.34,1.15,0.64,1);
         }
         @keyframes cpSlide { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
-        .cp-sheet-content {
-          padding: 0 20px; /* internal padding for content readability */
-        }
-
         .cp-sheet-handle {
-          width: 44px; height: 5px; border-radius: 9999px;
-          background: hsl(var(--muted)); margin: 0 auto 20px;
+          width: 40px; height: 4px; border-radius: 9999px;
+          background: hsl(var(--muted)); margin: 0 auto 18px;
         }
-        .cp-sheet-head { display: flex; align-items: center; gap: 14px; margin-bottom: 24px; }
-        .cp-sheet-icon-wrap { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-        .cp-sheet-title { font-size: 18px; font-weight: 900; color: hsl(var(--foreground)); line-height: 1.2; }
-        .cp-sheet-sub   { font-size: 12px; color: hsl(var(--muted-foreground)); margin-top: 3px; }
+        .cp-sheet-head { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+        .cp-sheet-icon-wrap { width: 42px; height: 42px; border-radius: 13px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
+        .cp-sheet-title { font-size: 16px; font-weight: 900; color: hsl(var(--foreground)); line-height: 1.2; }
+        .cp-sheet-sub   { font-size: 11px; color: hsl(var(--muted-foreground)); margin-top: 2px; }
         .cp-sheet-close {
-          margin-left: auto; width: 36px; height: 36px; border-radius: 12px;
+          margin-left: auto; width: 32px; height: 32px; border-radius: 10px;
           border: 1px solid hsl(var(--border)); background: hsl(var(--card));
           display: flex; align-items: center; justify-content: center;
-          cursor: pointer; font-size: 16px; color: hsl(var(--foreground));
-          flex-shrink: 0; transition: background 0.15s;
+          cursor: pointer; font-size: 14px; color: hsl(var(--foreground));
+          flex-shrink: 0;
         }
-        .cp-sheet-close:active { background: hsl(var(--muted)); }
-        .cp-sheet-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 24px; }
+        .cp-sheet-rows { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
         .cp-info-row {
-          display: flex; align-items: flex-start; gap: 14px;
-          padding: 16px; border-radius: 18px; background: hsl(var(--muted)/0.4);
-          border: 1px solid hsl(var(--border));
+          display: flex; align-items: flex-start; gap: 12px;
+          padding: 14px; border-radius: 16px; background: hsl(var(--muted)/0.4);
         }
-        .cp-info-emoji { font-size: 26px; flex-shrink: 0; line-height: 1.3; }
-        .cp-info-label { font-size: 14px; font-weight: 800; color: hsl(var(--foreground)); margin-bottom: 5px; }
-        .cp-info-desc  { font-size: 13px; color: hsl(var(--muted-foreground)); line-height: 1.6; }
+        .cp-info-emoji { font-size: 22px; flex-shrink: 0; line-height: 1.3; }
+        .cp-info-label { font-size: 13px; font-weight: 800; color: hsl(var(--foreground)); margin-bottom: 4px; }
+        .cp-info-desc  { font-size: 12px; color: hsl(var(--muted-foreground)); line-height: 1.6; }
 
         .cp-sheet-cta {
-          width: 100%; height: 54px; border-radius: 18px; border: none;
-          background: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--primary)/0.9));
-          color: hsl(var(--primary-foreground));
-          font-size: 16px; font-weight: 800; cursor: pointer; letter-spacing: 0.02em;
-          box-shadow: 0 8px 22px hsl(var(--primary)/0.35);
-          transition: all 0.2s;
+          width: 100%; height: 50px; border-radius: 16px; border: none;
+          background: hsl(var(--primary)); color: hsl(var(--primary-foreground));
+          font-size: 15px; font-weight: 800; cursor: pointer; letter-spacing: 0.01em;
+          box-shadow: 0 6px 20px hsl(var(--primary)/0.35);
+          transition: transform 0.15s;
         }
-        .cp-sheet-cta:active { transform: scale(0.98); box-shadow: 0 4px 12px hsl(var(--primary)/0.4); }
+        .cp-sheet-cta:active { transform: scale(0.97); }
       `}</style>
     </div>
   );
