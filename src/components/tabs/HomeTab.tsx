@@ -110,7 +110,7 @@ export const HomeTab = () => {
               <TrendingUp className="cp-logo-icon" />
             </div>
             <div>
-              <p className="cp-header-sub">Investment Platform</p>
+              <p className="cp-header-sub"></p>
               <h1 className="cp-header-title">Cash Pickup</h1>
             </div>
           </div>
