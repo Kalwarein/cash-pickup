@@ -3,7 +3,7 @@ import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
 interface CPRIndicatorProps {
   value: number;
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg' | 'xl';
   showIcon?: boolean;
   showLabel?: boolean;
 }
@@ -34,12 +34,14 @@ export const CPRIndicator = ({
     sm: 'text-sm px-2 py-0.5',
     md: 'text-base px-3 py-1',
     lg: 'text-lg px-4 py-2 font-bold',
+    xl: 'text-xl px-5 py-2.5 font-bold',
   };
 
   const iconSizes = {
     sm: 'w-3 h-3',
     md: 'w-4 h-4',
     lg: 'w-5 h-5',
+    xl: 'w-6 h-6',
   };
 
   const getLabel = () => {

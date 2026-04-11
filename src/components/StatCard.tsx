@@ -6,7 +6,11 @@ interface StatCardProps {
   change?: number;
   icon?: React.ReactNode;
   className?: string;
+  trend?: string;
+  trendUp?: boolean;
 }
+
+export type { StatCardProps };
 
 export const StatCard = ({ label, value, change, icon, className }: StatCardProps) => {
   const isPositive = change !== undefined && change >= 0;
