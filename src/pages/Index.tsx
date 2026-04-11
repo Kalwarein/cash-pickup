@@ -9,7 +9,7 @@ const Index = () => {
   useEffect(() => {
     if (!loading) {
       if (user) {
-        navigate('/dashboard');
+        navigate('/home');
       } else {
         // Check if user has seen onboarding
         const onboarded = localStorage.getItem('cp_onboarded');

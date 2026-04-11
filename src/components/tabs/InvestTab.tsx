@@ -9,7 +9,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-const SECTORS = ['All', 'Mining', 'Agriculture', 'Technology', 'Finance', 'Energy', 'Real Estate', 'Telecom', 'Tourism', 'Transport'];
+const SECTORS = ['All', 'Mining', 'Agriculture', 'Technology', 'Finance', 'Energy', 'Real Estate', 'Telecom', 'Tourism', 'Transport', 'Fisheries', 'Healthcare', 'Construction', 'Manufacturing', 'Education'];
 
 export const InvestTab = () => {
   const { companies, loading } = useCompanies();

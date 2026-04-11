@@ -1,20 +1,21 @@
-import { Home, TrendingUp, BarChart3, Trophy, Wallet } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Coins, Wallet } from 'lucide-react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-interface BottomNavProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
-
 const tabs = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'invest', label: 'Invest', icon: TrendingUp },
-  { id: 'market', label: 'Market', icon: BarChart3 },
-  { id: 'leaderboard', label: 'Leaders', icon: Trophy },
-  { id: 'wallet', label: 'Wallet', icon: Wallet },
+  { id: 'home', path: '/home', label: 'Home', icon: Home },
+  { id: 'invest', path: '/invest', label: 'Invest', icon: TrendingUp },
+  { id: 'market', path: '/market', label: 'Market', icon: BarChart3 },
+  { id: 'earn', path: '/earn', label: 'Earn', icon: Coins },
+  { id: 'wallet', path: '/wallet', label: 'Profile', icon: Wallet },
 ];
 
-export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
+export const BottomNav = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const activeTab = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'home';
+
   return (
     <nav className="bottom-nav">
       <div className="flex items-center justify-around max-w-lg mx-auto">
@@ -25,7 +26,7 @@ export const BottomNav = ({ activeTab, onTabChange }: BottomNavProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              onClick={() => navigate(tab.path)}
               className={cn(
                 "nav-item flex-1",
                 isActive && "active"
