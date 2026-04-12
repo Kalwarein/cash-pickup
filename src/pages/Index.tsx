@@ -1,26 +1,31 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useOnboarding } from '@/hooks/useOnboarding';
 
 const Index = () => {
   const { user, loading } = useAuth();
+  const { completed, loading: onboardingLoading } = useOnboarding();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        navigate('/home');
+    if (loading || onboardingLoading) return;
+
+    if (user) {
+      if (completed === false) {
+        navigate('/onboarding');
       } else {
-        // Check if user has seen onboarding
-        const onboarded = localStorage.getItem('cp_onboarded');
-        if (onboarded) {
-          navigate('/auth');
-        } else {
-          navigate('/get-started');
-        }
+        navigate('/home');
+      }
+    } else {
+      const onboarded = localStorage.getItem('cp_onboarded');
+      if (onboarded) {
+        navigate('/auth');
+      } else {
+        navigate('/get-started');
       }
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, completed, onboardingLoading, navigate]);
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center">
