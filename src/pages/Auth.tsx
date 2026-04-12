@@ -169,7 +169,7 @@ const Auth = () => {
               <div className="mb-5">
                 <h1 className="text-2xl font-bold text-foreground">{isLogin ? 'Welcome back' : 'Create your account'}</h1>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {isLogin ? 'Sign in to continue investing.' : 'Start with your welcome bonus and invest today.'}
+                  {isLogin ? 'Sign in to continue investing.' : 'Create your account and start investing today.'}
                 </p>
               </div>
 
@@ -246,7 +246,7 @@ const Auth = () => {
 
               <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <p className="text-xs text-muted-foreground">
-                  Welcome bonus: <span className="text-primary font-semibold">500 SLE</span> credited to your wallet after sign up.
+                  Deposit & withdraw via <span className="text-primary font-semibold">Monime USSD</span> — Orange Money & Afrimoney supported.
                 </p>
               </div>
             </div>

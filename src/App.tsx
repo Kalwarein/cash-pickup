@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import GetStarted from "./pages/GetStarted";
+import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import Invest from "./pages/Invest";
@@ -29,6 +30,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/get-started" element={<GetStarted />} />
+              <Route path="/onboarding" element={<Onboarding />} />
               <Route path="/home" element={<Home />} />
               <Route path="/invest" element={<Invest />} />
               <Route path="/market" element={<Market />} />
