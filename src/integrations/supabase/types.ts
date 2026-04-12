@@ -414,6 +414,60 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_transactions: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          id: string
+          metadata: Json | null
+          monime_payment_code_id: string | null
+          monime_payout_id: string | null
+          phone_number: string | null
+          provider: string | null
+          reference: string | null
+          status: string
+          type: string
+          updated_at: string
+          user_id: string
+          ussd_code: string | null
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          monime_payment_code_id?: string | null
+          monime_payout_id?: string | null
+          phone_number?: string | null
+          provider?: string | null
+          reference?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+          user_id: string
+          ussd_code?: string | null
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          id?: string
+          metadata?: Json | null
+          monime_payment_code_id?: string | null
+          monime_payout_id?: string | null
+          phone_number?: string | null
+          provider?: string | null
+          reference?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+          user_id?: string
+          ussd_code?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string | null
@@ -509,6 +563,75 @@ export type Database = {
           description?: string | null
           id?: string
           type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_onboarding: {
+        Row: {
+          age_range: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          display_name: string | null
+          financial_knowledge: string | null
+          id: string
+          income_source: string | null
+          investment_experience: string | null
+          investment_goal: string | null
+          investment_motivation: string | null
+          investment_timeline: string | null
+          monthly_budget: string | null
+          notification_preference: string | null
+          occupation: string | null
+          preferred_sectors: string[] | null
+          referral_source: string | null
+          risk_tolerance: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          age_range?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          financial_knowledge?: string | null
+          id?: string
+          income_source?: string | null
+          investment_experience?: string | null
+          investment_goal?: string | null
+          investment_motivation?: string | null
+          investment_timeline?: string | null
+          monthly_budget?: string | null
+          notification_preference?: string | null
+          occupation?: string | null
+          preferred_sectors?: string[] | null
+          referral_source?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          age_range?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          display_name?: string | null
+          financial_knowledge?: string | null
+          id?: string
+          income_source?: string | null
+          investment_experience?: string | null
+          investment_goal?: string | null
+          investment_motivation?: string | null
+          investment_timeline?: string | null
+          monthly_budget?: string | null
+          notification_preference?: string | null
+          occupation?: string | null
+          preferred_sectors?: string[] | null
+          referral_source?: string | null
+          risk_tolerance?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []
