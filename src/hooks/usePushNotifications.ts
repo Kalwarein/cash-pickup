@@ -5,14 +5,21 @@ import { useAuth } from '@/contexts/AuthContext';
 const SW_PATH = '/sw-notifications.js';
 
 const FRIENDLY_MESSAGES = [
-  (bal: string) => `Your balance is ${bal}. The market looks promising today — consider investing! 📈`,
-  (bal: string) => `Hey! You have ${bal} in your wallet. Some companies are showing strong growth this week! 💪`,
-  (bal: string) => `Market update: Several companies are performing well. Your balance: ${bal}. Don't miss out! 🔥`,
-  (bal: string) => `Quick check-in! You have ${bal} available. More shares opening up across the market today! 🚀`,
-  (bal: string) => `Your Cash Pickup balance: ${bal}. The market is active — great time to explore opportunities! ✨`,
-  (bal: string) => `Hi investor! Balance: ${bal}. Some silent performers are quietly generating profits 🤫`,
-  (bal: string) => `Market pulse: Activity is high today! Your wallet: ${bal}. Ready to grow? 📊`,
-  (bal: string) => `Your portfolio awaits! Balance: ${bal}. Multiple companies showing positive trends today 🌟`,
+  (bal: string) => `💰 Your balance is ${bal}. The market is heating up — time to explore!`,
+  (bal: string) => `📊 Market update! Your balance: ${bal}. Check top performers now.`,
+  (bal: string) => `🔥 Hot tip! Companies are showing strong CPR today. Balance: ${bal}`,
+  (bal: string) => `📈 Some companies are up big today! Your wallet has ${bal}.`,
+  (bal: string) => `💎 Hidden gems may surprise you today. Balance: ${bal}. Invest wisely!`,
+  (bal: string) => `⚡ Quick check: ${bal} in your wallet. New opportunities await!`,
+  (bal: string) => `🎯 Your portfolio balance: ${bal}. Time for your next move?`,
+  (bal: string) => `🌟 Cash Pickup tip: Diversify your investments! Balance: ${bal}`,
+  (bal: string) => `📉 Some companies dipped — buy low opportunity? Balance: ${bal}`,
+  (bal: string) => `🏆 Top investors are active right now. Your balance: ${bal}. Join them!`,
+  () => `⏰ Market hours reminder: Check your active investments!`,
+  () => `🔔 Your investments are growing! Don't forget to check your returns.`,
+  () => `💡 Pro tip: Lower risk companies provide steadier returns over time.`,
+  () => `📋 Weekly summary available! See how your portfolio performed.`,
+  () => `🎁 Check the promo marketplace — new codes may be available!`,
 ];
 
 export const usePushNotifications = () => {
@@ -78,8 +85,14 @@ export const usePushNotifications = () => {
       } catch { /* ignore */ }
     };
 
-    // First one after 30 min
+    // First one after 2 minutes, then every 30 min
+    const initialTimeout = setTimeout(sendFriendly, 2 * 60 * 1000);
     friendlyTimer.current = setInterval(sendFriendly, 30 * 60 * 1000);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (friendlyTimer.current) clearInterval(friendlyTimer.current);
+    };
 
     return () => {
       if (friendlyTimer.current) clearInterval(friendlyTimer.current);
