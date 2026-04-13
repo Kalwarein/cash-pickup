@@ -88,10 +88,13 @@ export const useWallet = () => {
     return { error: null };
   }, [user, wallet, fetchWallet, fetchTransactions]);
 
-  useEffect(() => {
-    fetchWallet();
-    fetchTransactions();
+  const refetch = useCallback(async () => {
+    await Promise.all([fetchWallet(), fetchTransactions()]);
   }, [fetchWallet, fetchTransactions]);
 
-  return { wallet, transactions, loading, deposit, refetch: fetchWallet };
+  useEffect(() => {
+    refetch();
+  }, [refetch]);
+
+  return { wallet, transactions, loading, deposit, refetch };
 };

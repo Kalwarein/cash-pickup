@@ -82,13 +82,19 @@ const Onboarding = () => {
   useEffect(() => {
     if (!user) return;
     const load = async () => {
-      const { data: ob } = await supabase
+      const { data: rows } = await supabase
         .from('user_onboarding')
         .select('*')
         .eq('user_id', user.id)
-        .single();
-      if (ob) {
-        if (ob.completed) { navigate('/home'); return; }
+        .order('updated_at', { ascending: false });
+
+      if (rows && rows.length > 0) {
+        if (rows.some((row) => row.completed)) {
+          navigate('/home', { replace: true });
+          return;
+        }
+
+        const ob = rows[0];
         setData(prev => ({
           ...prev,
           display_name: ob.display_name || '',
@@ -156,7 +162,7 @@ const Onboarding = () => {
         toast.error('Failed to save. Please try again.');
       } else {
         toast.success('Welcome to Cash Pickup! 🎉');
-        navigate('/home');
+        navigate('/home', { replace: true });
       }
     }
   };

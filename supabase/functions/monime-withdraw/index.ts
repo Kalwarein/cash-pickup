@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const monimeVersion = 'caph.2025-08-23';
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const monimeToken = Deno.env.get('MONIME_API_TOKEN');
@@ -65,20 +66,19 @@ Deno.serve(async (req) => {
 
     // Create Monime Payout
     const idempotencyKey = `wd-${user.id}-${Date.now()}`;
-    const providerMap: Record<string, string> = { 'm17': 'orange_money', 'm18': 'afrimoney' };
-
     const monimeResponse = await fetch('https://api.monime.io/v1/payouts', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${monimeToken}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
+        'Monime-Version': monimeVersion,
         'Monime-Space-Id': monimeSpaceId,
       },
       body: JSON.stringify({
         amount: { currency: 'SLE', value: Math.round(amount * 100) },
         destination: {
-          type: 'mobile_money',
+          type: 'momo',
           providerId: provider || 'm17',
           accountNumber: phoneNumber,
         },

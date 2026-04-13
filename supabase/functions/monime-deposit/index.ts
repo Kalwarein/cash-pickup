@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    const monimeVersion = 'caph.2025-08-23';
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const monimeToken = Deno.env.get('MONIME_API_TOKEN');
@@ -64,6 +65,7 @@ Deno.serve(async (req) => {
         'Authorization': `Bearer ${monimeToken}`,
         'Content-Type': 'application/json',
         'Idempotency-Key': idempotencyKey,
+        'Monime-Version': monimeVersion,
         'Monime-Space-Id': monimeSpaceId,
       },
       body: JSON.stringify({

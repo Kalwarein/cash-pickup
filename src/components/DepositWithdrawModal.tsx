@@ -32,6 +32,8 @@ export const DepositWithdrawModal = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [ussdCode, setUssdCode] = useState('');
+  const [expiresAt, setExpiresAt] = useState('');
+  const [responseMessage, setResponseMessage] = useState('');
   const [step, setStep] = useState<'form' | 'ussd'>('form');
 
   if (!isOpen) return null;
@@ -74,8 +76,11 @@ export const DepositWithdrawModal = ({
 
       if (isDeposit && result.ussd_code) {
         setUssdCode(result.ussd_code);
+        setExpiresAt(result.expires_at || '');
+        setResponseMessage(result.message || '');
         setStep('ussd');
         setLoading(false);
+        onSuccess?.();
       } else {
         toast.success(result.message || `${isDeposit ? 'Deposit' : 'Withdrawal'} request submitted!`);
         setLoading(false);
@@ -91,6 +96,8 @@ export const DepositWithdrawModal = ({
   const handleClose = () => {
     setStep('form');
     setUssdCode('');
+    setExpiresAt('');
+    setResponseMessage('');
     setAmount('');
     setPhoneNumber('');
     setError('');
@@ -128,7 +135,15 @@ export const DepositWithdrawModal = ({
               <p className="text-sm text-muted-foreground mb-2">Dial this code to complete your deposit</p>
               <p className="text-3xl font-bold text-primary tracking-wider">{ussdCode}</p>
             </div>
-            <p className="text-xs text-muted-foreground">The code expires in 30 minutes. Your wallet will be credited automatically after payment.</p>
+            <div className="space-y-2">
+              {responseMessage && <p className="text-sm text-foreground">{responseMessage}</p>}
+              <p className="text-xs text-muted-foreground">
+                {expiresAt
+                  ? `This payment code stays valid until ${new Date(expiresAt).toLocaleString()}.`
+                  : 'This payment code stays valid for a limited time.'}
+              </p>
+              <p className="text-xs text-muted-foreground">Your wallet will be credited automatically after payment confirmation.</p>
+            </div>
             <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg">Done</button>
           </div>
         ) : (
