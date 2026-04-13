@@ -8,18 +8,32 @@ export const useOnboarding = () => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!user) { setLoading(false); return; }
+    if (!user) {
+      setCompleted(null);
+      setLoading(false);
+      return;
+    }
 
     const check = async () => {
-      const { data } = await supabase
-        .from('user_onboarding')
-        .select('completed')
-        .eq('user_id', user.id)
-        .single();
+      setLoading(true);
 
-      setCompleted(data?.completed ?? false);
+      const { data, error } = await supabase
+        .from('user_onboarding')
+        .select('completed, updated_at')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
+
+      if (error) {
+        setCompleted(false);
+        setLoading(false);
+        return;
+      }
+
+      const hasCompletedOnboarding = data?.some((row) => row.completed) ?? false;
+      setCompleted(hasCompletedOnboarding);
       setLoading(false);
     };
+
     check();
   }, [user]);
 

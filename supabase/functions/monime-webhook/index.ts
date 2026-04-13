@@ -18,16 +18,18 @@ Deno.serve(async (req) => {
     const body = await req.json();
     console.log('Monime webhook received:', JSON.stringify(body));
 
-    const eventType = body.event || body.type;
-    const paymentData = body.data || body.result;
+    const eventType = String(body.event || body.type || body.name || '');
+    const paymentData = body.data || body.result || body.object;
 
     if (!paymentData) {
       return new Response(JSON.stringify({ received: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Handle payment code completion (deposit)
-    if (eventType?.includes('payment_code') && paymentData.status === 'completed') {
+    if (eventType.includes('payment_code')) {
       const paymentCodeId = paymentData.id;
+      const isProcessedEvent = eventType === 'payment_code.processed' || Boolean(paymentData.processedPaymentData);
+      const isExpiredEvent = eventType === 'payment_code.expired' || paymentData.status === 'expired';
       
       const { data: pt } = await supabase
         .from('payment_transactions')
@@ -35,13 +37,19 @@ Deno.serve(async (req) => {
         .eq('monime_payment_code_id', paymentCodeId)
         .single();
 
-      if (pt && pt.status !== 'completed') {
+      if (pt && isProcessedEvent && pt.status !== 'completed') {
         const amount = Number(pt.amount);
+        const processedPaymentData = paymentData.processedPaymentData || {};
 
         // Update payment transaction
         await supabase.from('payment_transactions').update({
           status: 'completed',
-          metadata: { ...((pt.metadata as Record<string, unknown>) || {}), webhook_data: paymentData },
+          metadata: {
+            ...((pt.metadata as Record<string, unknown>) || {}),
+            webhook_event: eventType,
+            webhook_data: paymentData,
+            processedPaymentData,
+          },
         }).eq('id', pt.id);
 
         // Credit wallet
@@ -57,16 +65,28 @@ Deno.serve(async (req) => {
           user_id: pt.user_id,
           type: 'deposit',
           amount,
-          description: `Deposit via Monime - ${amount} SLE`,
+          description: `Deposit via Monime${pt.reference ? ` (${pt.reference})` : ''}`,
         });
 
         console.log(`Deposit completed: ${amount} SLE for user ${pt.user_id}`);
       }
+
+      if (pt && isExpiredEvent && pt.status === 'pending') {
+        await supabase.from('payment_transactions').update({
+          status: 'expired',
+          metadata: {
+            ...((pt.metadata as Record<string, unknown>) || {}),
+            webhook_event: eventType,
+            webhook_data: paymentData,
+          },
+        }).eq('id', pt.id);
+      }
     }
 
     // Handle payout completion (withdrawal)
-    if (eventType?.includes('payout') && (paymentData.status === 'completed' || paymentData.status === 'failed')) {
+    if (eventType.includes('payout') && (paymentData.status === 'completed' || paymentData.status === 'failed' || eventType === 'payout.completed' || eventType === 'payout.failed')) {
       const payoutId = paymentData.id;
+      const nextStatus = paymentData.status === 'completed' || eventType === 'payout.completed' ? 'completed' : 'failed';
 
       const { data: pt } = await supabase
         .from('payment_transactions')
@@ -76,12 +96,16 @@ Deno.serve(async (req) => {
 
       if (pt) {
         await supabase.from('payment_transactions').update({
-          status: paymentData.status === 'completed' ? 'completed' : 'failed',
-          metadata: { ...((pt.metadata as Record<string, unknown>) || {}), webhook_data: paymentData },
+          status: nextStatus,
+          metadata: {
+            ...((pt.metadata as Record<string, unknown>) || {}),
+            webhook_event: eventType,
+            webhook_data: paymentData,
+          },
         }).eq('id', pt.id);
 
         // If failed, refund wallet
-        if (paymentData.status === 'failed') {
+        if (nextStatus === 'failed' && pt.status !== 'failed' && pt.status !== 'completed') {
           const { data: wallet } = await supabase.from('wallets').select('balance').eq('user_id', pt.user_id).single();
           if (wallet) {
             await supabase.from('wallets').update({

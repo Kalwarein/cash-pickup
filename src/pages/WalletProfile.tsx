@@ -7,6 +7,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useProfile } from '@/hooks/useProfile';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { PaymentTransaction, usePaymentTransactions } from '@/hooks/usePaymentTransactions';
 import { TransactionItem } from '@/components/TransactionItem';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
 import { DepositWithdrawModal } from '@/components/DepositWithdrawModal';
@@ -22,10 +23,59 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription
 } from '@/components/ui/drawer';
 
+const PROVIDER_LABELS: Record<string, string> = {
+  m17: 'Orange Money',
+  m18: 'Afrimoney',
+};
+
+const getMetadataString = (metadata: Record<string, unknown> | null, key: string) => {
+  const value = metadata?.[key];
+  return typeof value === 'string' ? value : null;
+};
+
+const getNestedMetadata = (metadata: Record<string, unknown> | null, key: string) => {
+  const value = metadata?.[key];
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+};
+
+const getPaymentExpiry = (tx: PaymentTransaction) => {
+  return getMetadataString(tx.metadata, 'expireTime')
+    || getMetadataString(tx.metadata, 'expires_at')
+    || getMetadataString(getNestedMetadata(tx.metadata, 'webhook_data'), 'expireTime');
+};
+
+const getPaymentBadge = (tx: PaymentTransaction) => {
+  const expiresAt = getPaymentExpiry(tx);
+  const isExpired = (tx.status === 'pending' || tx.status === 'expired')
+    && !!expiresAt
+    && new Date(expiresAt).getTime() < Date.now();
+
+  if (tx.status === 'completed') {
+    return { label: 'Completed', className: 'bg-success/20 text-success' };
+  }
+
+  if (tx.status === 'processing') {
+    return { label: 'Processing', className: 'bg-primary/15 text-primary' };
+  }
+
+  if (tx.status === 'failed') {
+    return { label: 'Failed', className: 'bg-destructive/15 text-destructive' };
+  }
+
+  if (tx.status === 'expired' || isExpired) {
+    return { label: 'Expired', className: 'bg-warning/20 text-warning' };
+  }
+
+  return { label: 'Valid', className: 'bg-primary/15 text-primary' };
+};
+
 const WalletProfile = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const { wallet, transactions, loading: walletLoading, refetch: refetchWallet } = useWallet();
+  const { paymentTransactions, loading: paymentsLoading, refetch: refetchPayments } = usePaymentTransactions();
   const { investments, maturedInvestments, claimedInvestments, refetch: refetchInvestments } = useInvestments();
   const { getActivePromoCodes, userPromoCodes } = usePromoCodes();
   const { profile } = useProfile();
@@ -39,6 +89,7 @@ const WalletProfile = () => {
   const [showPromos, setShowPromos] = useState(false);
   const [showPerformance, setShowPerformance] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [selectedPaymentTransaction, setSelectedPaymentTransaction] = useState<PaymentTransaction | null>(null);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
@@ -52,6 +103,10 @@ const WalletProfile = () => {
   const winRate = completedInvestments.length > 0 ? (profitableInvestments / completedInvestments.length) * 100 : 0;
 
   const handleClaimed = () => { refetchInvestments(); refetchWallet(); };
+  const handlePaymentRefresh = () => {
+    refetchWallet();
+    refetchPayments();
+  };
 
   const handleTestNotification = async () => {
     if (permission !== 'granted') {
@@ -189,21 +244,159 @@ const WalletProfile = () => {
           <DrawerContent className="max-h-[85vh]">
             <DrawerHeader>
               <DrawerTitle>Transaction History</DrawerTitle>
-              <DrawerDescription>All your wallet transactions</DrawerDescription>
+                <DrawerDescription>Wallet activity and Monime payment requests</DrawerDescription>
             </DrawerHeader>
             <div className="px-4 pb-6 overflow-y-auto max-h-[65vh]">
-              {transactions.length > 0 ? (
-                <div className="space-y-1">
-                  {transactions.map((tx) => (
-                    <TransactionItem key={tx.id} type={tx.type} amount={Number(tx.amount)} description={tx.description || ''} date={tx.created_at} />
-                  ))}
+                <div className="space-y-6">
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">USSD Payments</h3>
+                      <span className="text-xs text-muted-foreground">{paymentTransactions.length}</span>
+                    </div>
+                    {paymentsLoading ? (
+                      <p className="text-sm text-muted-foreground py-4">Loading payment requests...</p>
+                    ) : paymentTransactions.length > 0 ? (
+                      <div className="space-y-2">
+                        {paymentTransactions.map((tx) => {
+                          const badge = getPaymentBadge(tx);
+                          const provider = tx.provider ? (PROVIDER_LABELS[tx.provider] || tx.provider) : 'Monime';
+                          return (
+                            <button
+                              key={tx.id}
+                              onClick={() => setSelectedPaymentTransaction(tx)}
+                              className="w-full rounded-2xl border border-border/60 bg-card/70 p-4 text-left transition-colors hover:bg-muted/40"
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-sm font-semibold capitalize">{tx.type} via {provider}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {tx.reference || tx.monime_payment_code_id || tx.monime_payout_id || 'Transaction details'}
+                                  </p>
+                                </div>
+                                <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', badge.className)}>
+                                  {badge.label}
+                                </span>
+                              </div>
+                              <div className="mt-3 flex items-end justify-between gap-3">
+                                <div>
+                                  <p className="text-lg font-bold">{sle(tx.amount)}</p>
+                                  <p className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString()}</p>
+                                </div>
+                                <div className="text-right text-xs text-muted-foreground">
+                                  {tx.ussd_code ? <p>{tx.ussd_code}</p> : <p>{tx.phone_number || 'No phone saved'}</p>}
+                                  <p>Tap to view details</p>
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4">No Monime payment requests yet</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold">Wallet Transactions</h3>
+                      <span className="text-xs text-muted-foreground">{transactions.length}</span>
+                    </div>
+                    {transactions.length > 0 ? (
+                      <div className="space-y-1">
+                        {transactions.map((tx) => (
+                          <TransactionItem key={tx.id} type={tx.type} amount={Number(tx.amount)} description={tx.description || ''} date={tx.created_at} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-4">No wallet transactions yet</p>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">No transactions yet</p>
-              )}
             </div>
           </DrawerContent>
         </Drawer>
+
+          <Drawer open={!!selectedPaymentTransaction} onOpenChange={(open) => !open && setSelectedPaymentTransaction(null)}>
+            <DrawerContent className="max-h-[85vh]">
+              <DrawerHeader>
+                <DrawerTitle>{selectedPaymentTransaction?.type === 'withdrawal' ? 'Withdrawal Details' : 'Deposit Details'}</DrawerTitle>
+                <DrawerDescription>
+                  Review payment code validity, provider info, and Monime references
+                </DrawerDescription>
+              </DrawerHeader>
+              {selectedPaymentTransaction && (() => {
+                const tx = selectedPaymentTransaction;
+                const badge = getPaymentBadge(tx);
+                const expiresAt = getPaymentExpiry(tx);
+                const processedPaymentData = getNestedMetadata(tx.metadata, 'processedPaymentData');
+                const webhookData = getNestedMetadata(tx.metadata, 'webhook_data');
+                const channelData = getNestedMetadata(processedPaymentData, 'channelData');
+                const provider = tx.provider ? (PROVIDER_LABELS[tx.provider] || tx.provider) : 'Monime';
+
+                return (
+                  <div className="px-4 pb-6 overflow-y-auto max-h-[65vh] space-y-4">
+                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Amount</p>
+                          <p className="text-2xl font-bold">{sle(tx.amount)}</p>
+                        </div>
+                        <span className={cn('rounded-full px-2.5 py-1 text-xs font-semibold', badge.className)}>
+                          {badge.label}
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm text-muted-foreground">
+                        {tx.type === 'deposit'
+                          ? 'This request will credit the wallet after Monime confirms the payment code has been processed.'
+                          : 'This request is sent to the selected mobile wallet provider and updates automatically when Monime confirms the payout.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-border/60 bg-card/70 p-4 space-y-3 text-sm">
+                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Provider</span><span>{provider}</span></div>
+                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Phone</span><span>{tx.phone_number || 'Not provided'}</span></div>
+                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Reference</span><span className="text-right break-all">{tx.reference || '—'}</span></div>
+                      <div className="flex justify-between gap-4"><span className="text-muted-foreground">Created</span><span>{new Date(tx.created_at).toLocaleString()}</span></div>
+                      {expiresAt && (
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Expires</span><span>{new Date(expiresAt).toLocaleString()}</span></div>
+                      )}
+                      {tx.ussd_code && (
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">USSD Code</span><span>{tx.ussd_code}</span></div>
+                      )}
+                      {tx.monime_payment_code_id && (
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Payment Code ID</span><span className="text-right break-all">{tx.monime_payment_code_id}</span></div>
+                      )}
+                      {tx.monime_payout_id && (
+                        <div className="flex justify-between gap-4"><span className="text-muted-foreground">Payout ID</span><span className="text-right break-all">{tx.monime_payout_id}</span></div>
+                      )}
+                    </div>
+
+                    {(processedPaymentData || webhookData) && (
+                      <div className="rounded-2xl border border-border/60 bg-card/70 p-4 space-y-3 text-sm">
+                        <p className="font-semibold">Processor Details</p>
+                        {getMetadataString(processedPaymentData, 'paymentId') && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Payment ID</span><span className="text-right break-all">{getMetadataString(processedPaymentData, 'paymentId')}</span></div>
+                        )}
+                        {getMetadataString(processedPaymentData, 'financialTransactionReference') && (
+                          <div className="flex justify-between gap-4"><span className="text-muted-foreground">Financial Ref</span><span className="text-right break-all">{getMetadataString(processedPaymentData, 'financialTransactionReference')}</span></div>
+                        )}
+                        {channelData && (
+                          <>
+                            {getMetadataString(channelData, 'providerId') && (
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Channel Provider</span><span>{getMetadataString(channelData, 'providerId')}</span></div>
+                            )}
+                            {getMetadataString(channelData, 'reference') && (
+                              <div className="flex justify-between gap-4"><span className="text-muted-foreground">Channel Ref</span><span className="text-right break-all">{getMetadataString(channelData, 'reference')}</span></div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </DrawerContent>
+          </Drawer>
 
         {/* Promo Codes Drawer */}
         <Drawer open={showPromos} onOpenChange={setShowPromos}>
@@ -294,8 +487,8 @@ const WalletProfile = () => {
         </Drawer>
 
         {/* Modals */}
-        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={refetchWallet} />
-        <DepositWithdrawModal isOpen={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} type="withdraw" balance={wallet?.balance || 0} onSuccess={refetchWallet} />
+        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
+        <DepositWithdrawModal isOpen={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} type="withdraw" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
       </main>
       <BottomNav />
     </div>
