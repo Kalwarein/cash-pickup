@@ -57,6 +57,7 @@ const Onboarding = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [recordId, setRecordId] = useState<string | null>(null);
   const [data, setData] = useState<OnboardingData>({
     display_name: '',
     age_range: '',
@@ -81,12 +82,18 @@ const Onboarding = () => {
   // Load existing data
   useEffect(() => {
     if (!user) return;
+
     const load = async () => {
-      const { data: rows } = await supabase
+      const { data: rows, error } = await supabase
         .from('user_onboarding')
         .select('*')
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
+
+      if (error) {
+        toast.error('Failed to load onboarding. Please try again.');
+        return;
+      }
 
       if (rows && rows.length > 0) {
         if (rows.some((row) => row.completed)) {
@@ -95,6 +102,7 @@ const Onboarding = () => {
         }
 
         const ob = rows[0];
+        setRecordId(ob.id);
         setData(prev => ({
           ...prev,
           display_name: ob.display_name || '',
@@ -112,8 +120,23 @@ const Onboarding = () => {
           referral_source: ob.referral_source || '',
           investment_motivation: ob.investment_motivation || '',
         }));
+        return;
       }
+
+      const { data: createdRow, error: createError } = await supabase
+        .from('user_onboarding')
+        .insert({ user_id: user.id })
+        .select('id')
+        .single();
+
+      if (createError) {
+        toast.error('Failed to start onboarding. Please refresh and try again.');
+        return;
+      }
+
+      setRecordId(createdRow.id);
     };
+
     load();
   }, [user, navigate]);
 
@@ -123,8 +146,40 @@ const Onboarding = () => {
   const total = questions.length;
   const progress = ((step + 1) / total) * 100;
 
-  const currentValue = q.type === 'multi' ? data[q.key] : data[q.key] as string;
-  const canProceed = q.type === 'multi' ? (data[q.key] as string[]).length > 0 : (data[q.key] as string).length > 0;
+  const canProceed = q.type === 'multi'
+    ? (data[q.key] as string[]).length > 0
+    : (data[q.key] as string).trim().length > 0;
+
+  const persistOnboarding = async (updates: Partial<OnboardingData> & { completed?: boolean; completed_at?: string | null }) => {
+    if (!user) {
+      return { error: new Error('No authenticated user found.') };
+    }
+
+    if (recordId) {
+      const { data: updatedRow, error } = await supabase
+        .from('user_onboarding')
+        .update(updates)
+        .eq('id', recordId)
+        .select('id')
+        .maybeSingle();
+
+      if (!error && updatedRow?.id) {
+        return { error: null };
+      }
+    }
+
+    const { data: insertedRow, error } = await supabase
+      .from('user_onboarding')
+      .insert({ user_id: user.id, ...updates })
+      .select('id')
+      .single();
+
+    if (!error) {
+      setRecordId(insertedRow.id);
+    }
+
+    return { error };
+  };
 
   const handleSelect = (val: string) => {
     if (q.type === 'multi') {
@@ -137,20 +192,28 @@ const Onboarding = () => {
 
   const handleNext = async () => {
     if (!canProceed) return;
+
+    setSaving(true);
+
     if (step < total - 1) {
-      // Save progress
-      await supabase.from('user_onboarding').update({
+      const { error } = await persistOnboarding({
         [q.key]: data[q.key],
-      }).eq('user_id', user.id);
+      } as Partial<OnboardingData>);
+
+      setSaving(false);
+
+      if (error) {
+        toast.error('Failed to save this step. Please try again.');
+        return;
+      }
+
       setStep(step + 1);
     } else {
-      // Complete
-      setSaving(true);
-      const { error } = await supabase.from('user_onboarding').update({
+      const { error } = await persistOnboarding({
         ...data,
         completed: true,
         completed_at: new Date().toISOString(),
-      }).eq('user_id', user.id);
+      });
 
       // Update profile name
       if (data.display_name) {

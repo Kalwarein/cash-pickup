@@ -15,6 +15,7 @@ import Invest from "./pages/Invest";
 import Market from "./pages/Market";
 import Earn from "./pages/Earn";
 import WalletProfile from "./pages/WalletProfile";
+import Payments from "./pages/Payments";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/market" element={<Market />} />
               <Route path="/earn" element={<Earn />} />
               <Route path="/wallet" element={<WalletProfile />} />
+              <Route path="/payments" element={<Payments />} />
               {/* Legacy redirect */}
               <Route path="/dashboard" element={<Navigate to="/home" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

@@ -14,7 +14,7 @@ export const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const activeTab = tabs.find(t => location.pathname.startsWith(t.path))?.id || 'home';
+  const activeTab = tabs.find(t => location.pathname.startsWith(t.path))?.id;
 
   return (
     <nav className="bottom-nav">
