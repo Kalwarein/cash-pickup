@@ -90,7 +90,7 @@ export const InvestTab = () => {
         c.ticker.toLowerCase().includes(search.toLowerCase()) ||
         c.sector.toLowerCase().includes(search.toLowerCase());
       const matchSector = selectedSector === 'All' || c.sector === selectedSector;
-      const matchRisk   = riskFilter === 'All' || c.risk_level === riskFilter;
+      const matchRisk   = riskFilter === 'All' || c.risk_level?.toLowerCase() === riskFilter;
       const matchTrend  = !trendingOnly || c.is_trending;
       return matchSearch && matchSector && matchRisk && matchTrend;
     });
