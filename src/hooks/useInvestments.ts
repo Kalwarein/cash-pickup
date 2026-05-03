@@ -223,13 +223,19 @@ export const useInvestments = () => {
   const checkAndMatureInvestments = useCallback(async () => {
     if (!user) return;
 
-    const now = new Date();
-    const investmentsToMature = investments.filter(inv => 
-      !inv.is_matured && new Date(inv.maturity_date) <= now
-    );
+    const nowIso = new Date().toISOString();
+
+    // Query DB directly so this works even before local state has loaded
+    const { data: investmentsToMature } = await supabase
+      .from('investments')
+      .select('id, company_id, amount')
+      .eq('user_id', user.id)
+      .eq('is_matured', false)
+      .lte('maturity_date', nowIso);
+
+    if (!investmentsToMature || investmentsToMature.length === 0) return;
 
     for (const inv of investmentsToMature) {
-      // Get company CPR for final calculation
       const { data: company } = await supabase
         .from('companies')
         .select('cpr_today, name')
@@ -238,12 +244,12 @@ export const useInvestments = () => {
 
       if (!company) continue;
 
-      const cprToday = Math.max(-10, Number(company.cpr_today) || 0); // Cap at -10%
+      const cprToday = Math.max(-10, Number(company.cpr_today) || 0);
       const multiplier = 1 + (cprToday / 100);
-      const finalValue = Math.max(0, inv.amount * multiplier);
-      const finalProfitLoss = finalValue - inv.amount;
+      const amount = Number(inv.amount);
+      const finalValue = Math.max(0, amount * multiplier);
+      const finalProfitLoss = finalValue - amount;
 
-      // Update investment as matured (but NOT claimed yet)
       await supabase
         .from('investments')
         .update({
@@ -254,16 +260,13 @@ export const useInvestments = () => {
           maturity_cpr: cprToday,
           is_matured: true,
           matured_at: new Date().toISOString(),
-          status: 'matured', // Changed from 'closed' to 'matured'
-          // is_claimed stays false - user must click Claim
+          status: 'matured',
         })
         .eq('id', inv.id);
     }
 
-    if (investmentsToMature.length > 0) {
-      await fetchInvestments();
-    }
-  }, [user, investments, fetchInvestments]);
+    await fetchInvestments();
+  }, [user, fetchInvestments]);
 
   // Check for matured investments periodically
   useEffect(() => {
