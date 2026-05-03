@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Phone, Smartphone } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Phone, Smartphone, CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { toast } from 'sonner';
@@ -35,6 +35,43 @@ export const DepositWithdrawModal = ({
   const [expiresAt, setExpiresAt] = useState('');
   const [responseMessage, setResponseMessage] = useState('');
   const [step, setStep] = useState<'form' | 'ussd'>('form');
+  const [transactionId, setTransactionId] = useState<string | null>(null);
+  const [txStatus, setTxStatus] = useState<string>('pending');
+  const [now, setNow] = useState(() => Date.now());
+
+  // 1-second tick for countdown
+  useEffect(() => {
+    if (step !== 'ussd') return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [step]);
+
+  // Realtime subscription to this transaction's status
+  useEffect(() => {
+    if (!transactionId) return;
+    const channel = supabase
+      .channel(`tx_${transactionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'payment_transactions', filter: `id=eq.${transactionId}` },
+        (payload) => {
+          const newStatus = (payload.new as { status?: string })?.status;
+          if (newStatus) {
+            setTxStatus(newStatus);
+            if (newStatus === 'completed') {
+              toast.success('Deposit confirmed! Wallet credited.');
+              onSuccess?.();
+            } else if (newStatus === 'failed') {
+              toast.error('Deposit failed.');
+            } else if (newStatus === 'expired') {
+              toast.error('Payment code expired.');
+            }
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [transactionId, onSuccess]);
 
   if (!isOpen) return null;
 
@@ -76,7 +113,10 @@ export const DepositWithdrawModal = ({
 
       if (isDeposit && result.ussd_code) {
         setUssdCode(result.ussd_code);
-        setExpiresAt(result.expires_at || '');
+        // Default 10-min expiry if backend didn't return one
+        setExpiresAt(result.expires_at || new Date(Date.now() + 10 * 60 * 1000).toISOString());
+        setTransactionId(result.transaction_id || null);
+        setTxStatus('pending');
         setResponseMessage(result.message || '');
         setStep('ussd');
         setLoading(false);
@@ -101,8 +141,29 @@ export const DepositWithdrawModal = ({
     setAmount('');
     setPhoneNumber('');
     setError('');
+    setTransactionId(null);
+    setTxStatus('pending');
     onClose();
   };
+
+  const expiryMs = expiresAt ? new Date(expiresAt).getTime() : 0;
+  const remainingMs = Math.max(0, expiryMs - now);
+  const remainingMin = Math.floor(remainingMs / 60000);
+  const remainingSec = Math.floor((remainingMs % 60000) / 1000);
+  const isExpired = expiryMs > 0 && remainingMs === 0;
+  const isCompleted = txStatus === 'completed';
+  const isFailed = txStatus === 'failed' || txStatus === 'expired' || isExpired;
+  const canRetry = isCompleted || isFailed;
+
+  const statusMeta = isCompleted
+    ? { label: 'Payment Completed', color: 'text-success', bg: 'bg-success/10', Icon: CheckCircle2 }
+    : txStatus === 'failed'
+      ? { label: 'Payment Failed', color: 'text-destructive', bg: 'bg-destructive/10', Icon: XCircle }
+      : isExpired || txStatus === 'expired'
+        ? { label: 'Code Expired', color: 'text-destructive', bg: 'bg-destructive/10', Icon: XCircle }
+        : txStatus === 'processing'
+          ? { label: 'Processing…', color: 'text-primary', bg: 'bg-primary/10', Icon: Loader2 }
+          : { label: 'Awaiting Payment', color: 'text-amber-500', bg: 'bg-amber-500/10', Icon: Clock };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={handleClose}>
@@ -128,23 +189,67 @@ export const DepositWithdrawModal = ({
 
         {step === 'ussd' ? (
           <div className="space-y-6 text-center py-4">
-            <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
-              <Phone className="w-10 h-10 text-primary" />
+            <div className={cn("w-20 h-20 mx-auto rounded-full flex items-center justify-center", statusMeta.bg)}>
+              <statusMeta.Icon className={cn("w-10 h-10", statusMeta.color, statusMeta.Icon === Loader2 && "animate-spin")} />
             </div>
+
+            <div className={cn("inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold", statusMeta.bg, statusMeta.color)}>
+              <span className={cn("w-2 h-2 rounded-full animate-pulse", statusMeta.color.replace('text-', 'bg-'))} />
+              {statusMeta.label}
+            </div>
+
             <div>
               <p className="text-sm text-muted-foreground mb-2">Dial this code to complete your deposit</p>
-              <p className="text-3xl font-bold text-primary tracking-wider">{ussdCode}</p>
+              <p className={cn("text-3xl font-bold tracking-wider", isExpired ? "text-muted-foreground line-through" : "text-primary")}>{ussdCode}</p>
             </div>
+
+            {!isCompleted && (
+              <div className="mx-auto inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-muted">
+                <Clock className="w-4 h-4 text-muted-foreground" />
+                <span className="font-mono font-semibold tabular-nums">
+                  {isExpired
+                    ? 'Expired'
+                    : `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')}`}
+                </span>
+                <span className="text-xs text-muted-foreground">remaining</span>
+              </div>
+            )}
+
             <div className="space-y-2">
               {responseMessage && <p className="text-sm text-foreground">{responseMessage}</p>}
-              <p className="text-xs text-muted-foreground">
-                {expiresAt
-                  ? `This payment code stays valid until ${new Date(expiresAt).toLocaleString()}.`
-                  : 'This payment code stays valid for a limited time.'}
-              </p>
-              <p className="text-xs text-muted-foreground">Your wallet will be credited automatically after payment confirmation.</p>
+              {isCompleted ? (
+                <p className="text-xs text-success">Your wallet has been credited.</p>
+              ) : isFailed ? (
+                <p className="text-xs text-destructive">This code can no longer be used. Tap "New Deposit" to try again.</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">Your wallet will be credited automatically after payment confirmation.</p>
+              )}
             </div>
-            <button onClick={handleClose} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg">Done</button>
+
+            {canRetry ? (
+              <button
+                onClick={() => {
+                  setStep('form');
+                  setUssdCode('');
+                  setExpiresAt('');
+                  setTransactionId(null);
+                  setTxStatus('pending');
+                }}
+                className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg"
+              >
+                {isCompleted ? 'Done' : 'New Deposit'}
+              </button>
+            ) : (
+              <button
+                disabled
+                className="w-full py-4 rounded-2xl bg-muted text-muted-foreground font-semibold text-lg cursor-not-allowed"
+              >
+                Retry available after expiry
+              </button>
+            )}
+            <button onClick={handleClose} className="w-full py-3 rounded-2xl bg-transparent text-muted-foreground text-sm hover:bg-muted">
+              Close
+            </button>
           </div>
         ) : (
           <div className="space-y-5">

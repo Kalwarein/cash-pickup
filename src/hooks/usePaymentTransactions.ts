@@ -70,5 +70,19 @@ export const usePaymentTransactions = () => {
     fetchPaymentTransactions();
   }, [fetchPaymentTransactions]);
 
+  // Realtime: refresh whenever Monime webhook updates payment_transactions for this user
+  useEffect(() => {
+    if (!user) return;
+    const channel = supabase
+      .channel(`payment_tx_${user.id}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'payment_transactions', filter: `user_id=eq.${user.id}` },
+        () => { fetchPaymentTransactions(); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user, fetchPaymentTransactions]);
+
   return { paymentTransactions, loading, refetch: fetchPaymentTransactions };
 };
