@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 
 export interface PaymentTransaction {
   id: string;
@@ -78,7 +79,17 @@ export const usePaymentTransactions = () => {
       .on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'payment_transactions', filter: `user_id=eq.${user.id}` },
-        () => { fetchPaymentTransactions(); }
+        (payload) => {
+          const next = payload.new as { status?: string; type?: string; amount?: number } | null;
+          const prev = payload.old as { status?: string } | null;
+          if (payload.eventType === 'UPDATE' && next && prev && next.status !== prev.status) {
+            const label = next.type === 'withdrawal' ? 'Withdrawal' : 'Deposit';
+            if (next.status === 'completed') toast.success(`${label} completed — ${next.amount} SLE`);
+            else if (next.status === 'failed') toast.error(`${label} failed`);
+            else if (next.status === 'expired') toast.warning(`${label} code expired`);
+          }
+          fetchPaymentTransactions();
+        }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };

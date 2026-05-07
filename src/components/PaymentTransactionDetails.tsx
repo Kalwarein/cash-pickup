@@ -1,3 +1,5 @@
+import { useEffect, useState } from 'react';
+import { PhoneCall, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { PaymentTransaction } from '@/hooks/usePaymentTransactions';
@@ -27,6 +29,13 @@ export const PaymentTransactionDetails = ({
   onOpenChange,
   transaction,
 }: PaymentTransactionDetailsProps) => {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    if (!open) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [open]);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="max-h-[85vh]">
@@ -46,6 +55,14 @@ export const PaymentTransactionDetails = ({
           const provider = transaction.provider
             ? (PROVIDER_LABELS[transaction.provider] || transaction.provider)
             : 'Monime';
+          const expiryMs = expiresAt ? new Date(expiresAt).getTime() : 0;
+          const remainingMs = Math.max(0, expiryMs - now);
+          const remainingMin = Math.floor(remainingMs / 60000);
+          const remainingSec = Math.floor((remainingMs % 60000) / 1000);
+          const codeLive = transaction.type === 'deposit'
+            && transaction.ussd_code
+            && transaction.status === 'pending'
+            && remainingMs > 0;
 
           return (
             <div className="max-h-[65vh] space-y-4 overflow-y-auto px-4 pb-6">
@@ -65,6 +82,37 @@ export const PaymentTransactionDetails = ({
                     : 'This request is sent to the selected mobile wallet and updates automatically when confirmed.'}
                 </p>
               </div>
+
+              {transaction.type === 'deposit' && transaction.ussd_code && (
+                <div className="rounded-2xl border border-border/60 bg-card/70 p-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">USSD Code</p>
+                  <p className={cn('text-2xl font-bold tracking-wider',
+                    codeLive ? 'text-primary' : 'text-muted-foreground line-through')}>
+                    {transaction.ussd_code}
+                  </p>
+                  {expiresAt && (
+                    <div className="inline-flex items-center gap-2 rounded-full bg-muted px-3 py-1.5 text-xs">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span className="font-mono tabular-nums">
+                        {codeLive
+                          ? `${remainingMin.toString().padStart(2, '0')}:${remainingSec.toString().padStart(2, '0')} remaining`
+                          : 'Code expired'}
+                      </span>
+                    </div>
+                  )}
+                  {codeLive ? (
+                    <a
+                      href={`tel:${encodeURIComponent(transaction.ussd_code)}`}
+                      className="w-full inline-flex items-center justify-center gap-2 py-3 rounded-xl bg-success text-success-foreground font-semibold"
+                    >
+                      <PhoneCall className="w-4 h-4" />
+                      Pay Now
+                    </a>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">This payment code can no longer be used. Start a new deposit from your wallet.</p>
+                  )}
+                </div>
+              )}
 
               <div className="space-y-3 rounded-2xl border border-border/60 bg-card/70 p-4 text-sm">
                 <div className="flex justify-between gap-4"><span className="text-muted-foreground">Provider</span><span>{provider}</span></div>

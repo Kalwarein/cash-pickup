@@ -723,6 +723,7 @@ export type Database = {
     Functions: {
       cleanup_old_candles: { Args: never; Returns: undefined }
       cleanup_old_company_candles: { Args: never; Returns: undefined }
+      expire_stale_payment_codes: { Args: never; Returns: undefined }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {
