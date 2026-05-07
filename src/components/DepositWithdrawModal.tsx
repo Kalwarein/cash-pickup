@@ -41,7 +41,7 @@ export const DepositWithdrawModal = ({
 
   // On open, restore any in-flight pending deposit so retry stays disabled across reopens
   useEffect(() => {
-    if (!isOpen || !isDeposit) return;
+    if (!isOpen || type !== 'deposit') return;
     let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
@@ -71,7 +71,7 @@ export const DepositWithdrawModal = ({
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen]);
+  }, [isOpen, type]);
 
   // 1-second tick for countdown
   useEffect(() => {
@@ -109,8 +109,7 @@ export const DepositWithdrawModal = ({
 
   if (!isOpen) return null;
 
-  const isDepositComputed = type === 'deposit';
-  const isDeposit = isDepositComputed;
+  const isDeposit = type === 'deposit';
   const amountValue = parseFloat(amount) || 0;
 
   const handleSubmit = async () => {
