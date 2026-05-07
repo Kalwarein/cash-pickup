@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Phone, Smartphone, CheckCircle2, Clock, XCircle, Loader2 } from 'lucide-react';
+import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Smartphone, CheckCircle2, Clock, XCircle, Loader2, PhoneCall } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { toast } from 'sonner';
@@ -39,6 +39,40 @@ export const DepositWithdrawModal = ({
   const [txStatus, setTxStatus] = useState<string>('pending');
   const [now, setNow] = useState(() => Date.now());
 
+  // On open, restore any in-flight pending deposit so retry stays disabled across reopens
+  useEffect(() => {
+    if (!isOpen || !isDeposit) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('payment_transactions')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('type', 'deposit')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || !data || !data.ussd_code) return;
+      const meta = (data.metadata && typeof data.metadata === 'object' && !Array.isArray(data.metadata))
+        ? (data.metadata as Record<string, unknown>) : {};
+      const expTime = (meta.expireTime as string | undefined)
+        || new Date(new Date(data.created_at).getTime() + 10 * 60 * 1000).toISOString();
+      if (new Date(expTime).getTime() > Date.now()) {
+        setUssdCode(data.ussd_code);
+        setExpiresAt(expTime);
+        setTransactionId(data.id);
+        setTxStatus(data.status);
+        setAmount(String(data.amount));
+        setStep('ussd');
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen]);
+
   // 1-second tick for countdown
   useEffect(() => {
     if (step !== 'ussd') return;
@@ -75,7 +109,8 @@ export const DepositWithdrawModal = ({
 
   if (!isOpen) return null;
 
-  const isDeposit = type === 'deposit';
+  const isDepositComputed = type === 'deposit';
+  const isDeposit = isDepositComputed;
   const amountValue = parseFloat(amount) || 0;
 
   const handleSubmit = async () => {
@@ -226,6 +261,16 @@ export const DepositWithdrawModal = ({
               )}
             </div>
 
+            {ussdCode && !isExpired && !isCompleted && txStatus !== 'failed' && (
+              <a
+                href={`tel:${encodeURIComponent(ussdCode)}`}
+                className="w-full inline-flex items-center justify-center gap-2 py-4 rounded-2xl bg-success text-success-foreground font-semibold text-lg"
+              >
+                <PhoneCall className="w-5 h-5" />
+                Pay Now — Dial {ussdCode}
+              </a>
+            )}
+
             {canRetry ? (
               <button
                 onClick={() => {
@@ -239,14 +284,7 @@ export const DepositWithdrawModal = ({
               >
                 {isCompleted ? 'Done' : 'New Deposit'}
               </button>
-            ) : (
-              <button
-                disabled
-                className="w-full py-4 rounded-2xl bg-muted text-muted-foreground font-semibold text-lg cursor-not-allowed"
-              >
-                Retry available after expiry
-              </button>
-            )}
+            ) : null}
             <button onClick={handleClose} className="w-full py-3 rounded-2xl bg-transparent text-muted-foreground text-sm hover:bg-muted">
               Close
             </button>
