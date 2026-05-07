@@ -29,7 +29,9 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
-    const { amount, phoneNumber, provider } = await req.json();
+    const rawBody = await req.json();
+    console.log('[monime-deposit] incoming request', { user_id: user.id, body: rawBody });
+    const { amount, phoneNumber, provider } = rawBody;
 
     if (!amount || amount < 10) {
       return new Response(JSON.stringify({ error: 'Minimum deposit is 10 SLE' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -73,6 +75,20 @@ Deno.serve(async (req) => {
     const idempotencyKey = `dep-${user.id}-${Date.now()}`;
     const reference = `cp-dep-${user.id.slice(0, 8)}-${Date.now()}`;
 
+    const monimeRequestBody = {
+      name: `Cash Pickup Deposit - ${user.id.slice(0, 8)}`,
+      mode: 'one_time',
+      enable: true,
+      amount: { currency: 'SLE', value: Math.round(amount * 100) },
+      duration: '10m',
+      customer: { name: phoneNumber || 'Cash Pickup User' },
+      reference,
+      ...(normalizedPhone
+        ? { authorizedPhoneNumber: normalizedPhone }
+        : { authorizedProviders: provider ? [provider] : ['m17', 'm18'] }),
+    };
+    console.log('[monime-deposit] calling Monime', { url: 'https://api.monime.io/v1/payment-codes', body: monimeRequestBody, idempotencyKey });
+
     const monimeResponse = await fetch('https://api.monime.io/v1/payment-codes', {
       method: 'POST',
       headers: {
@@ -82,24 +98,14 @@ Deno.serve(async (req) => {
         'Monime-Version': monimeVersion,
         'Monime-Space-Id': monimeSpaceId,
       },
-      body: JSON.stringify({
-        name: `Cash Pickup Deposit - ${user.id.slice(0, 8)}`,
-        mode: 'one_time',
-        enable: true,
-        amount: { currency: 'SLE', value: Math.round(amount * 100) }, // minor units
-        duration: '30m',
-        customer: { name: phoneNumber || 'Cash Pickup User' },
-        reference,
-        ...(normalizedPhone
-          ? { authorizedPhoneNumber: normalizedPhone }
-          : { authorizedProviders: provider ? [provider] : ['m17', 'm18'] }),
-      }),
+      body: JSON.stringify(monimeRequestBody),
     });
 
     const monimeData = await monimeResponse.json();
+    console.log('[monime-deposit] Monime response', { status: monimeResponse.status, ok: monimeResponse.ok, body: monimeData });
 
     if (!monimeResponse.ok) {
-      console.error('Monime error:', monimeData);
+      console.error('[monime-deposit] Monime returned error', { status: monimeResponse.status, body: monimeData });
       const msg = monimeData?.error?.message || 'Payment service error. Please try again.';
       return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
@@ -129,7 +135,7 @@ Deno.serve(async (req) => {
     }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
-    console.error('Deposit error:', error);
-    return new Response(JSON.stringify({ error: 'Internal server error' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    console.error('[monime-deposit] unhandled error', error instanceof Error ? { message: error.message, stack: error.stack } : error);
+    return new Response(JSON.stringify({ error: 'Internal server error', detail: error instanceof Error ? error.message : String(error) }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
