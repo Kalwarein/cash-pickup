@@ -246,7 +246,7 @@ const Auth = () => {
 
               <div className="mt-5 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3">
                 <p className="text-xs text-muted-foreground">
-                  <span className="text-primary font-semibold">Monime USSD</span>
+                  <span className="text-primary font-semibold">Secure Mobile Money & USSD Payments</span>
                 </p>
               </div>
             </div>
