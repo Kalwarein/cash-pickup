@@ -180,7 +180,7 @@ const WalletProfile = () => {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between"><span className="text-muted-foreground">Member Since</span><span>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '-'}</span></div>
               <div className="flex justify-between"><span className="text-muted-foreground">Total Investments</span><span>{investments.length + completedInvestments.length}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Payment Method</span><span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Monime USSD</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Payment Method</span><span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Mobile Money & USSD</span></div>
             </div>
           </div>
         </div>
