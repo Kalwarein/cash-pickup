@@ -35,6 +35,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Minimum deposit is 10 SLE' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    // Normalize phone to E.164 Sierra Leone format (+232XXXXXXXX)
+    let normalizedPhone: string | null = null;
+    if (phoneNumber) {
+      const digits = String(phoneNumber).replace(/\D/g, '');
+      let local = digits;
+      if (local.startsWith('232')) local = local.slice(3);
+      else if (local.startsWith('0')) local = local.slice(1);
+      if (local.length === 8) {
+        normalizedPhone = `+232${local}`;
+      } else {
+        return new Response(JSON.stringify({ error: 'Invalid phone number. Use +232 followed by 8 digits.' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      }
+    }
+
     if (!monimeToken || !monimeSpaceId) {
       // Monime not configured — save as pending
       const { data: pt } = await supabase.from('payment_transactions').insert({
@@ -76,8 +90,8 @@ Deno.serve(async (req) => {
         duration: '30m',
         customer: { name: phoneNumber || 'Cash Pickup User' },
         reference,
-        ...(phoneNumber
-          ? { authorizedPhoneNumber: phoneNumber }
+        ...(normalizedPhone
+          ? { authorizedPhoneNumber: normalizedPhone }
           : { authorizedProviders: provider ? [provider] : ['m17', 'm18'] }),
       }),
     });
@@ -86,7 +100,8 @@ Deno.serve(async (req) => {
 
     if (!monimeResponse.ok) {
       console.error('Monime error:', monimeData);
-      return new Response(JSON.stringify({ error: 'Payment service error. Please try again.' }), { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const msg = monimeData?.error?.message || 'Payment service error. Please try again.';
+      return new Response(JSON.stringify({ error: msg }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     // Save payment transaction
@@ -94,7 +109,7 @@ Deno.serve(async (req) => {
       user_id: user.id,
       type: 'deposit',
       amount,
-      phone_number: phoneNumber || null,
+      phone_number: normalizedPhone || null,
       provider: provider || null,
       status: 'pending',
       monime_payment_code_id: monimeData.result?.id,
