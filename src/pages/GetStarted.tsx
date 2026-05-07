@@ -8,25 +8,25 @@ const slides = [
     icon: TrendingUp,
     title: 'Invest in Real Companies',
     description: 'Choose from top Sierra Leonean companies across Mining, Agriculture, Tech, and more. Your investment, your choice.',
-    color: 'from-primary to-accent',
+    color: 'from-blue-600 to-sky-400',
   },
   {
     icon: BarChart3,
     title: 'Track CPR Daily',
     description: 'Company Performance Rate updates daily. Monitor trends, volatility, and insights to make informed decisions.',
-    color: 'from-success to-primary',
+    color: 'from-sky-500 to-blue-600',
   },
   {
     icon: Shield,
     title: 'Manage Your Risk',
     description: 'Use promo codes to reduce losses or boost gains. Every investment carries risk — invest wisely.',
-    color: 'from-warning to-destructive',
+    color: 'from-blue-500 to-indigo-600',
   },
   {
     icon: Zap,
     title: 'Claim Your Returns',
     description: 'When investments mature, claim your payout instantly. Start with 500 SLE welcome bonus!',
-    color: 'from-accent to-primary',
+    color: 'from-sky-400 to-blue-700',
   },
 ];
 

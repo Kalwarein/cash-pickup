@@ -85,7 +85,7 @@ const Payments = () => {
             </button>
             <div>
               <h1 className="text-2xl font-bold">Payments</h1>
-              <p className="text-sm text-muted-foreground">Monime deposit and withdrawal history</p>
+              <p className="text-sm text-muted-foreground">Deposit and withdrawal history</p>
             </div>
           </div>
 
@@ -144,7 +144,7 @@ const Payments = () => {
           ) : (
             filteredTransactions.map((tx) => {
               const badge = getPaymentBadge(tx);
-              const provider = tx.provider ? (PROVIDER_LABELS[tx.provider] || tx.provider) : 'Monime';
+              const provider = tx.provider ? (PROVIDER_LABELS[tx.provider] || tx.provider) : 'Mobile Money';
               const expiresAt = getPaymentExpiry(tx);
 
               return (
@@ -157,7 +157,7 @@ const Payments = () => {
                     <div>
                       <p className="text-sm font-semibold capitalize">{tx.type} via {provider}</p>
                       <p className="text-xs text-muted-foreground">
-                        {tx.reference || tx.monime_payment_code_id || tx.monime_payout_id || 'Monime transaction'}
+                        {tx.reference || tx.monime_payment_code_id || tx.monime_payout_id || 'Payment transaction'}
                       </p>
                     </div>
                     <span className={cn('rounded-full px-2 py-1 text-[10px] font-semibold', badge.className)}>
