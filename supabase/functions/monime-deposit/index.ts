@@ -76,8 +76,9 @@ Deno.serve(async (req) => {
         duration: '30m',
         customer: { name: phoneNumber || 'Cash Pickup User' },
         reference,
-        authorizedProviders: provider ? [provider] : ['m17', 'm18'],
-        ...(phoneNumber ? { authorizedPhoneNumber: phoneNumber } : {}),
+        ...(phoneNumber
+          ? { authorizedPhoneNumber: phoneNumber }
+          : { authorizedProviders: provider ? [provider] : ['m17', 'm18'] }),
       }),
     });
 
