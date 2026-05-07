@@ -42,7 +42,7 @@ export const PaymentTransactionDetails = ({
         <DrawerHeader>
           <DrawerTitle>{transaction?.type === 'withdrawal' ? 'Withdrawal Details' : 'Deposit Details'}</DrawerTitle>
           <DrawerDescription>
-            Review payment code validity, provider info, and Monime references
+            Review payment code validity, provider info, and transaction references
           </DrawerDescription>
         </DrawerHeader>
 
@@ -54,7 +54,7 @@ export const PaymentTransactionDetails = ({
           const channelData = getNestedMetadata(processedPaymentData, 'channelData');
           const provider = transaction.provider
             ? (PROVIDER_LABELS[transaction.provider] || transaction.provider)
-            : 'Monime';
+            : 'Mobile Money';
           const expiryMs = expiresAt ? new Date(expiresAt).getTime() : 0;
           const remainingMs = Math.max(0, expiryMs - now);
           const remainingMin = Math.floor(remainingMs / 60000);
