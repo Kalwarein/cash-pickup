@@ -33,9 +33,13 @@ const slides = [
 const GetStarted = () => {
   const navigate = useNavigate();
   const [current, setCurrent] = useState(0);
+  const [dir, setDir] = useState<'forward' | 'back'>('forward');
+  const [animKey, setAnimKey] = useState(0);
 
   const next = () => {
     if (current < slides.length - 1) {
+      setDir('forward');
+      setAnimKey((k) => k + 1);
       setCurrent(current + 1);
     } else {
       localStorage.setItem('cp_onboarded', 'true');
@@ -44,7 +48,11 @@ const GetStarted = () => {
   };
 
   const prev = () => {
-    if (current > 0) setCurrent(current - 1);
+    if (current > 0) {
+      setDir('back');
+      setAnimKey((k) => k + 1);
+      setCurrent(current - 1);
+    }
   };
 
   const skip = () => {
@@ -67,16 +75,24 @@ const GetStarted = () => {
       {/* Content */}
       <div className="flex-1 flex flex-col items-center justify-center px-8 text-center">
         {/* Icon */}
-        <div className={cn(
-          "w-28 h-28 rounded-3xl bg-gradient-to-br flex items-center justify-center mb-10 shadow-2xl animate-scale-in",
-          slide.color
-        )}>
-          <Icon className="w-14 h-14 text-white" />
-        </div>
+        <div
+          key={animKey}
+          className={cn(
+            "flex flex-col items-center",
+            dir === 'forward' ? 'gs-enter-fwd' : 'gs-enter-back'
+          )}
+        >
+          <div className={cn(
+            "w-28 h-28 rounded-3xl bg-gradient-to-br flex items-center justify-center mb-10 shadow-2xl ring-1 ring-white/20",
+            slide.color
+          )}
+          style={{ boxShadow: '0 20px 50px -12px rgba(37,99,235,0.45)' }}>
+            <Icon className="w-14 h-14 text-white drop-shadow" />
+          </div>
 
-        {/* Text */}
-        <h1 className="text-3xl font-bold text-foreground mb-4 animate-fade-in">{slide.title}</h1>
-        <p className="text-muted-foreground text-base max-w-xs leading-relaxed animate-fade-in">{slide.description}</p>
+          <h1 className="text-3xl font-bold text-foreground mb-4">{slide.title}</h1>
+          <p className="text-muted-foreground text-base max-w-xs leading-relaxed">{slide.description}</p>
+        </div>
       </div>
 
       {/* Navigation */}
@@ -86,10 +102,16 @@ const GetStarted = () => {
           {slides.map((_, i) => (
             <button
               key={i}
-              onClick={() => setCurrent(i)}
+              onClick={() => {
+                setDir(i > current ? 'forward' : 'back');
+                setAnimKey((k) => k + 1);
+                setCurrent(i);
+              }}
               className={cn(
                 "h-2 rounded-full transition-all",
-                i === current ? "w-8 bg-primary" : "w-2 bg-muted-foreground/30"
+                i === current
+                  ? "w-8 bg-gradient-to-r from-blue-600 to-sky-400 shadow-[0_0_8px_rgba(37,99,235,0.6)]"
+                  : "w-2 bg-muted-foreground/30"
               )}
             />
           ))}
@@ -107,13 +129,26 @@ const GetStarted = () => {
           )}
           <button
             onClick={next}
-            className="flex-1 py-4 rounded-2xl bg-primary text-primary-foreground font-semibold text-lg hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+            className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_24px_-6px_rgba(37,99,235,0.55)]"
           >
             {current === slides.length - 1 ? 'Get Started' : 'Continue'}
             <ChevronRight className="w-5 h-5" />
           </button>
         </div>
       </div>
+
+      <style>{`
+        @keyframes gsFwd {
+          from { opacity: 0; transform: translateX(32px) scale(0.97); }
+          to   { opacity: 1; transform: translateX(0)    scale(1);    }
+        }
+        @keyframes gsBack {
+          from { opacity: 0; transform: translateX(-32px) scale(0.97); }
+          to   { opacity: 1; transform: translateX(0)     scale(1);    }
+        }
+        .gs-enter-fwd  { animation: gsFwd  0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+        .gs-enter-back { animation: gsBack 0.35s cubic-bezier(0.34,1.2,0.64,1) both; }
+      `}</style>
     </div>
   );
 };
