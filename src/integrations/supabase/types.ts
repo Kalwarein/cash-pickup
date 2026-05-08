@@ -471,29 +471,44 @@ export type Database = {
       profiles: {
         Row: {
           created_at: string | null
+          date_of_birth: string | null
           email: string
+          first_name: string | null
           id: string
+          last_name: string | null
           name: string
+          phone: string | null
           promo_codes: Json | null
           updated_at: string | null
+          username: string | null
           wallet_view_preference: string | null
         }
         Insert: {
           created_at?: string | null
+          date_of_birth?: string | null
           email: string
+          first_name?: string | null
           id: string
+          last_name?: string | null
           name: string
+          phone?: string | null
           promo_codes?: Json | null
           updated_at?: string | null
+          username?: string | null
           wallet_view_preference?: string | null
         }
         Update: {
           created_at?: string | null
+          date_of_birth?: string | null
           email?: string
+          first_name?: string | null
           id?: string
+          last_name?: string | null
           name?: string
+          phone?: string | null
           promo_codes?: Json | null
           updated_at?: string | null
+          username?: string | null
           wallet_view_preference?: string | null
         }
         Relationships: []
