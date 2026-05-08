@@ -2,13 +2,23 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
+export interface SignUpMetadata {
+  first_name?: string;
+  last_name?: string;
+  username?: string;
+  phone?: string;
+  date_of_birth?: string; // YYYY-MM-DD
+  name?: string;
+}
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signUp: (email: string, password: string, name: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, metadata: SignUpMetadata) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -46,20 +56,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, name: string) => {
+  const signUp = async (email: string, password: string, metadata: SignUpMetadata) => {
     const redirectUrl = `${window.location.origin}/`;
-    
+    const fullName = metadata.name || [metadata.first_name, metadata.last_name].filter(Boolean).join(' ').trim() || 'User';
+
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         emailRedirectTo: redirectUrl,
-        data: {
-          name,
-        },
+        data: { ...metadata, name: fullName },
       },
     });
-    
+
     return { error: error as Error | null };
   };
 
@@ -76,8 +85,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email: string) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    return { error: error as Error | null };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, session, loading, signUp, signIn, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
