@@ -7,6 +7,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import GetStarted from "./pages/GetStarted";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
@@ -16,6 +20,7 @@ import Market from "./pages/Market";
 import Earn from "./pages/Earn";
 import WalletProfile from "./pages/WalletProfile";
 import Payments from "./pages/Payments";
+import { RequireAuth } from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
 
@@ -30,14 +35,18 @@ const App = () => (
             <Routes>
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
+              <Route path="/sign-in" element={<SignIn />} />
+              <Route path="/sign-up" element={<SignUp />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+              <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/get-started" element={<GetStarted />} />
-              <Route path="/onboarding" element={<Onboarding />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/invest" element={<Invest />} />
-              <Route path="/market" element={<Market />} />
-              <Route path="/earn" element={<Earn />} />
-              <Route path="/wallet" element={<WalletProfile />} />
-              <Route path="/payments" element={<Payments />} />
+              <Route path="/onboarding" element={<RequireAuth><Onboarding /></RequireAuth>} />
+              <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
+              <Route path="/invest" element={<RequireAuth><Invest /></RequireAuth>} />
+              <Route path="/market" element={<RequireAuth><Market /></RequireAuth>} />
+              <Route path="/earn" element={<RequireAuth><Earn /></RequireAuth>} />
+              <Route path="/wallet" element={<RequireAuth><WalletProfile /></RequireAuth>} />
+              <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
               {/* Legacy redirect */}
               <Route path="/dashboard" element={<Navigate to="/home" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
