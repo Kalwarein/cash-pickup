@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/hooks/useOnboarding';
@@ -7,28 +7,56 @@ const Index = () => {
   const { user, loading } = useAuth();
   const { completed, loading: onboardingLoading } = useOnboarding();
   const navigate = useNavigate();
+  const [assetsReady, setAssetsReady] = useState(false);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [fadingOut, setFadingOut] = useState(false);
+
+  // Wait for fonts + window load (assets/images), with safety fallbacks
+  useEffect(() => {
+    let cancelled = false;
+
+    const fontsPromise: Promise<unknown> = (document as any).fonts?.ready ?? Promise.resolve();
+    const loadPromise = new Promise<void>((resolve) => {
+      if (document.readyState === 'complete') resolve();
+      else window.addEventListener('load', () => resolve(), { once: true });
+    });
+
+    Promise.all([fontsPromise, loadPromise]).then(() => {
+      if (!cancelled) setAssetsReady(true);
+    });
+
+    // Hard fallback so we never stall on the splash
+    const failsafe = setTimeout(() => !cancelled && setAssetsReady(true), 4000);
+    // Minimum display time so the splash never just flashes
+    const minTimer = setTimeout(() => !cancelled && setMinTimeElapsed(true), 900);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(failsafe);
+      clearTimeout(minTimer);
+    };
+  }, []);
 
   useEffect(() => {
-    if (loading || onboardingLoading) return;
+    if (loading || onboardingLoading || !assetsReady || !minTimeElapsed) return;
 
-    if (user) {
-      if (completed === false) {
-        navigate('/onboarding');
-      } else {
-        navigate('/home');
-      }
-    } else {
-      const onboarded = localStorage.getItem('cp_onboarded');
-      if (onboarded) {
-        navigate('/auth');
-      } else {
-        navigate('/get-started');
-      }
-    }
-  }, [user, loading, completed, onboardingLoading, navigate]);
+    const target = (() => {
+      if (user) return completed === false ? '/onboarding' : '/home';
+      return localStorage.getItem('cp_onboarded') ? '/auth' : '/get-started';
+    })();
+
+    setFadingOut(true);
+    const t = setTimeout(() => navigate(target, { replace: true }), 450);
+    return () => clearTimeout(t);
+  }, [user, loading, completed, onboardingLoading, assetsReady, minTimeElapsed, navigate]);
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 flex items-center justify-center">
+    <div
+      className={`relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 flex items-center justify-center transition-opacity duration-500 ease-out ${
+        fadingOut ? 'opacity-0' : 'opacity-100'
+      }`}
+      aria-hidden={fadingOut}
+    >
       {/* Animated background orbs */}
       <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-sky-300/30 blur-3xl animate-pulse" />
       <div className="pointer-events-none absolute -bottom-32 -right-32 w-[28rem] h-[28rem] rounded-full bg-blue-400/30 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
