@@ -52,31 +52,71 @@ const Index = () => {
 
   return (
     <div
-      className={`relative min-h-screen overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-sky-500 flex items-center justify-center transition-opacity duration-500 ease-out ${
+      className={`relative min-h-screen overflow-hidden bg-[radial-gradient(120%_100%_at_30%_0%,#1e40af_0%,#1d4ed8_30%,#2563eb_60%,#0ea5e9_100%)] flex items-center justify-center transition-opacity duration-500 ease-out ${
         fadingOut ? 'opacity-0' : 'opacity-100'
       }`}
       aria-hidden={fadingOut}
     >
-      {/* Animated background orbs */}
-      <div className="pointer-events-none absolute -top-32 -left-32 w-96 h-96 rounded-full bg-sky-300/30 blur-3xl animate-pulse" />
-      <div className="pointer-events-none absolute -bottom-32 -right-32 w-[28rem] h-[28rem] rounded-full bg-blue-400/30 blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
-      <div className="pointer-events-none absolute top-1/3 right-1/4 w-72 h-72 rounded-full bg-indigo-400/20 blur-3xl animate-pulse" style={{ animationDelay: '0.5s' }} />
+      {/* Layered orbs */}
+      <div className="pointer-events-none absolute -top-40 -left-40 w-[28rem] h-[28rem] rounded-full bg-sky-300/30 blur-3xl animate-pulse" />
+      <div className="pointer-events-none absolute -bottom-40 -right-32 w-[32rem] h-[32rem] rounded-full bg-indigo-400/25 blur-3xl animate-pulse" style={{ animationDelay: '1.2s' }} />
+      <div className="pointer-events-none absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[40rem] h-[40rem] rounded-full bg-blue-500/10 blur-3xl" />
 
-      <div className="relative text-center animate-fade-in">
-        <div className="relative w-28 h-28 mx-auto mb-6">
-          <div className="absolute inset-0 rounded-3xl bg-white/10 backdrop-blur-xl border border-white/30 shadow-2xl animate-float flex items-center justify-center">
-            <span className="text-4xl font-extrabold text-white tracking-tight drop-shadow-lg">CP</span>
+      {/* Subtle grid texture */}
+      <div
+        className="pointer-events-none absolute inset-0 opacity-[0.07]"
+        style={{
+          backgroundImage:
+            'linear-gradient(rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.6) 1px, transparent 1px)',
+          backgroundSize: '32px 32px',
+        }}
+      />
+
+      <div className="relative text-center px-6">
+        {/* Logo */}
+        <div className="relative w-32 h-32 mx-auto mb-7">
+          <div className="absolute -inset-3 rounded-[2rem] bg-white/20 blur-2xl animate-pulse" />
+          <div className="absolute inset-0 rounded-[2rem] bg-gradient-to-br from-white/25 to-white/5 backdrop-blur-2xl border border-white/40 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.4)] flex items-center justify-center">
+            <span className="text-[2.75rem] font-black text-white tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.25)]">
+              CP
+            </span>
           </div>
-          <div className="absolute inset-0 rounded-3xl ring-2 ring-white/40 animate-pulse-glow" />
+          <div className="absolute inset-0 rounded-[2rem] ring-2 ring-white/30" />
+          {/* Rotating gradient ring */}
+          <div
+            className="absolute -inset-1 rounded-[2.25rem] opacity-70"
+            style={{
+              background: 'conic-gradient(from 0deg, transparent 0%, rgba(255,255,255,0.7) 25%, transparent 50%)',
+              animation: 'cp-spin 2.4s linear infinite',
+              WebkitMask: 'radial-gradient(circle, transparent 62%, #000 64%)',
+              mask: 'radial-gradient(circle, transparent 62%, #000 64%)',
+            }}
+          />
         </div>
-        <h1 className="text-3xl font-bold text-white tracking-tight drop-shadow-md">Cash Pickup</h1>
-        <p className="mt-2 text-sm text-white/80">Invest in Sierra Leone</p>
-        <div className="mt-8 flex items-center justify-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-white/90 animate-bounce" style={{ animationDelay: '0ms' }} />
-          <span className="w-2 h-2 rounded-full bg-white/90 animate-bounce" style={{ animationDelay: '150ms' }} />
-          <span className="w-2 h-2 rounded-full bg-white/90 animate-bounce" style={{ animationDelay: '300ms' }} />
+
+        <h1 className="text-4xl font-extrabold text-white tracking-tight drop-shadow-md">
+          Cash Pickup
+        </h1>
+        <p className="mt-2 text-sm text-white/80 tracking-wide">
+          Invest. Earn. Grow — in Sierra Leone.
+        </p>
+
+        {/* Smooth indeterminate progress bar */}
+        <div className="mt-9 mx-auto w-44 h-1 rounded-full bg-white/15 overflow-hidden">
+          <div
+            className="h-full w-1/3 rounded-full bg-gradient-to-r from-white/40 via-white to-white/40"
+            style={{ animation: 'cp-slide 1.4s ease-in-out infinite' }}
+          />
         </div>
       </div>
+
+      <style>{`
+        @keyframes cp-spin { to { transform: rotate(360deg); } }
+        @keyframes cp-slide {
+          0%   { transform: translateX(-120%); }
+          100% { transform: translateX(420%); }
+        }
+      `}</style>
     </div>
   );
 };
