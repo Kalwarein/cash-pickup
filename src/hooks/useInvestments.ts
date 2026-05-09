@@ -244,7 +244,7 @@ export const useInvestments = () => {
 
       if (!company) continue;
 
-      const cprToday = Math.max(-10, Number(company.cpr_today) || 0);
+      const cprToday = Math.max(-20, Number(company.cpr_today) || 0);
       const multiplier = 1 + (cprToday / 100);
       const amount = Number(inv.amount);
       const finalValue = Math.max(0, amount * multiplier);
