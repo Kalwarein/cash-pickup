@@ -23,31 +23,35 @@ function getRandomActivityMessage(): string {
 }
 
 /**
- * Generate CPR biased more positively. Cap weekly loss at -10%.
- * Silent performers get much better odds (80% positive).
+ * Risk-tiered random CPR generator.
+ *  Low risk    -> high win rate, modest gains, tiny losses (the "winners")
+ *  Medium risk -> balanced
+ *  High risk   -> crypto-like swings, capped -20% / +40%
+ * Silent performers get a small extra positive bias.
  */
-function generateDailyCPR(isSilentPerformer: boolean): number {
-  if (isSilentPerformer) {
-    // Silent performers: 80% positive, small consistent gains
-    const isPositive = Math.random() < 0.80;
-    if (isPositive) {
-      return Math.round((3 + Math.random() * 20) * 10) / 10; // +3% to +23%
-    } else {
-      return Math.round((-1 - Math.random() * 5) * 10) / 10; // -1% to -6%
-    }
+function generateDailyCPR(riskLevel: string, isSilentPerformer: boolean): number {
+  const r = (riskLevel || 'medium').toLowerCase();
+  const silentBoost = isSilentPerformer ? 0.10 : 0;
+
+  if (r === 'low') {
+    const positive = Math.random() < (0.78 + silentBoost);
+    return positive
+      ? Math.round((2 + Math.random() * 12) * 10) / 10   // +2% to +14%
+      : Math.round((-1 - Math.random() * 4) * 10) / 10;  // -1% to -5%
   }
 
-  // Regular companies: 50% positive (up from 30%), capped at -10%
-  const isNegative = Math.random() < 0.50;
-  if (isNegative) {
-    // Cap at -10% max loss
-    const value = -10 * Math.random();
-    return Math.round(value * 10) / 10;
-  } else {
-    const base = Math.random();
-    const value = 50 * Math.pow(base, 1.5);
-    return Math.round(value * 10) / 10;
+  if (r === 'high') {
+    const positive = Math.random() < (0.48 + silentBoost);
+    return positive
+      ? Math.round((Math.random() * 40) * 10) / 10       // 0% to +40%
+      : Math.round((-Math.random() * 20) * 10) / 10;     // 0% to -20%
   }
+
+  // medium
+  const positive = Math.random() < (0.55 + silentBoost);
+  return positive
+    ? Math.round((1 + Math.random() * 22) * 10) / 10     // +1% to +23%
+    : Math.round((-1 - Math.random() * 12) * 10) / 10;   // -1% to -13%
 }
 
 function calculatePayout(amount: number, cpr: number): number {
@@ -70,13 +74,13 @@ Deno.serve(async (req) => {
     const today = now.toISOString().split('T')[0];
 
     // ============ GENERATE DAILY CPR FOR ALL COMPANIES ============
-    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today, is_silent_performer');
+    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today, is_silent_performer, risk_level');
     
     if (companies) {
       for (const company of companies) {
         if (company.cpr_last_generated_date !== today) {
           const isSilent = company.is_silent_performer || false;
-          const newCPR = generateDailyCPR(isSilent);
+          const newCPR = generateDailyCPR(String(company.risk_level || 'medium'), isSilent);
           const oldCPR = Number(company.cpr_today) || 0;
           
           const { data: history } = await supabase
@@ -117,7 +121,7 @@ Deno.serve(async (req) => {
               cpr_7day_avg: Math.round(avg7 * 10) / 10,
               cpr_30day_avg: Math.round(avg30 * 10) / 10,
               cpr_best: Math.round(best * 10) / 10,
-              cpr_worst: Math.round(Math.max(worst, -10) * 10) / 10,
+              cpr_worst: Math.round(Math.max(worst, -20) * 10) / 10,
               cpr_volatility: Math.round(volatility * 10) / 10,
               cpr_trend: trend,
               cpr_last_generated_date: today,
