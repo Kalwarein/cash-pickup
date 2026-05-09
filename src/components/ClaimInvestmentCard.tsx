@@ -35,14 +35,14 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
       const profitLoss = investment.final_profit_loss || 0;
       
       // Get current wallet
-      const { data: wallet } = await supabase
+      const { data: wallet, error: walletErr } = await supabase
         .from('wallets')
         .select('*')
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
       
-      if (!wallet) {
-        toast.error('Wallet not found');
+      if (walletErr || !wallet) {
+        toast.error('Wallet not found. Please reload the app.');
         return;
       }
       
@@ -51,7 +51,7 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
       const newProfit = profitLoss > 0 ? Number(wallet.total_profit) + profitLoss : Number(wallet.total_profit);
       const newLoss = profitLoss < 0 ? Number(wallet.total_loss) + Math.abs(profitLoss) : Number(wallet.total_loss);
       
-      await supabase
+      const { error: updErr } = await supabase
         .from('wallets')
         .update({
           balance: newBalance,
@@ -60,15 +60,23 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
           total_loss: newLoss,
         })
         .eq('user_id', user.id);
+      if (updErr) {
+        toast.error(`Wallet update failed: ${updErr.message}`);
+        return;
+      }
       
       // Mark investment as claimed
-      await supabase
+      const { error: invErr } = await supabase
         .from('investments')
         .update({
           is_claimed: true,
           claimed_at: new Date().toISOString(),
         })
         .eq('id', investment.id);
+      if (invErr) {
+        toast.error(`Could not mark investment as claimed: ${invErr.message}`);
+        return;
+      }
       
       // Record transaction
       const transactionType = profitLoss >= 0 ? 'investment_profit' : 'investment_loss';
@@ -78,13 +86,18 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
           user_id: user.id,
           type: transactionType,
           amount: finalValue,
-          description: `Claimed ${investment.company_name}: ${profitLoss >= 0 ? '+' : ''}${sle(profitLoss)}`,
+          description: `Claimed ${investment.company_name ?? 'investment'}: ${profitLoss >= 0 ? '+' : ''}${sle(profitLoss)}`,
         });
       
-      toast.success(`Successfully claimed ${sle(finalValue)}!`);
+      toast.success(
+        profitLoss >= 0
+          ? `Claimed ${sle(finalValue)} (+${sle(profitLoss)} profit)`
+          : `Claimed ${sle(finalValue)} (loss of ${sle(Math.abs(profitLoss))} applied)`,
+      );
       onClaimed();
     } catch (error) {
-      toast.error('Failed to claim investment');
+      const msg = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to claim investment: ${msg}`);
     } finally {
       setClaiming(false);
     }
