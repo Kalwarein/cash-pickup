@@ -70,8 +70,6 @@ Deno.serve(async (req) => {
     const today = now.toISOString().split('T')[0];
 
     // ============ GENERATE DAILY CPR FOR ALL COMPANIES ============
-    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today, is_silent_performer, risk_level');
-    
     const { data: companiesFull } = await supabase
       .from('companies')
       .select('id, cpr_last_generated_date, cpr_today, is_silent_performer, risk_level, min_return_percent, max_return_percent');
