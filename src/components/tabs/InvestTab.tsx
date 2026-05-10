@@ -339,6 +339,10 @@ export const InvestTab = () => {
                 change={company.price_change_percent}
                 riskLevel={company.risk_level}
                 isTrending={company.is_trending}
+                marketCap={(company as { market_cap?: number }).market_cap}
+                country={(company as { country?: 'SL' | 'INT' }).country}
+                bestPct={company.max_return_percent}
+                worstPct={company.min_return_percent}
                 onInvest={() => setSelectedCompany(company)}
                 onView={() => setViewingCompanyId(company.id)}
               />
