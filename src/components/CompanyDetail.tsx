@@ -30,6 +30,10 @@ interface Company {
   cpr_trend: string;
   min_investment: number;
   description?: string;
+  min_return_percent: number;
+  max_return_percent: number;
+  market_cap: number;
+  country: 'SL' | 'INT';
 }
 
 interface CompanyDetailProps {
@@ -73,6 +77,10 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
           cpr_trend: data.cpr_trend || 'stable',
           min_investment: Number(data.min_investment) || 50,
           description: data.description || `${data.name} is a ${data.sector.toLowerCase()} company based in Sierra Leone.`,
+          min_return_percent: Number((data as { min_return_percent?: number }).min_return_percent) || -10,
+          max_return_percent: Number((data as { max_return_percent?: number }).max_return_percent) || 8,
+          market_cap: Number((data as { market_cap?: number }).market_cap) || 0,
+          country: ((data as { country?: string }).country === 'SL' ? 'SL' : 'INT') as 'SL' | 'INT',
         });
       }
       setLoading(false);
