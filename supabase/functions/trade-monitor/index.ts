@@ -23,35 +23,31 @@ function getRandomActivityMessage(): string {
 }
 
 /**
- * Risk-tiered random CPR generator.
- *  Low risk    -> high win rate, modest gains, tiny losses (the "winners")
- *  Medium risk -> balanced
- *  High risk   -> crypto-like swings, capped -20% / +40%
- * Silent performers get a small extra positive bias.
+ * Loss-biased random return generator.
+ * Each company advertises a stated max profit (max_return_percent) and a
+ * stated max loss (min_return_percent). The actual realised return:
+ *   - is randomly drawn between [min, max]
+ *   - never exceeds the stated max profit
+ *   - is biased toward losses (~60% of outcomes land in the negative half)
+ *   - profit results never reach the full advertised maximum (caps at ~85% of it)
+ *     so users see "may earn UP TO X%" — actual is usually less.
+ * Silent performers get a tiny upward nudge (kept subtle so they aren't obvious).
  */
-function generateDailyCPR(riskLevel: string, isSilentPerformer: boolean): number {
-  const r = (riskLevel || 'medium').toLowerCase();
-  const silentBoost = isSilentPerformer ? 0.10 : 0;
+function generateRealisedReturn(minPct: number, maxPct: number, isSilentPerformer: boolean): number {
+  const lo = Number.isFinite(minPct) ? minPct : -10;
+  const hi = Number.isFinite(maxPct) ? maxPct : 8;
+  const lossBias = isSilentPerformer ? 0.45 : 0.60; // gems are slightly less loss-biased
+  const goesNegative = Math.random() < lossBias;
 
-  if (r === 'low') {
-    const positive = Math.random() < (0.78 + silentBoost);
-    return positive
-      ? Math.round((2 + Math.random() * 12) * 10) / 10   // +2% to +14%
-      : Math.round((-1 - Math.random() * 4) * 10) / 10;  // -1% to -5%
+  if (goesNegative && lo < 0) {
+    // Anywhere between 0 and the worst-case (full magnitude allowed)
+    const v = -Math.random() * Math.abs(lo);
+    return Math.round(v * 100) / 100;
   }
-
-  if (r === 'high') {
-    const positive = Math.random() < (0.48 + silentBoost);
-    return positive
-      ? Math.round((Math.random() * 40) * 10) / 10       // 0% to +40%
-      : Math.round((-Math.random() * 20) * 10) / 10;     // 0% to -20%
-  }
-
-  // medium
-  const positive = Math.random() < (0.55 + silentBoost);
-  return positive
-    ? Math.round((1 + Math.random() * 22) * 10) / 10     // +1% to +23%
-    : Math.round((-1 - Math.random() * 12) * 10) / 10;   // -1% to -13%
+  // Profit branch: capped at 85% of advertised max so it almost never hits the ceiling
+  const ceiling = Math.max(0, hi) * 0.85;
+  const v = Math.random() * ceiling;
+  return Math.round(v * 100) / 100;
 }
 
 function calculatePayout(amount: number, cpr: number): number {
@@ -74,13 +70,18 @@ Deno.serve(async (req) => {
     const today = now.toISOString().split('T')[0];
 
     // ============ GENERATE DAILY CPR FOR ALL COMPANIES ============
-    const { data: companies } = await supabase.from('companies').select('id, cpr_last_generated_date, cpr_today, is_silent_performer, risk_level');
-    
-    if (companies) {
-      for (const company of companies) {
+    const { data: companiesFull } = await supabase
+      .from('companies')
+      .select('id, cpr_last_generated_date, cpr_today, is_silent_performer, risk_level, min_return_percent, max_return_percent');
+    if (companiesFull) {
+      for (const company of companiesFull) {
         if (company.cpr_last_generated_date !== today) {
           const isSilent = company.is_silent_performer || false;
-          const newCPR = generateDailyCPR(String(company.risk_level || 'medium'), isSilent);
+          const newCPR = generateRealisedReturn(
+            Number(company.min_return_percent),
+            Number(company.max_return_percent),
+            isSilent,
+          );
           const oldCPR = Number(company.cpr_today) || 0;
           
           const { data: history } = await supabase
@@ -142,7 +143,7 @@ Deno.serve(async (req) => {
     // ============ MATURE INVESTMENTS (do NOT auto-credit wallet) ============
     const { data: maturingInvestments } = await supabase
       .from('investments')
-      .select(`*, companies (name, cpr_today, risk_level, is_silent_performer)`)
+      .select(`*, companies (name, cpr_today, risk_level, is_silent_performer, min_return_percent, max_return_percent)`)
       .eq('status', 'active')
       .eq('is_matured', false)
       .lte('maturity_date', now.toISOString());
@@ -150,9 +151,13 @@ Deno.serve(async (req) => {
     if (maturingInvestments && maturingInvestments.length > 0) {
       for (const inv of maturingInvestments) {
         const amount = Number(inv.amount);
-        const companyCPR = Number(inv.companies?.cpr_today) || 0;
-        
-        const finalValue = calculatePayout(amount, companyCPR);
+        // Generate a fresh realised return for THIS investment (not the company's daily CPR)
+        const realised = generateRealisedReturn(
+          Number(inv.companies?.min_return_percent),
+          Number(inv.companies?.max_return_percent),
+          inv.companies?.is_silent_performer || false,
+        );
+        const finalValue = calculatePayout(amount, realised);
         const profitLoss = finalValue - amount;
 
         // Mark as matured but NOT claimed — user must click Claim
@@ -163,7 +168,7 @@ Deno.serve(async (req) => {
             profit_loss: profitLoss,
             final_value: finalValue,
             final_profit_loss: profitLoss,
-            maturity_cpr: companyCPR,
+            maturity_cpr: realised,
             is_matured: true,
             matured_at: now.toISOString(),
             status: 'matured',
@@ -176,8 +181,8 @@ Deno.serve(async (req) => {
     }
 
     // ============ GENERATE ACTIVITIES ============
-    if (Math.random() < 0.3 && companies) {
-      const shuffled = companies.sort(() => 0.5 - Math.random()).slice(0, 2);
+    if (Math.random() < 0.3 && companiesFull) {
+      const shuffled = [...companiesFull].sort(() => 0.5 - Math.random()).slice(0, 2);
       for (const company of shuffled) {
         await supabase.from('company_activities').insert({
           company_id: company.id,

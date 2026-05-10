@@ -89,11 +89,17 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
           description: `Claimed ${investment.company_name ?? 'investment'}: ${profitLoss >= 0 ? '+' : ''}${sle(profitLoss)}`,
         });
       
-      toast.success(
-        profitLoss >= 0
-          ? `Claimed ${sle(finalValue)} (+${sle(profitLoss)} profit)`
-          : `Claimed ${sle(finalValue)} (loss of ${sle(Math.abs(profitLoss))} applied)`,
-      );
+      if (profitLoss >= 0) {
+        toast.success(`+${sle(profitLoss)} added to your wallet`, {
+          description: `Total credited: ${sle(finalValue)} from ${investment.company_name ?? investment.company_ticker ?? 'investment'}.`,
+          duration: 6000,
+        });
+      } else {
+        toast.error(`−${sle(Math.abs(profitLoss))} deducted from your investment`, {
+          description: `Returned to wallet: ${sle(finalValue)}. Better luck next time.`,
+          duration: 6000,
+        });
+      }
       onClaimed();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';

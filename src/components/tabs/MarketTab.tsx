@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
 /* ─── Types ─────────────────────────────────────────────── */
-type FilterType = 'all' | 'positive' | 'negative' | 'stable' | 'silent';
+type FilterType = 'all' | 'positive' | 'negative' | 'stable';
 
 interface CompanyDetailData {
   id: string; name: string; ticker: string; sector: string;
@@ -135,7 +135,6 @@ export const MarketTab = () => {
       case 'positive': return positiveCompanies;
       case 'negative': return negativeCompanies;
       case 'stable':   return stableCompanies;
-      case 'silent':   return cprCompanies.filter(c => (c as any).is_silent_performer);
       default:         return cprCompanies;
     }
   };
@@ -190,9 +189,7 @@ export const MarketTab = () => {
         <div className="mt-row-info">
           <div className="mt-row-name-line">
             <p className="mt-row-name">{company.name}</p>
-            {company.is_silent_performer && (
-              <span className="mt-silent-badge"><Shield className="w-2.5 h-2.5" />Gem</span>
-            )}
+            {/* Hidden gem badge intentionally removed — gems are indistinguishable */}
           </div>
           <div className="mt-row-meta">
             <span>{company.ticker}</span>
@@ -308,15 +305,7 @@ export const MarketTab = () => {
               <p className="mt-summary-label">{label}</p>
             </div>
           ))}
-          <div className="mt-summary-card">
-            <div className="mt-summary-icon" style={{ background: 'rgba(139,92,246,0.1)' }}>
-              <Star className="w-4 h-4" style={{ color: '#8b5cf6' }} />
-            </div>
-            <p className="mt-summary-val" style={{ color: '#8b5cf6' }}>
-              {cprCompanies.filter(c => (c as any).is_silent_performer).length}
-            </p>
-            <p className="mt-summary-label">Hidden Gems</p>
-          </div>
+          {/* Hidden gems summary intentionally removed */}
         </div>
 
         {/* ═══════════════════════════════════════════
@@ -393,16 +382,7 @@ export const MarketTab = () => {
             </div>
             <p className="mt-mover-name">{topLosers[0]?.ticker}</p>
           </button>
-          <button
-            className="mt-mover-btn mt-mover-btn--gem"
-            onClick={() => setFilter('silent')}
-          >
-            <Shield className="w-4 h-4" />
-            <div>
-              <p className="mt-mover-val">{cprCompanies.filter(c => (c as any).is_silent_performer).length}</p>
-              <p className="mt-mover-label">Hidden Gems</p>
-            </div>
-          </button>
+          {/* Hidden gems mover button removed */}
         </div>
 
         {/* ═══════════════════════════════════════════
@@ -414,7 +394,6 @@ export const MarketTab = () => {
             { key: 'positive', label: 'Positive',    icon: TrendingUp,  color: '#22c55e', bg: 'rgba(34,197,94,0.1)'  },
             { key: 'negative', label: 'Negative',    icon: TrendingDown,color: '#ef4444', bg: 'rgba(239,68,68,0.1)'  },
             { key: 'stable',   label: 'Stable',      icon: Activity,   color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-            { key: 'silent',   label: 'Hidden Gems', icon: Shield,     color: '#8b5cf6', bg: 'rgba(139,92,246,0.1)' },
           ] as { key: FilterType; label: string; icon: any; color: string; bg: string }[]).map(({ key, label, icon: Icon, color, bg }) => (
             <button
               key={key}
@@ -644,16 +623,7 @@ export const MarketTab = () => {
                 </div>
               </div>
 
-              {/* Hidden gem notice */}
-              {selectedCompany.is_silent_performer && (
-                <div className="mt-gem-notice">
-                  <Shield className="w-4 h-4 text-primary flex-shrink-0" />
-                  <p>
-                    <span className="font-bold text-primary">Hidden Gem</span>
-                    {' '}— This company is a silent performer with historically consistent positive returns.
-                  </p>
-                </div>
-              )}
+              {/* Hidden gem notice removed — keep gems anonymous */}
 
             </div>{/* end mt-detail-body */}
           </div>

@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Flame, ArrowUpRight, Sparkles } from 'lucide-react';
-import { sle } from '@/lib/currency';
+import { TrendingUp, TrendingDown, Flame, ArrowUpRight, Sparkles, Globe2, MapPin } from 'lucide-react';
+import { sle, formatMarketCap } from '@/lib/currency';
 
 interface CompanyCardProps {
   name: string;
@@ -10,6 +10,10 @@ interface CompanyCardProps {
   change: number;
   riskLevel: 'Low' | 'Medium' | 'High';
   isTrending?: boolean;
+  marketCap?: number;
+  country?: 'SL' | 'INT';
+  bestPct?: number;
+  worstPct?: number;
   onInvest?: () => void;
   onView?: () => void;
 }
@@ -22,6 +26,10 @@ export const CompanyCard = ({
   change,
   riskLevel,
   isTrending,
+  marketCap = 0,
+  country = 'INT',
+  bestPct,
+  worstPct,
   onInvest,
   onView,
 }: CompanyCardProps) => {
@@ -72,6 +80,35 @@ export const CompanyCard = ({
           {riskLevel.toUpperCase()}
         </span>
       </div>
+
+      {/* Market cap + country */}
+      {marketCap > 0 && (
+        <div className="flex items-center gap-2 mb-2 text-[11px]">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-primary/10 text-primary font-semibold">
+            {country === 'SL' ? <MapPin className="w-3 h-3" /> : <Globe2 className="w-3 h-3" />}
+            {country === 'SL' ? 'SL' : 'Global'}
+          </span>
+          <span className="text-muted-foreground">
+            Worth <span className="font-semibold text-foreground">{formatMarketCap(marketCap)}</span>
+          </span>
+        </div>
+      )}
+
+      {/* Best / worst weekly projections */}
+      {(bestPct !== undefined || worstPct !== undefined) && (
+        <div className="flex items-center gap-1.5 mb-3">
+          {bestPct !== undefined && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-500/10 text-emerald-500">
+              Best: +{Math.abs(bestPct).toFixed(1)}%
+            </span>
+          )}
+          {worstPct !== undefined && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-red-500/10 text-red-500">
+              Worst: −{Math.abs(worstPct).toFixed(1)}%
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="flex items-end justify-between gap-3">
         <div>

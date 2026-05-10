@@ -38,6 +38,7 @@ export type Database = {
       companies: {
         Row: {
           banner_url: string | null
+          country: string | null
           cpr_30day_avg: number | null
           cpr_7day_avg: number | null
           cpr_best: number | null
@@ -58,6 +59,8 @@ export type Database = {
           investment_durations: Json | null
           is_silent_performer: boolean | null
           is_trending: boolean | null
+          logo_url: string | null
+          market_cap: number | null
           max_return_percent: number | null
           min_investment: number | null
           min_return_percent: number | null
@@ -66,9 +69,12 @@ export type Database = {
           risk_level: string
           sector: string
           ticker: string
+          weekly_target_cap: number | null
+          weekly_target_set_at: string | null
         }
         Insert: {
           banner_url?: string | null
+          country?: string | null
           cpr_30day_avg?: number | null
           cpr_7day_avg?: number | null
           cpr_best?: number | null
@@ -89,6 +95,8 @@ export type Database = {
           investment_durations?: Json | null
           is_silent_performer?: boolean | null
           is_trending?: boolean | null
+          logo_url?: string | null
+          market_cap?: number | null
           max_return_percent?: number | null
           min_investment?: number | null
           min_return_percent?: number | null
@@ -97,9 +105,12 @@ export type Database = {
           risk_level: string
           sector: string
           ticker: string
+          weekly_target_cap?: number | null
+          weekly_target_set_at?: string | null
         }
         Update: {
           banner_url?: string | null
+          country?: string | null
           cpr_30day_avg?: number | null
           cpr_7day_avg?: number | null
           cpr_best?: number | null
@@ -120,6 +131,8 @@ export type Database = {
           investment_durations?: Json | null
           is_silent_performer?: boolean | null
           is_trending?: boolean | null
+          logo_url?: string | null
+          market_cap?: number | null
           max_return_percent?: number | null
           min_investment?: number | null
           min_return_percent?: number | null
@@ -128,6 +141,8 @@ export type Database = {
           risk_level?: string
           sector?: string
           ticker?: string
+          weekly_target_cap?: number | null
+          weekly_target_set_at?: string | null
         }
         Relationships: []
       }

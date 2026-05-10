@@ -9,6 +9,7 @@ import {
   GraduationCap, Eye
 } from 'lucide-react';
 import { CompanyCard } from '@/components/CompanyCard';
+import { ListSkeleton } from '@/components/skeletons/CardSkeletons';
 import { CompanyDetail } from '@/components/CompanyDetail';
 import { InvestModal } from '@/components/InvestModal';
 import { useCompanies } from '@/hooks/useCompanies';
@@ -135,9 +136,7 @@ export const InvestTab = () => {
     return (
       <div className="it-page">
         <div className="it-body">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="it-skel" style={{ animationDelay: `${i * 70}ms` }} />
-          ))}
+          <ListSkeleton count={5} />
         </div>
       </div>
     );
@@ -339,6 +338,10 @@ export const InvestTab = () => {
                 change={company.price_change_percent}
                 riskLevel={company.risk_level}
                 isTrending={company.is_trending}
+                marketCap={(company as { market_cap?: number }).market_cap}
+                country={(company as { country?: 'SL' | 'INT' }).country}
+                bestPct={company.max_return_percent}
+                worstPct={company.min_return_percent}
                 onInvest={() => setSelectedCompany(company)}
                 onView={() => setViewingCompanyId(company.id)}
               />
@@ -629,6 +632,8 @@ export const InvestTab = () => {
             minInvestment: Number(selectedCompany.min_investment) || 50,
             riskLevel: selectedCompany.risk_level,
             cprToday: Number(selectedCompany.cpr_today) || 0,
+            bestPct: selectedCompany.max_return_percent,
+            worstPct: selectedCompany.min_return_percent,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}

@@ -14,6 +14,10 @@ interface InvestModalProps {
     minInvestment: number;
     riskLevel: 'Low' | 'Medium' | 'High';
     cprToday: number;
+    /** Stated best-case weekly return % (positive). */
+    bestPct?: number;
+    /** Stated worst-case weekly return % (negative). */
+    worstPct?: number;
   };
   balance: number;
   onInvest: (amount: number, maturityDays: number) => Promise<void>;
@@ -39,19 +43,33 @@ function getMaxInvestment(riskLevel: string, days: number): number {
   return base * 0.15; // 1 year
 }
 
-function getProjections(amount: number, days: number, riskLevel: string) {
-  // Time multiplier - longer = more potential swing
-  const timeFactor = Math.min(2, 1 + days / 365);
-  
-  // Risk factor adjustments
-  const riskMult = riskLevel === 'Low' ? 0.6 : riskLevel === 'Medium' ? 1 : 1.4;
-  
-  const bestPercent = Math.min(50, 10 + days * 0.15 * (2 - riskMult * 0.5));
-  const worstPercent = Math.max(-90, -(5 + days * 0.1 * riskMult));
-  
-  const bestCase = amount * (1 + bestPercent / 100);
+function getProjections(
+  amount: number,
+  days: number,
+  riskLevel: string,
+  bestPctIn?: number,
+  worstPctIn?: number,
+) {
+  // Time multiplier — longer holding periods scale the stated weekly range.
+  const weeks = Math.max(1, days / 7);
+  const timeScale = Math.min(3.5, Math.sqrt(weeks)); // diminishing scale
+
+  // Use the company's STATED weekly best/worst when present, else fall back to risk-tier defaults.
+  const baseBest =
+    bestPctIn !== undefined
+      ? Math.abs(bestPctIn)
+      : riskLevel === 'Low' ? 12 : riskLevel === 'Medium' ? 18 : 9;
+  const baseWorst =
+    worstPctIn !== undefined
+      ? Math.abs(worstPctIn)
+      : riskLevel === 'Low' ? 15 : riskLevel === 'Medium' ? 35 : 70;
+
+  const bestPercent  = Math.min(150, baseBest * timeScale);
+  const worstPercent = -Math.min(95, baseWorst * timeScale);
+
+  const bestCase  = amount * (1 + bestPercent / 100);
   const worstCase = Math.max(amount * 0.05, amount * (1 + worstPercent / 100));
-  
+
   return { bestCase, worstCase, bestPercent, worstPercent };
 }
 
@@ -66,8 +84,8 @@ export const InvestModal = ({
   const investAmount = parseFloat(amount || '0');
   const maxInvestment = getMaxInvestment(company.riskLevel, selectedMaturity.days);
   const projections = useMemo(
-    () => getProjections(investAmount, selectedMaturity.days, company.riskLevel),
-    [investAmount, selectedMaturity.days, company.riskLevel]
+    () => getProjections(investAmount, selectedMaturity.days, company.riskLevel, company.bestPct, company.worstPct),
+    [investAmount, selectedMaturity.days, company.riskLevel, company.bestPct, company.worstPct]
   );
 
   if (!isOpen) return null;
@@ -171,6 +189,25 @@ export const InvestModal = ({
             </div>
           </div>
 
+          {/* Quick amount chips */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: '10%', val: balance * 0.1 },
+              { label: '25%', val: balance * 0.25 },
+              { label: '50%', val: balance * 0.5 },
+              { label: 'MAX', val: Math.min(balance, maxInvestment) },
+            ].map(chip => (
+              <button
+                key={chip.label}
+                type="button"
+                onClick={() => { setAmount(chip.val.toFixed(2)); setError(''); }}
+                className="px-3 py-1.5 text-xs font-semibold rounded-lg border border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 transition-colors"
+              >
+                {chip.label}
+              </button>
+            ))}
+          </div>
+
           {/* Amount Input */}
           <div>
             <label className="text-sm text-muted-foreground mb-2 block">
@@ -189,23 +226,26 @@ export const InvestModal = ({
           {/* Projections */}
           {investAmount > 0 && (
             <div className="glass-card p-4 bg-muted/50">
-              <p className="text-sm font-medium mb-3">Projected Outcomes ({selectedMaturity.label})</p>
+              <p className="text-sm font-medium mb-1">If things go well…</p>
+              <p className="text-xs text-muted-foreground mb-3">
+                You <span className="font-semibold">may</span> earn up to the stated max — actual return is random and may be lower.
+              </p>
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-success/10 rounded-lg border border-success/20">
-                  <p className="text-[10px] text-muted-foreground">Best Case ({projections.bestPercent.toFixed(0)}%)</p>
+                  <p className="text-[10px] text-muted-foreground">Up to +{projections.bestPercent.toFixed(1)}%</p>
                   <p className="font-bold text-success">{sle(projections.bestCase)}</p>
-                  <p className="text-[10px] text-success">+{sle(projections.bestCase - investAmount)}</p>
+                  <p className="text-[10px] text-success">+{sle(projections.bestCase - investAmount)} max</p>
                 </div>
                 <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                  <p className="text-[10px] text-muted-foreground">Worst Case ({projections.worstPercent.toFixed(0)}%)</p>
+                  <p className="text-[10px] text-muted-foreground">Down to {projections.worstPercent.toFixed(1)}%</p>
                   <p className="font-bold text-destructive">{sle(projections.worstCase)}</p>
-                  <p className="text-[10px] text-destructive">-{sle(investAmount - projections.worstCase)}</p>
+                  <p className="text-[10px] text-destructive">−{sle(investAmount - projections.worstCase)} max loss</p>
                 </div>
               </div>
               <div className="flex items-start gap-1.5 mt-3">
                 <Info className="w-3 h-3 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <p className="text-[10px] text-muted-foreground">
-                  Actual outcome depends on company CPR at maturity. Longer periods allow more price movement.
+                  Returns are not fixed. The actual amount paid out is randomised within this range and is more often a loss than a profit.
                 </p>
               </div>
             </div>

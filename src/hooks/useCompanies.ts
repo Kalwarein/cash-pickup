@@ -15,6 +15,8 @@ interface Company {
   min_investment: number;
   cpr_today: number;
   cpr_7day_avg: number;
+  market_cap: number;
+  country: 'SL' | 'INT';
 }
 
 export const useCompanies = () => {
@@ -39,6 +41,8 @@ export const useCompanies = () => {
         risk_level: c.risk_level as 'Low' | 'Medium' | 'High',
         cpr_today: Number(c.cpr_today) || 0,
         cpr_7day_avg: Number(c.cpr_7day_avg) || 0,
+        market_cap: Number((c as { market_cap?: number }).market_cap) || 0,
+        country: ((c as { country?: string }).country === 'SL' ? 'SL' : 'INT') as 'SL' | 'INT',
       })));
     }
     setLoading(false);
