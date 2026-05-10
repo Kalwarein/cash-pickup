@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 
 /* ─── Types ─────────────────────────────────────────────── */
-type FilterType = 'all' | 'positive' | 'negative' | 'stable' | 'silent';
+type FilterType = 'all' | 'positive' | 'negative' | 'stable';
 
 interface CompanyDetailData {
   id: string; name: string; ticker: string; sector: string;
