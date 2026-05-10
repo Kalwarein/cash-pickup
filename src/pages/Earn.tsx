@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
+import { FullScreenSpinner } from '@/components/PremiumSpinner';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
