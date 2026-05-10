@@ -11,7 +11,8 @@ import { InvestModal } from '@/components/InvestModal';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
-import { sle, formatSLE } from '@/lib/currency';
+import { sle, formatSLE, formatMarketCap } from '@/lib/currency';
+import { Globe2, MapPin } from 'lucide-react';
 
 interface Company {
   id: string;
@@ -176,6 +177,66 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
 
       {/* Risk Warning */}
       <RiskWarning variant="compact" />
+
+      {/* Premium hero: market cap + country + price */}
+      <div className="relative overflow-hidden rounded-2xl p-5 text-white shadow-lg"
+        style={{
+          background:
+            company.risk_level === 'Low'
+              ? 'linear-gradient(135deg, hsl(var(--primary)), #2563eb 60%, #0ea5e9)'
+              : company.risk_level === 'Medium'
+              ? 'linear-gradient(135deg, #f59e0b, #ea580c)'
+              : 'linear-gradient(135deg, #dc2626, #7c3aed)',
+        }}
+      >
+        <div className="flex items-center gap-2 mb-2 text-xs font-semibold opacity-90">
+          {company.country === 'SL' ? <MapPin className="w-3.5 h-3.5" /> : <Globe2 className="w-3.5 h-3.5" />}
+          {company.country === 'SL' ? 'Sierra Leone' : 'Global Company'}
+          <span className="opacity-60">•</span>
+          {company.risk_level} Risk Tier
+        </div>
+        <p className="text-xs opacity-80">Market Capitalisation</p>
+        <p className="text-3xl font-extrabold tracking-tight">
+          {formatMarketCap(company.market_cap || 0)}
+        </p>
+        <div className="mt-3 flex items-center gap-4 text-sm">
+          <div>
+            <p className="text-[11px] opacity-75">Live Price</p>
+            <p className="font-bold">{sle(company.current_price)}</p>
+          </div>
+          <div>
+            <p className="text-[11px] opacity-75">Best / Worst (weekly)</p>
+            <p className="font-bold">
+              +{Math.abs(company.max_return_percent).toFixed(1)}% / −{Math.abs(company.min_return_percent).toFixed(1)}%
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Outcome breakdown */}
+      <div className="glass-card p-4 space-y-3">
+        <div className="flex items-center gap-2">
+          <Lightbulb className="w-4 h-4 text-primary" />
+          <h3 className="font-semibold">Investment Outcome Breakdown</h3>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
+            <p className="text-[10px] text-muted-foreground">If things go well</p>
+            <p className="font-bold text-emerald-500">up to +{Math.abs(company.max_return_percent).toFixed(1)}%</p>
+          </div>
+          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+            <p className="text-[10px] text-muted-foreground">Likely (mid)</p>
+            <p className="font-bold text-amber-500">~{((company.max_return_percent + company.min_return_percent) / 2).toFixed(1)}%</p>
+          </div>
+          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
+            <p className="text-[10px] text-muted-foreground">If things go badly</p>
+            <p className="font-bold text-red-500">down to {company.min_return_percent.toFixed(1)}%</p>
+          </div>
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Returns are randomised within this range and never exactly match the stated max. Most outcomes lean toward losses.
+        </p>
+      </div>
 
       {/* Today's CPR Card */}
       <div className="glass-card p-4">
