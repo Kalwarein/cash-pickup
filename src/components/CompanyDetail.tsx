@@ -357,6 +357,8 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
             minInvestment: company.min_investment,
             riskLevel: company.risk_level,
             cprToday: company.cpr_today,
+            bestPct: company.max_return_percent,
+            worstPct: company.min_return_percent,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}
