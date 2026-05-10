@@ -28,6 +28,12 @@ export function formatSLE(amount: number, showSign = false): string {
  * @returns Formatted string like "1.2K SLE" or "1.5M SLE"
  */
 export function formatSLECompact(amount: number): string {
+  if (Math.abs(amount) >= 1_000_000_000_000) {
+    return `${(amount / 1_000_000_000_000).toFixed(2)}T ${CURRENCY_SYMBOL}`;
+  }
+  if (Math.abs(amount) >= 1_000_000_000) {
+    return `${(amount / 1_000_000_000).toFixed(2)}B ${CURRENCY_SYMBOL}`;
+  }
   if (Math.abs(amount) >= 1000000) {
     return `${(amount / 1000000).toFixed(1)}M ${CURRENCY_SYMBOL}`;
   }
@@ -35,6 +41,19 @@ export function formatSLECompact(amount: number): string {
     return `${(amount / 1000).toFixed(1)}K ${CURRENCY_SYMBOL}`;
   }
   return formatSLE(amount);
+}
+
+/**
+ * Compact market-cap formatter (no currency suffix, just T/B/M).
+ * Examples: 2_900_000_000_000 -> "SLE 2.90T", 850_000_000 -> "SLE 850M"
+ */
+export function formatMarketCap(amount: number): string {
+  const a = Math.abs(amount);
+  if (a >= 1_000_000_000_000) return `SLE ${(amount / 1_000_000_000_000).toFixed(2)}T`;
+  if (a >= 1_000_000_000)     return `SLE ${(amount / 1_000_000_000).toFixed(2)}B`;
+  if (a >= 1_000_000)         return `SLE ${(amount / 1_000_000).toFixed(0)}M`;
+  if (a >= 1_000)             return `SLE ${(amount / 1_000).toFixed(1)}K`;
+  return `SLE ${amount.toFixed(0)}`;
 }
 
 /**
