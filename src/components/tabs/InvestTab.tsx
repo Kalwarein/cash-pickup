@@ -135,9 +135,7 @@ export const InvestTab = () => {
     return (
       <div className="it-page">
         <div className="it-body">
-          {[...Array(5)].map((_, i) => (
-            <div key={i} className="it-skel" style={{ animationDelay: `${i * 70}ms` }} />
-          ))}
+          <ListSkeleton count={5} />
         </div>
       </div>
     );
