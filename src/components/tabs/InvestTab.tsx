@@ -9,6 +9,7 @@ import {
   GraduationCap, Eye
 } from 'lucide-react';
 import { CompanyCard } from '@/components/CompanyCard';
+import { ListSkeleton } from '@/components/skeletons/CardSkeletons';
 import { CompanyDetail } from '@/components/CompanyDetail';
 import { InvestModal } from '@/components/InvestModal';
 import { useCompanies } from '@/hooks/useCompanies';
