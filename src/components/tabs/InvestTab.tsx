@@ -632,6 +632,8 @@ export const InvestTab = () => {
             minInvestment: Number(selectedCompany.min_investment) || 50,
             riskLevel: selectedCompany.risk_level,
             cprToday: Number(selectedCompany.cpr_today) || 0,
+            bestPct: selectedCompany.max_return_percent,
+            worstPct: selectedCompany.min_return_percent,
           }}
           balance={wallet.balance}
           onInvest={handleInvest}
