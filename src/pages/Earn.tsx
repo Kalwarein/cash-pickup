@@ -5,7 +5,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
-import { FullScreenSpinner } from '@/components/PremiumSpinner';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
@@ -27,13 +26,7 @@ const Earn = () => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <FullScreenSpinner label="Loading your investments…" />
-      </div>
-    );
-  }
+  if (loading || !user) return null;
 
   const allInvestments = [
     ...investments.map(i => ({ ...i, _type: 'active' as const })),
