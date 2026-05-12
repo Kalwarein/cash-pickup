@@ -1,9 +1,8 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, Clock, Building2, MessageSquare, Activity, BarChart3, Lightbulb } from 'lucide-react';
 import { CPRIndicator } from '@/components/CPRIndicator';
-import { CPRChart } from '@/components/CPRChart';
 import { RiskWarning } from '@/components/RiskWarning';
-import { useCPRHistory } from '@/hooks/useCPR';
+import { TradingChart } from '@/components/TradingChart';
 import { useCompanyActivities } from '@/hooks/useCompanyActivities';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
@@ -47,7 +46,6 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
   const [loading, setLoading] = useState(true);
   const [showInvestModal, setShowInvestModal] = useState(false);
   
-  const { history: cprHistory } = useCPRHistory(companyId);
   const { activities } = useCompanyActivities(companyId);
   const { investments, createInvestment, refetch: refetchInvestments } = useInvestments();
   const { wallet, refetch: refetchWallet } = useWallet();
@@ -238,9 +236,12 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
         </p>
       </div>
 
+      {/* Live trading chart */}
+      <TradingChart companyId={company.id} ticker={company.ticker} name={company.name} />
+
       {/* Today's CPR Card */}
       <div className="glass-card p-4">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div>
             <p className="text-sm text-muted-foreground mb-1">Today's Performance Rate</p>
             <div className="flex items-center gap-3">
@@ -263,11 +264,6 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
             </p>
           </div>
         </div>
-        
-        {/* CPR History Chart */}
-        {cprHistory.length > 0 && (
-          <CPRChart data={cprHistory} height={140} showAxis />
-        )}
       </div>
 
       {/* CPR Statistics */}

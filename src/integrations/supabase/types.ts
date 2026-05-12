@@ -222,6 +222,39 @@ export type Database = {
           },
         ]
       }
+      company_candles_1m: {
+        Row: {
+          bucket_start: string
+          close: number
+          company_id: string
+          created_at: string
+          high: number
+          low: number
+          open: number
+          volume: number
+        }
+        Insert: {
+          bucket_start: string
+          close: number
+          company_id: string
+          created_at?: string
+          high: number
+          low: number
+          open: number
+          volume?: number
+        }
+        Update: {
+          bucket_start?: string
+          close?: number
+          company_id?: string
+          created_at?: string
+          high?: number
+          low?: number
+          open?: number
+          volume?: number
+        }
+        Relationships: []
+      }
       company_price_history: {
         Row: {
           change_percent: number | null
@@ -752,8 +785,20 @@ export type Database = {
     }
     Functions: {
       cleanup_old_candles: { Args: never; Returns: undefined }
+      cleanup_old_candles_1m: { Args: never; Returns: undefined }
       cleanup_old_company_candles: { Args: never; Returns: undefined }
       expire_stale_payment_codes: { Args: never; Returns: undefined }
+      get_candles: {
+        Args: { p_company_id: string; p_limit?: number; p_timeframe?: string }
+        Returns: {
+          bucket: string
+          close: number
+          high: number
+          low: number
+          open: number
+          volume: number
+        }[]
+      }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {

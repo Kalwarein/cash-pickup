@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useOnboarding } from '@/hooks/useOnboarding';
+import { supabase } from '@/integrations/supabase/client';
 
 const Index = () => {
   const { user, loading } = useAuth();
@@ -9,6 +10,7 @@ const Index = () => {
   const navigate = useNavigate();
   const [assetsReady, setAssetsReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [dataReady, setDataReady] = useState(false);
   const [fadingOut, setFadingOut] = useState(false);
 
   // Wait for fonts + window load (assets/images), with safety fallbacks
@@ -37,8 +39,34 @@ const Index = () => {
     };
   }, []);
 
+  // Prefetch app-critical data so we never need an in-app loading screen
   useEffect(() => {
-    if (loading || onboardingLoading || !assetsReady || !minTimeElapsed) return;
+    if (loading) return;
+    let cancelled = false;
+    const failsafe = setTimeout(() => !cancelled && setDataReady(true), 3500);
+    const run = async () => {
+      try {
+        const tasks: Promise<unknown>[] = [
+          Promise.resolve(supabase.from('companies').select('id').limit(1)),
+        ];
+        if (user) {
+          tasks.push(
+            Promise.resolve(supabase.from('wallets').select('balance').eq('user_id', user.id).maybeSingle()),
+            Promise.resolve(supabase.from('investments').select('id').eq('user_id', user.id).limit(1)),
+          );
+        }
+        await Promise.allSettled(tasks);
+      } finally {
+        if (!cancelled) setDataReady(true);
+        clearTimeout(failsafe);
+      }
+    };
+    run();
+    return () => { cancelled = true; clearTimeout(failsafe); };
+  }, [loading, user]);
+
+  useEffect(() => {
+    if (loading || onboardingLoading || !assetsReady || !minTimeElapsed || !dataReady) return;
 
     const target = (() => {
       if (user) return completed === false ? '/onboarding' : '/home';
@@ -48,7 +76,7 @@ const Index = () => {
     setFadingOut(true);
     const t = setTimeout(() => navigate(target, { replace: true }), 450);
     return () => clearTimeout(t);
-  }, [user, loading, completed, onboardingLoading, assetsReady, minTimeElapsed, navigate]);
+  }, [user, loading, completed, onboardingLoading, assetsReady, minTimeElapsed, dataReady, navigate]);
 
   return (
     <div

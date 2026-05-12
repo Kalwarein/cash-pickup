@@ -5,6 +5,7 @@ import { sle } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useNotify } from '@/contexts/NotificationContext';
 
 interface ClaimInvestmentCardProps {
   investment: {
@@ -24,6 +25,7 @@ interface ClaimInvestmentCardProps {
 export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCardProps) => {
   const { user } = useAuth();
   const [claiming, setClaiming] = useState(false);
+  const notify = useNotify();
 
   const handleClaim = async () => {
     if (!user || claiming) return;
@@ -90,14 +92,16 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
         });
       
       if (profitLoss >= 0) {
-        toast.success(`+${sle(profitLoss)} added to your wallet`, {
-          description: `Total credited: ${sle(finalValue)} from ${investment.company_name ?? investment.company_ticker ?? 'investment'}.`,
-          duration: 6000,
+        notify({
+          tone: 'success',
+          title: `+${sle(profitLoss)} added to your wallet`,
+          body: `Total credited: ${sle(finalValue)} from ${investment.company_name ?? investment.company_ticker ?? 'investment'}.`,
         });
       } else {
-        toast.error(`−${sle(Math.abs(profitLoss))} deducted from your investment`, {
-          description: `Returned to wallet: ${sle(finalValue)}. Better luck next time.`,
-          duration: 6000,
+        notify({
+          tone: 'error',
+          title: `−${sle(Math.abs(profitLoss))} deducted from your investment`,
+          body: `Returned to wallet: ${sle(finalValue)}. Better luck next time.`,
         });
       }
       onClaimed();
