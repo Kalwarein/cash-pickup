@@ -47,12 +47,12 @@ const Index = () => {
     const run = async () => {
       try {
         const tasks: Promise<unknown>[] = [
-          supabase.from('companies').select('id').limit(1),
+          Promise.resolve(supabase.from('companies').select('id').limit(1)),
         ];
         if (user) {
           tasks.push(
-            supabase.from('wallets').select('balance').eq('user_id', user.id).maybeSingle(),
-            supabase.from('investments').select('id').eq('user_id', user.id).limit(1),
+            Promise.resolve(supabase.from('wallets').select('balance').eq('user_id', user.id).maybeSingle()),
+            Promise.resolve(supabase.from('investments').select('id').eq('user_id', user.id).limit(1)),
           );
         }
         await Promise.allSettled(tasks);
