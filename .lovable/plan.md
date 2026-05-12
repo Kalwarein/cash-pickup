@@ -1,86 +1,115 @@
-## Cash Pickup — Market Realism + UI Polish Overhaul
+# Cash Pickup — Trading-Grade Market, Splash-Only Loading, Popup Notifications
 
-This is a large change set. Plan groups work into 4 phases so it ships cleanly.
-
----
-
-### Phase 1 — Data model: real companies + market-cap economy
-
-**Migration (schema additions on `companies`):**
-- `market_cap` numeric (current net worth in SLE — values like 800,000,000,000)
-- `weekly_target_cap` numeric (next weekly anchor — current price walks toward this hour-by-hour)
-- `weekly_target_set_at` timestamptz
-- `country` text (`SL` | `INT`)
-- `logo_url` text (optional)
-- Reuse existing `min_return_percent` / `max_return_percent` as the **stated** weekly best/worst projections shown to users.
-
-**Seed data (insert tool):** wipe `companies`, then insert ~25 companies — 60% international (Apple, Google, Meta, Microsoft, Amazon, Tesla, Nvidia, Netflix, Coca-Cola, Samsung, Toyota, Visa, Mastercala, Nike, Disney) and 40% Sierra Leone (Africell SL, Orange SL, Rokel Commercial Bank, Sierra Rutile, Sierratel, Sierra Leone Brewery, Leocem, NP-SL, Splash Mobile Money, Aureol Tobacco). Each gets:
-- realistic `market_cap` (SL: 80M–2B SLE, INT: 50B–3T SLE)
-- `min_return_percent` (worst weekly, e.g. -10.8 for small / down to -90 max)
-- `max_return_percent` (best weekly, e.g. small co +8.9, big co +29.8)
-- `risk_level` derived from cap (huge cap → Low; small cap → High)
+Three workstreams, executed in order so the chart depends on the new engine output.
 
 ---
 
-### Phase 2 — Engine rewrite (hourly cadence + weekly anchor)
+## 1. Splash-only loading + animated notification popup
 
-**`market-engine` edge function:**
-- Switch cron from every minute → every hour.
-- On Monday 00:00 (or when `weekly_target_set_at` is >7d old): pick a new `weekly_target_cap` between `current_cap × (1 + min_return_percent/100)` and `current_cap × (1 + max_return_percent/100)`, biased toward losses (~60% of weekly targets land below current).
-- Each hourly tick: walk `current_price` / `market_cap` ~1/168th of the way toward `weekly_target_cap` plus small noise. Insert candle + price-history rows.
-- At end of week: snap exactly to `weekly_target_cap`.
+**Loading**
 
-**`trade-monitor` / claim path:**
-- Maturity CPR for each investment = a **random** value uniformly chosen between `min_return_percent` and `max_return_percent` of its company, but clipped so |loss| ≥ |profit| 60% of the time (loss-biased distribution).
-- Always strictly ≤ stated `max_return_percent` (never exceeds the advertised ceiling).
+- Splash (`Index.tsx`) already gates on fonts + window load. Extend it to also prefetch: session, wallet, companies list, active investments. Splash stays until all resolve (with 4s failsafe).
+- Remove every `<PremiumSpinner />` usage across pages/tabs/modals. **Keep** `CardSkeletons` shimmer placeholders.
+- Delete `PremiumSpinner.tsx` once unused.
 
-**Claim flow (`ClaimInvestmentCard.tsx`):**
-- After successful claim → toast.success / toast.error with the exact SLE amount (`+SLE 1,234.56 added` / `−SLE 432.10 deducted`). Already mostly wired; tighten copy and surface failures distinctly.
+**Notification popup system**
 
----
-
-### Phase 3 — UI overhaul
-
-**Loading states (global):**
-- New `<PremiumSpinner />` component (gradient ring + pulsing dot) replacing ad-hoc spinners.
-- New `<CompanyCardSkeleton />`, `<InvestmentCardSkeleton />`, `<ChartSkeleton />` using shimmer.
-- Apply skeletons in `InvestTab`, `MarketTab`, `HomeTab`, `Earn`, `WalletTab` instead of blank/`null`.
-
-**Market page:**
-- Remove the "Hidden Gem" tab entirely (and any badge) so gems are indistinguishable from other companies.
-
-**Invest page (`InvestTab` + `CompanyCard`):**
-- Card now shows: logo/ticker, sector, **market cap (formatted: SLE 1.2T / 850B / 240M)**, risk badge, dual badges `Best: +X.X%` (green) and `Worst: −Y.Y%` (red), live price, 24h change.
-- Premium amount picker in `InvestModal` with quick-chips (10%, 25%, 50%, MAX), live projection block: "If things go well: up to +SLE… · If things go poorly: down to −SLE…" with a disclaimer "Actual return is random and may be lower than the stated maximum."
-
-**Company details (`CompanyDetail.tsx`):**
-- Hero with risk-tier gradient header, market cap, country flag.
-- Live price + chart (existing) + **Outcome Breakdown** card listing: stated best, stated worst, expected (mid), and the same disclaimer.
-- "Invest now" CTA pinned bottom on mobile.
-
-**Investment outcome messaging:**
-- Replace any "you will earn X%" copy with "you **may** earn up to X% — actual result is random and could be lower or negative."
+- New `<NotificationPopup />` component: centered modal, scale-in + fade-in (Tailwind animations), backdrop blur, single big "OK" button, auto-dismiss optional.
+- New `NotificationContext` exposing `notify({ title, body, tone })`. Queue support so multiple notifications stack and play one after another.
+- Replace `toast.*` calls used for *user-facing celebrations* (claim success, deposit success, errors that need acknowledgement) with `notify()`. Keep sonner for tiny status confirmations.
+- Wire `usePushNotifications` so when the tab is visible, the friendly 30-min message renders as in-app popup instead of a system notification.
 
 ---
 
-### Phase 4 — Cron + cleanup
+## 2. Engine refactor → 1-minute OHLC as single source of truth
 
-- Update `cron.schedule` for `market-engine` to hourly via insert tool.
-- Keep `cleanup_old_company_candles` (already trims to 500/company).
-- No changes to auth, payments, or onboarding.
+**Database (migration)**
+
+- New table `company_candles_1m`:
+  - `company_id uuid`, `bucket_start timestamptz` (truncated to minute), `open/high/low/close numeric`, `volume numeric`, primary key `(company_id, bucket_start)`.
+  - Index `(company_id, bucket_start desc)`.
+  - RLS: public SELECT.
+- Retention helper `cleanup_old_candles_1m()`: keep last 14 days per company (~20k rows/co).
+- New SQL function `get_candles(company_id, timeframe, limit)` that aggregates 1m → requested TF (`1m,5m,15m,30m,1H,4H,1D,1W,1M`) using `date_bin` and returns OHLCV rows. Marked `STABLE SECURITY DEFINER` with `set search_path=public`.
+- Reschedule `pg_cron` job for `market-engine` from hourly to **every minute** (insert tool, not migration).
+- Drop the legacy `company_candles` insert path from the engine (table can stay for now to avoid breakage; will fall out of use).
+
+**Edge function** `market-engine`
+
+- Loops every minute. Same weekly_target_cap walk model, but step is `gap / minutes_left + small noise`.
+- Writes one `company_candles_1m` row using `upsert` on `(company_id, bucket_start)` so re-invocations are idempotent.
+- Updates `companies.current_price`, `market_cap`, `price_change_percent` (24h vs ~1440 mins ago).
+- Periodic call to `cleanup_old_candles_1m()` (1% chance per tick).
+
+**Realtime**
+
+- Enable Supabase Realtime on `company_candles_1m` so chart receives the new minute candle as soon as the engine writes it.
 
 ---
 
-### Files touched (estimated)
+## 3. TradingView-grade chart UI
 
-- **New:** `src/components/PremiumSpinner.tsx`, `src/components/skeletons/{CompanyCardSkeleton,InvestmentCardSkeleton,ChartSkeleton}.tsx`
-- **Edited:** `CompanyCard.tsx`, `InvestModal.tsx`, `CompanyDetail.tsx`, `tabs/InvestTab.tsx`, `tabs/MarketTab.tsx`, `tabs/HomeTab.tsx`, `tabs/WalletTab.tsx`, `Earn.tsx`, `ClaimInvestmentCard.tsx`, `useInvestments.ts`, `useCompanies.ts`
-- **Edge:** `supabase/functions/market-engine/index.ts`, `supabase/functions/trade-monitor/index.ts`
-- **Migration:** add columns to `companies`
-- **Insert tool:** seed 25 companies, reschedule cron to hourly
+**Library:** `lightweight-charts` (TradingView, MIT, ~45kb).
+
+**New component** `TradingChart.tsx`
+
+- Fullwidth, responsive, dark/light aware (reads from theme).
+- Top toolbar: company name + ticker + live price + 24h delta chip.
+- Chart-type switcher: Candlestick (default), Heikin Ashi (computed client-side from OHLC), Bars, Line, Area.
+- Timeframe tabs: `1m · 5m · 15m · 30m · 1H · 4H · 1D · 1W · 1M`.
+- Crosshair with floating OHLC tooltip in the corner.
+- Volume histogram pane below price.
+- Price scale on right, time scale on bottom, zoom/pan enabled.
+- Empty/loading state uses `CardSkeletons` (shimmer rectangle), no spinner.
+
+**Data layer** `useTradingCandles(companyId, timeframe)`
+
+- Calls Supabase RPC `get_candles(company_id, timeframe, 500)` for historical load.
+- Subscribes to `company_candles_1m` realtime for that company. On each new 1m row, locally update the *current* bucket of the active timeframe (re-aggregate the in-progress candle: high = max, low = min, close = new close, volume += new volume). When the bucket boundary is crossed, append a new candle.
+- Heikin Ashi computed in a memoized derivation on top of OHLC.
+
+**Pages updated**
+
+- `CompanyDetail.tsx`: replace existing chart block with `<TradingChart />`.
+- `MarketTab.tsx` index/sparkline area: keep current minimal sparkline (it's an index summary, not a per-asset chart) but feed it from the new data source.
 
 ---
 
-### Confirm before I start
+## Files
 
-This is ~12 file edits + 1 migration + reseed + cron change. Approve and I'll execute end-to-end in one pass.
+**New**
+
+- `src/components/TradingChart.tsx`
+- `src/components/NotificationPopup.tsx`
+- `src/contexts/NotificationContext.tsx`
+- `src/hooks/useTradingCandles.ts`
+- `supabase/migrations/<ts>_candles_1m.sql`
+
+**Modified**
+
+- `supabase/functions/market-engine/index.ts` — 1m engine, idempotent upsert
+- `src/pages/Index.tsx` — prefetch app-critical data before fade
+- `src/App.tsx` — mount `NotificationProvider`
+- `src/components/CompanyDetail.tsx` — embed `<TradingChart />`
+- `src/components/ClaimInvestmentCard.tsx` — popup on claim
+- `src/components/DepositWithdrawModal.tsx` — popup on success/error
+- `src/hooks/usePushNotifications.ts` — route foreground messages to popup
+- `src/components/tabs/{HomeTab,MarketTab,InvestTab,WalletTab}.tsx`, `src/pages/Earn.tsx` — strip `<PremiumSpinner />`, keep skeletons
+- `src/integrations/supabase/types.ts` — auto-regenerated
+
+**Deleted**
+
+- `src/components/PremiumSpinner.tsx` (after all references removed)
+
+**Deps**
+
+- `bun add lightweight-charts`
+
+---
+
+## Technical notes
+
+- Aggregation in `get_candles` uses `date_bin('5 minutes', bucket_start, 'epoch')` etc.; `1M` uses `date_trunc('month', ...)`. Open = first by bucket_start, Close = last, High = max, Low = min, Volume = sum.
+- Realtime aggregation keeps the chart smooth between engine ticks: the open bucket updates in place; on minute rollover a new candle is appended without a refetch.
+- `lightweight-charts` is canvas-based — handles 500+ candles at 60fps on mobile.
+- All SLE labels preserved; no "demo/simulation" wording.
