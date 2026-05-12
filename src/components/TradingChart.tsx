@@ -117,7 +117,7 @@ export const TradingChart = ({ companyId, ticker, name }: Props) => {
     chart.priceScale('vol').applyOptions({ scaleMargins: { top: 0.82, bottom: 0 } });
     volSeriesRef.current = vol;
 
-    const onMove = chart.subscribeCrosshairMove((p) => {
+    const handler = (p: Parameters<Parameters<IChartApi['subscribeCrosshairMove']>[0]>[0]) => {
       const d = p.seriesData.get(series) as { time: Time; open?: number; high?: number; low?: number; close?: number; value?: number } | undefined;
       if (!d) { setHover(null); return; }
       setHover({
@@ -128,10 +128,11 @@ export const TradingChart = ({ companyId, ticker, name }: Props) => {
         close: d.close ?? d.value ?? 0,
         volume: 0,
       });
-    });
+    };
+    chart.subscribeCrosshairMove(handler);
 
     return () => {
-      chart.unsubscribeCrosshairMove(onMove);
+      chart.unsubscribeCrosshairMove(handler);
       chart.remove();
       chartRef.current = null;
       priceSeriesRef.current = null;
