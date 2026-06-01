@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 interface DepositWithdrawModalProps {
   isOpen: boolean;
