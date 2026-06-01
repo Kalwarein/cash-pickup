@@ -162,17 +162,35 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Sora', 'Inter', system-ui, sans-serif;
+    letter-spacing: -0.02em;
+  }
+
+  .font-data, .tabular-nums {
+    font-variant-numeric: tabular-nums;
   }
 }
 
 @layer components {
   /* Glassmorphism card */
   .glass-card {
-    @apply bg-card/80 backdrop-blur-xl border border-border/50 rounded-2xl shadow-xl;
+    @apply bg-card/70 backdrop-blur-2xl border border-border/60 rounded-2xl;
+    box-shadow: var(--shadow-card);
   }
 
   .dark .glass-card {
-    @apply border-white/10;
+    @apply border-white/[0.08];
+  }
+
+  /* Elevated surface */
+  .surface-elevated {
+    background: hsl(var(--surface-elevated));
+    box-shadow: var(--shadow-card);
   }
 
   /* Gradient backgrounds */
