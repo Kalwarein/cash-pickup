@@ -187,12 +187,12 @@ const WalletProfile = () => {
 
         {/* Promo Codes Drawer */}
         <Drawer open={showPromos} onOpenChange={setShowPromos}>
-          <DrawerContent className="max-h-[85vh]">
+          <DrawerContent>
             <DrawerHeader>
               <DrawerTitle>My Promo Codes</DrawerTitle>
               <DrawerDescription>Manage your promotional codes</DrawerDescription>
             </DrawerHeader>
-            <div className="px-4 pb-6 overflow-y-auto max-h-[65vh]">
+            <div className="px-4 pb-6">
               {userPromoCodes.length > 0 ? (
                 <div className="space-y-3">
                   {userPromoCodes.map((upc) => {
