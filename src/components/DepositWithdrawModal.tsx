@@ -108,8 +108,6 @@ export const DepositWithdrawModal = ({
     return () => { supabase.removeChannel(channel); };
   }, [transactionId, onSuccess]);
 
-  if (!isOpen) return null;
-
   const isDeposit = type === 'deposit';
   const amountValue = parseFloat(amount) || 0;
 
