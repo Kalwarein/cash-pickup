@@ -38,7 +38,7 @@ export const PaymentTransactionDetails = ({
 
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
-      <DrawerContent className="max-h-[85vh]">
+      <DrawerContent>
         <DrawerHeader>
           <DrawerTitle>{transaction?.type === 'withdrawal' ? 'Withdrawal Details' : 'Deposit Details'}</DrawerTitle>
           <DrawerDescription>
