@@ -199,11 +199,9 @@ export const DepositWithdrawModal = ({
           : { label: 'Awaiting Payment', color: 'text-amber-500', bg: 'bg-amber-500/10', Icon: Clock };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in" onClick={handleClose}>
-      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-        {/* Handle */}
-        <div className="w-10 h-1 bg-muted rounded-full mx-auto mb-5" />
-
+    <Drawer open={isOpen} onOpenChange={(o) => { if (!o) handleClose(); }}>
+      <DrawerContent className="max-w-lg mx-auto">
+        <div className="p-6">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -409,7 +407,8 @@ export const DepositWithdrawModal = ({
             </button>
           </div>
         )}
-      </div>
-    </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 };
