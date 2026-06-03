@@ -129,7 +129,7 @@ const GetStarted = () => {
           )}
           <button
             onClick={next}
-            className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-[0_8px_24px_-6px_rgba(37,99,235,0.55)]"
+            className="flex-1 py-4 rounded-2xl gradient-primary text-primary-foreground font-semibold text-lg hover:brightness-110 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-float"
           >
             {current === slides.length - 1 ? 'Get Started' : 'Continue'}
             <ChevronRight className="w-5 h-5" />
