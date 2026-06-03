@@ -40,7 +40,7 @@ const ForgotPassword = () => {
         </div>
         <button
           onClick={() => navigate('/sign-in')}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold flex items-center justify-center gap-2 active:scale-[0.98] hover:brightness-110 transition-all shadow-[0_8px_24px_-6px_rgba(37,99,235,0.55)]"
+          className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 active:scale-[0.98] hover:brightness-110 transition-all shadow-float"
         >
           Back to Sign in
         </button>
@@ -66,7 +66,7 @@ const ForgotPassword = () => {
         )}
 
         <button type="submit" disabled={loading}
-          className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 text-white font-semibold flex items-center justify-center gap-2 active:scale-[0.98] hover:brightness-110 transition-all disabled:opacity-60 shadow-[0_8px_24px_-6px_rgba(37,99,235,0.55)]">
+          className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 active:scale-[0.98] hover:brightness-110 transition-all disabled:opacity-60 shadow-float">
           {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Send reset link <ArrowRight className="w-5 h-5" /></>}
         </button>
       </form>

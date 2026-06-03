@@ -89,7 +89,7 @@ const Auth = () => {
 
           <button
             onClick={() => navigate('/sign-up')}
-            className="w-full h-14 rounded-2xl bg-gradient-to-r from-blue-600 to-sky-500 text-white flex items-center justify-center gap-2 font-semibold active:scale-[0.98] transition-all hover:brightness-110 shadow-[0_8px_24px_-6px_rgba(37,99,235,0.55)]"
+            className="w-full h-14 rounded-2xl gradient-primary text-primary-foreground flex items-center justify-center gap-2 font-semibold active:scale-[0.98] transition-all hover:brightness-110 shadow-float"
           >
             <Mail className="w-5 h-5" />
             Sign up with Email

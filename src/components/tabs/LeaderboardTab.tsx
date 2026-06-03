@@ -29,7 +29,7 @@ export const LeaderboardTab = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Leaderboard</h1>
+          <h1 className="text-2xl font-display font-bold tracking-tight">Leaderboard</h1>
           <p className="text-muted-foreground text-sm">Top investors & companies</p>
         </div>
         <button
