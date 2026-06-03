@@ -57,20 +57,25 @@ const Earn = () => {
               <Coins className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold">Earn</h1>
+              <h1 className="text-2xl font-display font-bold tracking-tight">Earn</h1>
               <p className="text-xs text-muted-foreground">Track all your investments & earnings</p>
             </div>
           </div>
         </div>
 
-        {/* Stats Overview */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="glass-card p-4">
-            <p className="text-[10px] text-muted-foreground mb-1">Total Earned</p>
-            <p className={cn("text-xl font-bold", totalEarned >= 0 ? "text-success" : "text-destructive")}>
+        {/* Total Earned Hero */}
+        <div className="relative overflow-hidden rounded-2xl p-5 text-primary-foreground shadow-float gradient-primary">
+          <span className="pointer-events-none absolute -top-12 -right-8 w-40 h-40 rounded-full bg-white/15 blur-3xl" />
+          <div className="relative">
+            <p className="text-xs text-primary-foreground/80 mb-1">Total Earned</p>
+            <p className="text-3xl font-display font-bold tabular-nums tracking-tight">
               {totalEarned >= 0 ? '+' : ''}{sle(totalEarned)}
             </p>
           </div>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-2 gap-3">
           <div className="glass-card p-4">
             <p className="text-[10px] text-muted-foreground mb-1">Active Value</p>
             <p className="text-xl font-bold">{sle(totalActive)}</p>
