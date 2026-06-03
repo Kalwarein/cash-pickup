@@ -69,28 +69,29 @@ const WalletProfile = () => {
     <div className="min-h-screen bg-background pb-24">
       <main className="max-w-lg mx-auto space-y-4 animate-fade-in">
         {/* Profile Header - edge to edge */}
-        <div className="bg-gradient-to-br from-primary to-primary/80 px-5 pt-8 pb-6">
+        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-6 shadow-float">
+          <span className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full bg-white/15 blur-3xl" />
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                <User className="w-7 h-7 text-white" />
+                <User className="w-7 h-7 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-white">{profile?.name || 'User'}</h1>
-                <p className="text-xs text-white/60">{profile?.email}</p>
+                <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">{profile?.name || 'User'}</h1>
+                <p className="text-xs text-primary-foreground/60">{profile?.email}</p>
               </div>
             </div>
             <ThemeToggle />
           </div>
 
           {/* Balance */}
-          <div className="bg-black/20 backdrop-blur rounded-2xl p-4">
-            <p className="text-xs text-white/60 mb-1">Available Balance</p>
-            <p className="text-3xl font-bold text-white mb-3">{sle(wallet?.balance || 0)}</p>
+          <div className="relative bg-black/20 backdrop-blur rounded-2xl p-4">
+            <p className="text-xs text-primary-foreground/60 mb-1">Available Balance</p>
+            <p className="text-3xl font-display font-bold tabular-nums tracking-tight text-primary-foreground mb-3">{sle(wallet?.balance || 0)}</p>
             <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10">
-              <div><p className="text-[10px] text-white/50">Invested</p><p className="text-sm font-semibold text-white">{sle(wallet?.invested_amount || 0)}</p></div>
-              <div><p className="text-[10px] text-white/50">Net P/L</p><p className={cn("text-sm font-semibold", netProfitLoss >= 0 ? "text-green-300" : "text-red-300")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p></div>
-              <div><p className="text-[10px] text-white/50">Win Rate</p><p className="text-sm font-semibold text-white">{winRate.toFixed(0)}%</p></div>
+              <div><p className="text-[10px] text-primary-foreground/50">Invested</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{sle(wallet?.invested_amount || 0)}</p></div>
+              <div><p className="text-[10px] text-primary-foreground/50">Net P/L</p><p className={cn("text-sm font-semibold tabular-nums", netProfitLoss >= 0 ? "text-green-300" : "text-red-300")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p></div>
+              <div><p className="text-[10px] text-primary-foreground/50">Win Rate</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{winRate.toFixed(0)}%</p></div>
             </div>
           </div>
         </div>
