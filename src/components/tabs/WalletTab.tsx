@@ -49,51 +49,55 @@ export const WalletTab = () => {
   return (
     <div className="space-y-5 animate-fade-in pb-4">
       {/* Profile Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between px-4 pt-4">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center">
+          <div className="w-12 h-12 rounded-full gradient-primary flex items-center justify-center shadow-float">
             <User className="w-6 h-6 text-primary-foreground" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">{profile?.name || 'User'}</h1>
+            <h1 className="text-xl font-display font-bold tracking-tight">{profile?.name || 'User'}</h1>
             <p className="text-xs text-muted-foreground">{profile?.email}</p>
           </div>
         </div>
         <ThemeToggle />
       </div>
 
-      {/* Balance Card */}
-      <div className="glass-card p-5 glow-primary">
-        <p className="text-sm text-muted-foreground mb-1">Available Balance</p>
-        <p className="text-3xl font-bold mb-3">{sle(wallet?.balance || 0)}</p>
-        <div className="grid grid-cols-3 gap-3 pt-3 border-t border-border/50">
-          <div>
-            <p className="text-[10px] text-muted-foreground">Invested</p>
-            <p className="text-sm font-semibold">{sle(wallet?.invested_amount || 0)}</p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">Net P/L</p>
-            <p className={cn("text-sm font-semibold", netProfitLoss >= 0 ? "text-success" : "text-destructive")}>
-              {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}
-            </p>
-          </div>
-          <div>
-            <p className="text-[10px] text-muted-foreground">Win Rate</p>
-            <p className="text-sm font-semibold text-primary">{winRate.toFixed(0)}%</p>
+      {/* Premium Balance Hero */}
+      <div className="mx-4 relative overflow-hidden rounded-2xl p-6 text-primary-foreground shadow-float gradient-primary">
+        <span className="pointer-events-none absolute -top-16 -right-10 w-44 h-44 rounded-full bg-white/15 blur-3xl" />
+        <span className="pointer-events-none absolute -bottom-20 -left-8 w-48 h-48 rounded-full bg-black/10 blur-3xl" />
+        <div className="relative">
+          <p className="text-sm text-primary-foreground/80 mb-1">Available Balance</p>
+          <p className="text-4xl font-display font-bold tabular-nums tracking-tight mb-4">{sle(wallet?.balance || 0)}</p>
+          <div className="grid grid-cols-3 gap-3 pt-4 border-t border-white/20">
+            <div>
+              <p className="text-[10px] text-primary-foreground/70 mb-0.5">Invested</p>
+              <p className="text-sm font-semibold tabular-nums">{sle(wallet?.invested_amount || 0)}</p>
+            </div>
+            <div>
+              <p className="text-[10px] text-primary-foreground/70 mb-0.5">Net P/L</p>
+              <p className="text-sm font-semibold tabular-nums">
+                {netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] text-primary-foreground/70 mb-0.5">Win Rate</p>
+              <p className="text-sm font-semibold tabular-nums">{winRate.toFixed(0)}%</p>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Deposit/Withdraw */}
-      <div className="grid grid-cols-2 gap-3">
-        <button onClick={() => setDepositModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-success/10 transition-colors group">
-          <div className="w-8 h-8 rounded-xl bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+      <div className="grid grid-cols-2 gap-3 px-4">
+        <button onClick={() => setDepositModalOpen(true)} className="glass-card p-4 flex items-center justify-center gap-2 hover:bg-success/10 transition-all duration-200 active:scale-[0.97] group">
+          <div className="w-9 h-9 rounded-xl bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform">
             <Plus className="w-4 h-4 text-success" />
           </div>
           <span className="font-semibold text-sm">Deposit</span>
         </button>
-        <button onClick={() => setWithdrawModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors group">
-          <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+        <button onClick={() => setWithdrawModalOpen(true)} className="glass-card p-4 flex items-center justify-center gap-2 hover:bg-primary/10 transition-all duration-200 active:scale-[0.97] group">
+          <div className="w-9 h-9 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
             <Minus className="w-4 h-4 text-primary" />
           </div>
           <span className="font-semibold text-sm">Withdraw</span>
