@@ -42,7 +42,7 @@ export const AuthShell = ({ children, onBack, progress, title, subtitle }: Props
       <div className="relative z-10 flex-1 flex flex-col px-6 pt-2 pb-[calc(env(safe-area-inset-bottom)+20px)]">
         {(title || subtitle) && (
           <div className="mb-6 animate-fade-in">
-            {title && <h1 className="text-[28px] font-extrabold tracking-tight text-foreground leading-tight">{title}</h1>}
+            {title && <h1 className="text-[28px] font-display font-extrabold tracking-tight text-foreground leading-tight">{title}</h1>}
             {subtitle && <p className="mt-2 text-muted-foreground text-[15px]">{subtitle}</p>}
           </div>
         )}
