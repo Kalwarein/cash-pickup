@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 
 export interface PaymentTransaction {
   id: string;
@@ -84,9 +84,9 @@ export const usePaymentTransactions = () => {
           const prev = payload.old as { status?: string } | null;
           if (payload.eventType === 'UPDATE' && next && prev && next.status !== prev.status) {
             const label = next.type === 'withdrawal' ? 'Withdrawal' : 'Deposit';
-            if (next.status === 'completed') toast.success(`${label} completed — ${next.amount} SLE`);
-            else if (next.status === 'failed') toast.error(`${label} failed`);
-            else if (next.status === 'expired') toast.warning(`${label} code expired`);
+            if (next.status === 'completed') notify.success(`${label} completed — ${next.amount} SLE`);
+            else if (next.status === 'failed') notify.error(`${label} failed`);
+            else if (next.status === 'expired') notify.warning(`${label} code expired`);
           }
           fetchPaymentTransactions();
         }

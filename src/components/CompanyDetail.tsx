@@ -8,7 +8,7 @@ import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
 import { InvestModal } from '@/components/InvestModal';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { sle, formatSLE, formatMarketCap } from '@/lib/currency';
 import { Globe2, MapPin } from 'lucide-react';
@@ -91,9 +91,9 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
     if (!company) return;
     const { error } = await createInvestment(company.id, amount, maturityDays);
     if (error) {
-      toast.error(error);
+      notify.error(error);
     } else {
-      toast.success(`Investment of ${sle(amount)} placed in ${company.ticker}`);
+      notify.success(`Investment of ${sle(amount)} placed in ${company.ticker}`);
       await refetchWallet();
       await refetchInvestments();
     }

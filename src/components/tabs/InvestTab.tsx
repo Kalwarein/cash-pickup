@@ -15,7 +15,7 @@ import { InvestModal } from '@/components/InvestModal';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 
@@ -118,9 +118,9 @@ export const InvestTab = () => {
     if (!selectedCompany) return;
     const { error } = await createInvestment(selectedCompany.id, amount, maturityDays);
     if (error) {
-      toast.error(error);
+      notify.error(error);
     } else {
-      toast.success(`Successfully invested ${amount} SLE in ${selectedCompany.ticker} for ${maturityDays} days`);
+      notify.success(`Successfully invested ${amount} SLE in ${selectedCompany.ticker} for ${maturityDays} days`);
       await refetchWallet();
       await refetchInvestments();
     }

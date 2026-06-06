@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useWallet } from '@/hooks/useWallet';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 
 interface PromoCodePopupProps {
   isOpen: boolean;
@@ -42,15 +42,15 @@ export const PromoCodePopup = ({
     if (variant === 'buy') {
       const { error } = await purchasePromoCode(promoCode.id);
       if (error) {
-        toast.error(error);
+        notify.error(error);
       } else {
-        toast.success(`Successfully purchased ${promoCode.name}!`);
+        notify.success(`Successfully purchased ${promoCode.name}!`);
         await refetchWallet();
         onClose();
       }
     } else {
       // Activate promo code - handled separately
-      toast.success(`${promoCode.name} activated!`);
+      notify.success(`${promoCode.name} activated!`);
       onClose();
     }
     

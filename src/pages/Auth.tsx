@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { Mail, ArrowRight, Loader2 } from 'lucide-react';
 import { lovable } from '@/integrations/lovable/index';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 
 const GoogleIcon = () => (
   <svg viewBox="0 0 24 24" className="w-5 h-5" aria-hidden="true">
@@ -26,14 +26,14 @@ const Auth = () => {
         redirect_uri: window.location.origin,
       });
       if (result.error) {
-        toast.error(`Could not sign in with ${provider}.`);
+        notify.error(`Could not sign in with ${provider}.`);
         setOauthLoading(null);
         return;
       }
       if (result.redirected) return; // browser redirects
       navigate('/');
     } catch {
-      toast.error('Something went wrong. Please try again.');
+      notify.error('Something went wrong. Please try again.');
       setOauthLoading(null);
     }
   };

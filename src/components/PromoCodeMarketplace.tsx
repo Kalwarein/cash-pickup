@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useWallet } from '@/hooks/useWallet';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 
 interface PromoCodeMarketplaceProps {
   isOpen: boolean;
@@ -55,9 +55,9 @@ export const PromoCodeMarketplace = ({ isOpen, onClose }: PromoCodeMarketplacePr
     const { error } = await purchasePromoCode(promoCodeId);
     
     if (error) {
-      toast.error(error);
+      notify.error(error);
     } else {
-      toast.success('Promo code purchased successfully!');
+      notify.success('Promo code purchased successfully!');
       await refetchWallet();
     }
     setPurchasing(null);

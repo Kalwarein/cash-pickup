@@ -7,7 +7,7 @@ import {
   Wallet, BarChart3, Bell, Heart, Sparkles, Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 
 /* ── Types — UNTOUCHED ── */
 interface OnboardingData {
@@ -115,7 +115,7 @@ const Onboarding = () => {
         .eq('user_id', user.id)
         .order('updated_at', { ascending: false });
 
-      if (error) { toast.error('Failed to load onboarding. Please try again.'); return; }
+      if (error) { notify.error('Failed to load onboarding. Please try again.'); return; }
 
       if (rows && rows.length > 0) {
         if (rows.some(row => row.completed)) { navigate('/home', { replace: true }); return; }
@@ -144,7 +144,7 @@ const Onboarding = () => {
       const { data: createdRow, error: createError } = await supabase
         .from('user_onboarding').insert({ user_id: user.id }).select('id').single();
 
-      if (createError) { toast.error('Failed to start onboarding. Please refresh and try again.'); return; }
+      if (createError) { notify.error('Failed to start onboarding. Please refresh and try again.'); return; }
       setRecordId(createdRow.id);
     };
     load();
@@ -195,7 +195,7 @@ const Onboarding = () => {
     if (step < total - 1) {
       const { error } = await persistOnboarding({ [q.key]: data[q.key] } as Partial<OnboardingData>);
       setSaving(false);
-      if (error) { toast.error('Failed to save this step. Please try again.'); return; }
+      if (error) { notify.error('Failed to save this step. Please try again.'); return; }
       setAnimDir('forward');
       setAnimKey(k => k + 1);
       setStep(step + 1);
@@ -205,8 +205,8 @@ const Onboarding = () => {
         await supabase.from('profiles').update({ name: data.display_name }).eq('id', user.id);
       }
       setSaving(false);
-      if (error) { toast.error('Failed to save. Please try again.'); }
-      else { toast.success('Welcome to Cash Pickup! 🎉'); navigate('/home', { replace: true }); }
+      if (error) { notify.error('Failed to save. Please try again.'); }
+      else { notify.success('Welcome to Cash Pickup! 🎉'); navigate('/home', { replace: true }); }
     }
   };
 
