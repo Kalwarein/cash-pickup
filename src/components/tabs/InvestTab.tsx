@@ -16,6 +16,7 @@ import { useCompanies } from '@/hooks/useCompanies';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { notify } from '@/lib/notify';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 
@@ -368,10 +369,9 @@ export const InvestTab = () => {
       {/* ═══════════════════════════════════════════
           TRENDING DRAWER — all trending companies
       ═══════════════════════════════════════════ */}
-      {showTrendingDrawer && (
-        <div className="it-overlay" onClick={() => setShowTrendingDrawer(false)}>
-          <div className="it-sheet" onClick={e => e.stopPropagation()}>
-            <div className="it-sheet-handle" />
+      <Drawer open={showTrendingDrawer} onOpenChange={(o) => { if (!o) setShowTrendingDrawer(false); }}>
+        <DrawerContent className="max-h-[90dvh]">
+          <div className="px-[18px] pb-7">
             <div className="it-sheet-head">
               <div className="it-sheet-icon" style={{ background: 'rgba(239,68,68,0.1)' }}>
                 <Flame className="w-4 h-4" style={{ color: '#ef4444' }} />
@@ -380,7 +380,6 @@ export const InvestTab = () => {
                 <p className="it-sheet-title">Trending Now</p>
                 <p className="it-sheet-sub">{trendingCompanies.length} trending compan{trendingCompanies.length === 1 ? 'y' : 'ies'}</p>
               </div>
-              <button className="it-sheet-close" onClick={() => setShowTrendingDrawer(false)}>✕</button>
             </div>
 
             <div className="it-drawer-list">
@@ -437,16 +436,15 @@ export const InvestTab = () => {
               })}
             </div>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           FILTER MODAL
       ═══════════════════════════════════════════ */}
-      {showFilterModal && (
-        <div className="it-overlay" onClick={() => setShowFilterModal(false)}>
-          <div className="it-sheet" onClick={e => e.stopPropagation()}>
-            <div className="it-sheet-handle" />
+      <Drawer open={showFilterModal} onOpenChange={(o) => { if (!o) setShowFilterModal(false); }}>
+        <DrawerContent className="max-h-[90dvh]">
+          <div className="px-[18px] pb-7">
             <div className="it-sheet-head">
               <div className="it-sheet-icon" style={{ background: 'rgba(99,102,241,0.1)' }}>
                 <SlidersHorizontal className="w-4 h-4" style={{ color: '#6366f1' }} />
@@ -455,7 +453,6 @@ export const InvestTab = () => {
                 <p className="it-sheet-title">Filter Companies</p>
                 <p className="it-sheet-sub">Narrow down your options</p>
               </div>
-              <button className="it-sheet-close" onClick={() => setShowFilterModal(false)}>✕</button>
             </div>
 
             {/* Sector */}
@@ -535,16 +532,15 @@ export const InvestTab = () => {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           SORT MODAL
       ═══════════════════════════════════════════ */}
-      {showSortModal && (
-        <div className="it-overlay" onClick={() => setShowSortModal(false)}>
-          <div className="it-sheet" onClick={e => e.stopPropagation()}>
-            <div className="it-sheet-handle" />
+      <Drawer open={showSortModal} onOpenChange={(o) => { if (!o) setShowSortModal(false); }}>
+        <DrawerContent className="max-h-[90dvh]">
+          <div className="px-[18px] pb-7">
             <div className="it-sheet-head">
               <div className="it-sheet-icon" style={{ background: 'rgba(16,185,129,0.1)' }}>
                 <BarChart3 className="w-4 h-4" style={{ color: '#10b981' }} />
@@ -553,7 +549,6 @@ export const InvestTab = () => {
                 <p className="it-sheet-title">Sort Companies</p>
                 <p className="it-sheet-sub">Choose how to order results</p>
               </div>
-              <button className="it-sheet-close" onClick={() => setShowSortModal(false)}>✕</button>
             </div>
             <div className="it-sort-list">
               {SORT_OPTIONS.map(opt => {
@@ -574,16 +569,15 @@ export const InvestTab = () => {
               })}
             </div>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           RISK INFO MODAL
       ═══════════════════════════════════════════ */}
-      {showRiskInfo && (
-        <div className="it-overlay" onClick={() => setShowRiskInfo(false)}>
-          <div className="it-sheet" onClick={e => e.stopPropagation()}>
-            <div className="it-sheet-handle" />
+      <Drawer open={showRiskInfo} onOpenChange={(o) => { if (!o) setShowRiskInfo(false); }}>
+        <DrawerContent className="max-h-[90dvh]">
+          <div className="px-[18px] pb-7">
             <div className="it-sheet-head">
               <div className="it-sheet-icon" style={{ background: 'rgba(245,158,11,0.1)' }}>
                 <Shield className="w-4 h-4 text-amber-500" />
@@ -592,7 +586,6 @@ export const InvestTab = () => {
                 <p className="it-sheet-title">Investment Risk Guide</p>
                 <p className="it-sheet-sub">Understand levels before you invest</p>
               </div>
-              <button className="it-sheet-close" onClick={() => setShowRiskInfo(false)}>✕</button>
             </div>
             <div className="it-risk-info-list">
               {[
@@ -615,8 +608,8 @@ export const InvestTab = () => {
             </div>
             <button className="it-sheet-apply" onClick={() => setShowRiskInfo(false)}>Got it, understood</button>
           </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           INVEST MODAL — original logic UNTOUCHED
