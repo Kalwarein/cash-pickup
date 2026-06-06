@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { X, Shield, TrendingUp, Target, Zap, Clock, AlertTriangle, Check } from 'lucide-react';
+import { Shield, TrendingUp, Target, Zap, Clock, AlertTriangle, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useWallet } from '@/hooks/useWallet';
 import { notify } from '@/lib/notify';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 
 interface PromoCodeMarketplaceProps {
   isOpen: boolean;
@@ -46,8 +47,6 @@ export const PromoCodeMarketplace = ({ isOpen, onClose }: PromoCodeMarketplacePr
   const { wallet, refetch: refetchWallet } = useWallet();
   const [purchasing, setPurchasing] = useState<string | null>(null);
 
-  if (!isOpen) return null;
-
   const activePromoCodes = getActivePromoCodes();
 
   const handlePurchase = async (promoCodeId: string) => {
@@ -68,14 +67,10 @@ export const PromoCodeMarketplace = ({ isOpen, onClose }: PromoCodeMarketplacePr
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-bold">Promo Code Marketplace</h2>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Drawer open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DrawerContent className="max-w-lg mx-auto">
+        <div className="px-6 pb-6">
+        <DrawerTitle className="text-xl font-bold mb-4">Promo Code Marketplace</DrawerTitle>
 
         {/* Risk Warning */}
         <div className="glass-card p-4 mb-4 bg-warning/10 border-warning/20">
@@ -180,7 +175,8 @@ export const PromoCodeMarketplace = ({ isOpen, onClose }: PromoCodeMarketplacePr
             );
           })}
         </div>
-      </div>
-    </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 };
