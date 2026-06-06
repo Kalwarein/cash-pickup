@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, ChevronRight, Building2, Flame,
-  Activity, Shield, X, BarChart3, ArrowUpRight, ArrowDownRight,
+  Activity, Shield, BarChart3, ArrowUpRight, ArrowDownRight,
   Zap, Star, Eye, Info, Clock, Target
 } from 'lucide-react';
 import { useCPR } from '@/hooks/useCPR';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /* ─── Types ─────────────────────────────────────────────── */
 type FilterType = 'all' | 'positive' | 'negative' | 'stable';
@@ -443,11 +444,8 @@ export const MarketTab = () => {
       {/* ═══════════════════════════════════════════
           TRENDING / GAINERS / LOSERS DRAWER
       ═══════════════════════════════════════════ */}
-      {showTrendingDrawer && (
-        <div className="mt-overlay" onClick={() => setShowTrendingDrawer(false)}>
-          <div className="mt-drawer" onClick={e => e.stopPropagation()}>
-            <div className="mt-drawer-handle" />
-
+      <Drawer open={showTrendingDrawer} onOpenChange={(o) => { if (!o) setShowTrendingDrawer(false); }}>
+        <DrawerContent className="max-h-[85dvh]">
             {/* Drawer tabs */}
             <div className="mt-drawer-tabs">
               {([
@@ -463,9 +461,6 @@ export const MarketTab = () => {
                   {t.label}
                 </button>
               ))}
-              <button className="mt-drawer-close" onClick={() => setShowTrendingDrawer(false)}>
-                <X className="w-4 h-4" />
-              </button>
             </div>
 
             <div className="mt-drawer-body">
@@ -485,18 +480,16 @@ export const MarketTab = () => {
                 <div className="mt-empty"><p>No trending companies right now</p></div>
               )}
             </div>
-          </div>
-        </div>
-      )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           COMPANY DETAIL DRAWER
       ═══════════════════════════════════════════ */}
-      {selectedCompany && (
-        <div className="mt-overlay" onClick={() => setSelectedCompany(null)}>
-          <div className="mt-detail-drawer" onClick={e => e.stopPropagation()}>
-            <div className="mt-drawer-handle" />
-
+      <Drawer open={!!selectedCompany} onOpenChange={(o) => { if (!o) setSelectedCompany(null); }}>
+        <DrawerContent className="max-h-[92dvh] p-0">
+          {selectedCompany && (
+          <>
             {/* Company hero */}
             <div className="mt-detail-hero">
               <span className="mt-detail-shimmer" />
@@ -511,9 +504,6 @@ export const MarketTab = () => {
                   </div>
                   <p className="mt-detail-sub">{selectedCompany.ticker} · {selectedCompany.sector}</p>
                 </div>
-                <button className="mt-detail-close" onClick={() => setSelectedCompany(null)}>
-                  <X className="w-4 h-4" />
-                </button>
               </div>
 
               {/* Hero CPR row */}
@@ -626,9 +616,10 @@ export const MarketTab = () => {
               {/* Hidden gem notice removed — keep gems anonymous */}
 
             </div>{/* end mt-detail-body */}
-          </div>
-        </div>
-      )}
+          </>
+          )}
+        </DrawerContent>
+      </Drawer>
 
       {/* ═══════════════════════════════════════════
           ALL STYLES

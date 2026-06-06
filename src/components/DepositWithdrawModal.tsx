@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Smartphone, CheckCircle2, Clock, XCircle, Loader2, PhoneCall } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Smartphone, CheckCircle2, Clock, XCircle, Loader2, PhoneCall } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
-import { toast } from 'sonner';
+import { notify } from '@/lib/notify';
 import { supabase } from '@/integrations/supabase/client';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
@@ -94,12 +94,12 @@ export const DepositWithdrawModal = ({
           if (newStatus) {
             setTxStatus(newStatus);
             if (newStatus === 'completed') {
-              toast.success('Deposit confirmed! Wallet credited.');
+              notify.success('Deposit confirmed! Wallet credited.');
               onSuccess?.();
             } else if (newStatus === 'failed') {
-              toast.error('Deposit failed.');
+              notify.error('Deposit failed.');
             } else if (newStatus === 'expired') {
-              toast.error('Payment code expired.');
+              notify.error('Payment code expired.');
             }
           }
         }
@@ -155,7 +155,7 @@ export const DepositWithdrawModal = ({
         setLoading(false);
         onSuccess?.();
       } else {
-        toast.success(result.message || `${isDeposit ? 'Deposit' : 'Withdrawal'} request submitted!`);
+        notify.success(result.message || `${isDeposit ? 'Deposit' : 'Withdrawal'} request submitted!`);
         setLoading(false);
         onSuccess?.();
         onClose();
@@ -213,9 +213,6 @@ export const DepositWithdrawModal = ({
               <p className="text-sm text-muted-foreground">{isDeposit ? 'Pay with Orange Money or Afrimoney' : 'Transfer to your mobile wallet'}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {step === 'ussd' ? (

@@ -4,7 +4,6 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 import { useNotify } from '@/contexts/NotificationContext';
 
 interface ClaimInvestmentCardProps {
@@ -44,7 +43,7 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
         .maybeSingle();
       
       if (walletErr || !wallet) {
-        toast.error('Wallet not found. Please reload the app.');
+        notify.error('Wallet not found. Please reload the app.');
         return;
       }
       
@@ -63,7 +62,7 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
         })
         .eq('user_id', user.id);
       if (updErr) {
-        toast.error(`Wallet update failed: ${updErr.message}`);
+        notify.error(`Wallet update failed: ${updErr.message}`);
         return;
       }
       
@@ -76,7 +75,7 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
         })
         .eq('id', investment.id);
       if (invErr) {
-        toast.error(`Could not mark investment as claimed: ${invErr.message}`);
+        notify.error(`Could not mark investment as claimed: ${invErr.message}`);
         return;
       }
       
@@ -107,7 +106,7 @@ export const ClaimInvestmentCard = ({ investment, onClaimed }: ClaimInvestmentCa
       onClaimed();
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Unknown error';
-      toast.error(`Failed to claim investment: ${msg}`);
+      notify.error(`Failed to claim investment: ${msg}`);
     } finally {
       setClaiming(false);
     }
