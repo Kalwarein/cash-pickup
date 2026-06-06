@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
-import { X, AlertTriangle, Clock, Calendar, TrendingUp, TrendingDown, Info } from 'lucide-react';
+import { Clock, Calendar, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { RiskWarning } from '@/components/RiskWarning';
+import { Drawer, DrawerContent, DrawerTitle } from '@/components/ui/drawer';
 
 interface InvestModalProps {
   isOpen: boolean;
@@ -88,8 +89,6 @@ export const InvestModal = ({
     [investAmount, selectedMaturity.days, company.riskLevel, company.bestPct, company.worstPct]
   );
 
-  if (!isOpen) return null;
-
   const handleSubmit = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt <= 0) { setError('Please enter a valid amount'); return; }
@@ -113,14 +112,10 @@ export const InvestModal = ({
   maturityDate.setDate(maturityDate.getDate() + selectedMaturity.days);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
-      <div className="w-full max-w-lg bg-card rounded-t-3xl p-6 animate-slide-up max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-xl font-bold">Invest in {company.ticker}</h2>
-          <button onClick={onClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <Drawer open={isOpen} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DrawerContent className="max-w-lg mx-auto">
+        <div className="px-6 pb-6">
+        <DrawerTitle className="text-xl font-bold mb-5">Invest in {company.ticker}</DrawerTitle>
 
         <div className="space-y-4">
           {/* Company Info */}
@@ -268,7 +263,8 @@ export const InvestModal = ({
             By investing, you acknowledge the risks involved. Investments may result in loss.
           </p>
         </div>
-      </div>
-    </div>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 };
