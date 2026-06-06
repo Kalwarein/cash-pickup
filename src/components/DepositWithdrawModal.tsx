@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { X, ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Smartphone, CheckCircle2, Clock, XCircle, Loader2, PhoneCall } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Wallet, AlertCircle, Smartphone, CheckCircle2, Clock, XCircle, Loader2, PhoneCall } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { notify } from '@/lib/notify';
@@ -213,9 +213,6 @@ export const DepositWithdrawModal = ({
               <p className="text-sm text-muted-foreground">{isDeposit ? 'Pay with Orange Money or Afrimoney' : 'Transfer to your mobile wallet'}</p>
             </div>
           </div>
-          <button onClick={handleClose} className="p-2 hover:bg-muted rounded-full transition-colors">
-            <X className="w-5 h-5" />
-          </button>
         </div>
 
         {step === 'ussd' ? (
