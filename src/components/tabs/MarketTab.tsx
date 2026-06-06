@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import {
   TrendingUp, TrendingDown, ChevronRight, Building2, Flame,
-  Activity, Shield, X, BarChart3, ArrowUpRight, ArrowDownRight,
+  Activity, Shield, BarChart3, ArrowUpRight, ArrowDownRight,
   Zap, Star, Eye, Info, Clock, Target
 } from 'lucide-react';
 import { useCPR } from '@/hooks/useCPR';
@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
 
 /* ─── Types ─────────────────────────────────────────────── */
 type FilterType = 'all' | 'positive' | 'negative' | 'stable';
