@@ -255,6 +255,44 @@ export type Database = {
         }
         Relationships: []
       }
+      company_invest_events: {
+        Row: {
+          amount: number
+          company_id: string
+          created_at: string
+          event_type: string
+          id: string
+          profit: number
+          user_id: string | null
+        }
+        Insert: {
+          amount?: number
+          company_id: string
+          created_at?: string
+          event_type: string
+          id?: string
+          profit?: number
+          user_id?: string | null
+        }
+        Update: {
+          amount?: number
+          company_id?: string
+          created_at?: string
+          event_type?: string
+          id?: string
+          profit?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invest_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_price_history: {
         Row: {
           change_percent: number | null
@@ -283,6 +321,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_price_history_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_weekly_stats: {
+        Row: {
+          claim_count: number
+          company_id: string
+          created_at: string
+          id: string
+          invest_count: number
+          losses: number
+          realized_loss: number
+          realized_profit: number
+          total_invested: number
+          updated_at: string
+          week_start: string
+          wins: number
+        }
+        Insert: {
+          claim_count?: number
+          company_id: string
+          created_at?: string
+          id?: string
+          invest_count?: number
+          losses?: number
+          realized_loss?: number
+          realized_profit?: number
+          total_invested?: number
+          updated_at?: string
+          week_start: string
+          wins?: number
+        }
+        Update: {
+          claim_count?: number
+          company_id?: string
+          created_at?: string
+          id?: string
+          invest_count?: number
+          losses?: number
+          realized_loss?: number
+          realized_profit?: number
+          total_invested?: number
+          updated_at?: string
+          week_start?: string
+          wins?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_weekly_stats_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
@@ -797,6 +888,29 @@ export type Database = {
           low: number
           open: number
           volume: number
+        }[]
+      }
+      get_company_global_stats: {
+        Args: { p_company_id: string }
+        Returns: {
+          active_investors: number
+          losses: number
+          realized_profit: number
+          total_invested: number
+          total_investors: number
+          wins: number
+        }[]
+      }
+      get_company_weekly_series: {
+        Args: { p_company_id: string; p_limit?: number }
+        Returns: {
+          invest_count: number
+          losses: number
+          realized_loss: number
+          realized_profit: number
+          total_invested: number
+          week_start: string
+          wins: number
         }[]
       }
       update_leaderboard_cache: { Args: never; Returns: undefined }
