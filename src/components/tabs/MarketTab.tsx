@@ -13,6 +13,7 @@ import { sle } from '@/lib/currency';
 import { supabase } from '@/integrations/supabase/client';
 import { Area, AreaChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from 'recharts';
 import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { CompanyGlobalInvestments } from '@/components/CompanyGlobalInvestments';
 
 /* ─── Types ─────────────────────────────────────────────── */
 type FilterType = 'all' | 'positive' | 'negative' | 'stable';
@@ -532,6 +533,11 @@ export const MarketTab = () => {
 
             {/* Scrollable content */}
             <div className="mt-detail-body">
+
+              {/* Global investment activity */}
+              <div className="mt-detail-section">
+                <CompanyGlobalInvestments companyId={selectedCompany.id} ticker={selectedCompany.ticker} />
+              </div>
 
               {/* CPR chart */}
               {cprHistory.length > 0 && (
