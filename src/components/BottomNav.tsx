@@ -7,7 +7,7 @@ const tabs = [
   { id: 'invest', path: '/invest', label: 'Invest', icon: TrendingUp },
   { id: 'market', path: '/market', label: 'Market', icon: BarChart3 },
   { id: 'earn', path: '/earn', label: 'Earn', icon: Coins },
-  { id: 'wallet', path: '/wallet', label: 'Profile', icon: Wallet },
+  { id: 'wallet', path: '/wallet', label: 'Wallet', icon: Wallet },
 ];
 
 export const BottomNav = () => {

@@ -199,7 +199,11 @@ export const DepositWithdrawModal = ({
           : { label: 'Awaiting Payment', color: 'text-amber-500', bg: 'bg-amber-500/10', Icon: Clock };
 
   return (
-    <Drawer open={isOpen} onOpenChange={(o) => { if (!o) handleClose(); }}>
+    <Drawer
+      open={isOpen}
+      onOpenChange={(o) => { if (!o) handleClose(); }}
+      repositionInputs={false}
+    >
       <DrawerContent className="max-w-lg mx-auto">
         <div className="p-6">
         {/* Header */}

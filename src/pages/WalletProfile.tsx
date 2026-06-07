@@ -13,7 +13,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { 
-  User, Plus, Minus, Gift, TrendingUp, TrendingDown,
+  User, Wallet, Plus, Minus, Gift, TrendingUp, TrendingDown,
   Award, BellRing, Clock, Sparkles, History, ChevronRight,
   Settings, CreditCard
 } from 'lucide-react';
@@ -74,11 +74,11 @@ const WalletProfile = () => {
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                <User className="w-7 h-7 text-primary-foreground" />
+                <Wallet className="w-7 h-7 text-primary-foreground" />
               </div>
               <div>
-                <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">{profile?.name || 'User'}</h1>
-                <p className="text-xs text-primary-foreground/60">{profile?.email}</p>
+                <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">My Wallet</h1>
+                <p className="text-xs text-primary-foreground/60">{profile?.name || profile?.email}</p>
               </div>
             </div>
             <ThemeToggle />
