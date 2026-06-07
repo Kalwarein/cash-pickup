@@ -203,7 +203,6 @@ export const DepositWithdrawModal = ({
       open={isOpen}
       onOpenChange={(o) => { if (!o) handleClose(); }}
       repositionInputs={false}
-      dismissible={false}
     >
       <DrawerContent className="max-w-lg mx-auto">
         <div className="p-6">
