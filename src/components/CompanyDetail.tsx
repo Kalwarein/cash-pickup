@@ -3,6 +3,7 @@ import { ArrowLeft, TrendingUp, TrendingDown, AlertTriangle, Clock, Building2, M
 import { CPRIndicator } from '@/components/CPRIndicator';
 import { RiskWarning } from '@/components/RiskWarning';
 import { TradingChart } from '@/components/TradingChart';
+import { CompanyGlobalInvestments } from '@/components/CompanyGlobalInvestments';
 import { useCompanyActivities } from '@/hooks/useCompanyActivities';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
@@ -238,6 +239,9 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
 
       {/* Live trading chart */}
       <TradingChart companyId={company.id} ticker={company.ticker} name={company.name} />
+
+      {/* Global investment activity */}
+      <CompanyGlobalInvestments companyId={company.id} ticker={company.ticker} />
 
       {/* Today's CPR Card */}
       <div className="glass-card p-4">
