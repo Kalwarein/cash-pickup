@@ -13,7 +13,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { 
-  User, Plus, Minus, Gift, TrendingUp, TrendingDown,
+  User, Wallet, Plus, Minus, Gift, TrendingUp, TrendingDown,
   Award, BellRing, Clock, Sparkles, History, ChevronRight,
   Settings, CreditCard
 } from 'lucide-react';
