@@ -7,10 +7,15 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { NotificationPopups } from '@/components/NotificationPopups';
 import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
 import { useBackgroundSync } from '@/hooks/useBackgroundSync';
+import { useCompanies } from '@/hooks/useCompanies';
+import { useWallet } from '@/hooks/useWallet';
+import { PageLoader } from '@/components/PageLoader';
 
 const Home = () => {
   const { user, loading } = useAuth();
   const { completed, loading: onboardingLoading } = useOnboarding();
+  const { loading: companiesLoading } = useCompanies();
+  const { loading: walletLoading } = useWallet();
   const navigate = useNavigate();
   useBackgroundSync();
 
@@ -19,16 +24,7 @@ const Home = () => {
     if (!loading && !onboardingLoading && user && completed === false) navigate('/onboarding');
   }, [user, loading, completed, onboardingLoading, navigate]);
 
-  if (loading || onboardingLoading) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center animate-pulse">
-          <span className="text-2xl font-bold text-primary-foreground">CP</span>
-        </div>
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    </div>
-  );
+  if (loading || onboardingLoading || companiesLoading || walletLoading) return <PageLoader />;
 
   if (!user) return null;
 
