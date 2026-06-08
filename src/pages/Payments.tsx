@@ -16,6 +16,7 @@ import {
 } from '@/lib/paymentTransactions';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
+import { PageLoader } from '@/components/PageLoader';
 
 const FILTERS: Array<{ key: PaymentStatusFilter; label: string }> = [
   { key: 'all', label: 'All' },
@@ -56,17 +57,8 @@ const Payments = () => {
     [filter, paymentTransactions],
   );
 
-  if (loading || onboardingLoading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl gradient-primary flex items-center justify-center animate-pulse">
-            <span className="text-2xl font-bold text-primary-foreground">CP</span>
-          </div>
-          <p className="text-muted-foreground">Loading payments...</p>
-        </div>
-      </div>
-    );
+  if (loading || onboardingLoading || paymentsLoading) {
+    return <PageLoader label="Loading payments…" />;
   }
 
   if (!user) return null;
