@@ -19,8 +19,7 @@ type EarnFilter = 'all' | 'active' | 'matured' | 'claimed';
 const Earn = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { investments, maturedInvestments, claimedInvestments, refetch: refetchInvestments } = useInvestments();
-  const { loading: investmentsLoading } = useInvestments();
+  const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
   const { loading: walletLoading, refetch: refetchWallet } = useWallet();
   const [filter, setFilter] = useState<EarnFilter>('all');
 
