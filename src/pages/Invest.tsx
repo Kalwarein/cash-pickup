@@ -19,7 +19,7 @@ const Invest = () => {
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <main className="max-w-lg mx-auto px-4 py-6">
+      <main className="max-w-lg mx-auto">
         <InvestTab />
       </main>
       <BottomNav />
