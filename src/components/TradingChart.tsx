@@ -13,7 +13,6 @@ import {
 } from 'lightweight-charts';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useTradingCandles, type Timeframe, type Candle } from '@/hooks/useTradingCandles';
-import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 
 type ChartType = 'candles' | 'heikin' | 'bars' | 'line' | 'area';
@@ -200,10 +199,16 @@ export const TradingChart = ({ companyId, ticker, name }: Props) => {
 
       {/* Chart canvas */}
       <div className="relative h-[360px] w-full">
-        {loading && candles.length === 0 ? (
-          <div className="absolute inset-0 p-3"><Skeleton className="w-full h-full rounded-xl" /></div>
-        ) : null}
         <div ref={containerRef} className="absolute inset-0" />
+        {loading && candles.length === 0 ? (
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/60 backdrop-blur-sm z-10">
+            <div className="relative w-10 h-10">
+              <span className="absolute inset-0 rounded-full border-2 border-primary/15" />
+              <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+            </div>
+            <p className="text-xs text-muted-foreground font-medium">Loading chart…</p>
+          </div>
+        ) : null}
         {hover && (
           <div className="absolute left-3 top-3 text-[10px] font-mono bg-background/80 backdrop-blur px-2 py-1 rounded-md border border-border/50 leading-tight">
             <div>O {hover.open.toFixed(2)}  H {hover.high.toFixed(2)}</div>
