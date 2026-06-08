@@ -20,12 +20,13 @@ import {
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription
 } from '@/components/ui/drawer';
+import { PageLoader } from '@/components/PageLoader';
 
 const WalletProfile = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
   const { wallet, transactions, loading: walletLoading, refetch: refetchWallet } = useWallet();
-  const { investments, maturedInvestments, claimedInvestments, refetch: refetchInvestments } = useInvestments();
+  const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
   const { getActivePromoCodes, userPromoCodes } = usePromoCodes();
   const { profile } = useProfile();
   const { permission, requestPermission, sendNotification } = usePushNotifications();
@@ -42,7 +43,7 @@ const WalletProfile = () => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  if (loading || walletLoading || !user) return null;
+  if (loading || walletLoading || investmentsLoading || !user) return <PageLoader />;
 
   const netProfitLoss = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
   const profitableInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
