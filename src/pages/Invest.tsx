@@ -8,7 +8,7 @@ import { PageLoader } from '@/components/PageLoader';
 
 const Invest = () => {
   const { user, loading } = useAuth();
-  const { companies, loading: companiesLoading } = useCompanies();
+  const { loading: companiesLoading } = useCompanies();
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -20,7 +20,7 @@ const Invest = () => {
   return (
     <div className="min-h-screen bg-background pb-24">
       <main className="max-w-lg mx-auto px-4 py-6">
-        <InvestTab companies={companies} />
+        <InvestTab />
       </main>
       <BottomNav />
     </div>
