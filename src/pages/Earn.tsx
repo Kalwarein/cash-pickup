@@ -4,6 +4,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
+import { PageLoader } from '@/components/PageLoader';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { cn } from '@/lib/utils';
@@ -19,14 +20,15 @@ const Earn = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
   const { investments, maturedInvestments, claimedInvestments, refetch: refetchInvestments } = useInvestments();
-  const { refetch: refetchWallet } = useWallet();
+  const { loading: investmentsLoading } = useInvestments();
+  const { loading: walletLoading, refetch: refetchWallet } = useWallet();
   const [filter, setFilter] = useState<EarnFilter>('all');
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  if (loading || !user) return null;
+  if (loading || !user || investmentsLoading || walletLoading) return <PageLoader />;
 
   const allInvestments = [
     ...investments.map(i => ({ ...i, _type: 'active' as const })),
