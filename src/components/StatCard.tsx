@@ -36,3 +36,5 @@ const StatCardComponent = ({ label, value, change, icon, className }: StatCardPr
     </div>
   );
 };
+
+export const StatCard = memo(StatCardComponent);
