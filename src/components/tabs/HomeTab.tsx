@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, Users, Activity, Flame, Ticket,
   AlertTriangle, Bell, ChevronRight, Shield,
@@ -62,6 +63,7 @@ const DonutRing = ({ pct }: { pct: number }) => {
    MAIN COMPONENT
 ═══════════════════════════════════════════════════════ */
 export const HomeTab = () => {
+  const navigate = useNavigate();
   const { topPerformers, averageCPR } = useCPR();
   const { companies } = useCompanies();
   const { investments, completedInvestments } = useInvestments();
@@ -90,10 +92,10 @@ export const HomeTab = () => {
 
   /* ── Quick action tiles ── */
   const actions = [
-    { label: 'Invest',    icon: TrendingUp, c: '#6366f1', bg: 'rgba(99,102,241,0.1)'  },
-    { label: 'Withdraw',  icon: Wallet,     c: '#10b981', bg: 'rgba(16,185,129,0.1)'  },
-    { label: 'Returns',   icon: BarChart3,  c: '#f59e0b', bg: 'rgba(245,158,11,0.1)'  },
-    { label: 'History',   icon: RefreshCw,  c: '#ec4899', bg: 'rgba(236,72,153,0.1)'  },
+    { label: 'Invest',    icon: TrendingUp, c: '#6366f1', bg: 'rgba(99,102,241,0.1)',  path: '/invest'   },
+    { label: 'Withdraw',  icon: Wallet,     c: '#10b981', bg: 'rgba(16,185,129,0.1)',  path: '/wallet'   },
+    { label: 'Returns',   icon: BarChart3,  c: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  path: '/earn'     },
+    { label: 'History',   icon: RefreshCw,  c: '#ec4899', bg: 'rgba(236,72,153,0.1)',  path: '/payments' },
   ];
 
   return (
@@ -195,8 +197,8 @@ export const HomeTab = () => {
             QUICK ACTIONS
         ════════════════════════════════════════════ */}
         <div className="cp-quick-grid">
-          {actions.map(({ label, icon: Icon, c, bg }) => (
-            <button key={label} className="cp-qa-tile">
+          {actions.map(({ label, icon: Icon, c, bg, path }) => (
+            <button key={label} className="cp-qa-tile" onClick={() => navigate(path)}>
               <div className="cp-qa-icon-wrap" style={{ background: bg }}>
                 <Icon className="w-5 h-5" style={{ color: c }} strokeWidth={1.8} />
               </div>
