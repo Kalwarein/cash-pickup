@@ -169,7 +169,11 @@ const Earn = () => {
               const displayPL = isClaimed ? (inv.final_profit_loss || 0) : inv.profit_loss;
 
               return (
-                <div key={inv.id} className="glass-card p-4 space-y-3">
+                <div
+                  key={inv.id}
+                  onClick={() => setSelected(inv)}
+                  className="glass-card p-4 space-y-3 cursor-pointer transition-all active:scale-[0.99] hover:border-primary/40"
+                >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
