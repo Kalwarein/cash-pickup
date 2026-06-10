@@ -234,6 +234,107 @@ const Earn = () => {
           )}
         </div>
       </main>
+
+      {/* Investment detail drawer */}
+      <Drawer open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
+        <DrawerContent>
+          {selected && (() => {
+            const isClaimed = selected._type === 'claimed';
+            const displayPL = isClaimed ? (selected.final_profit_loss || 0) : selected.profit_loss;
+            const profitPercent = selected.amount > 0 ? (displayPL / selected.amount) * 100 : 0;
+            const up = displayPL >= 0;
+            const displayValue = isClaimed
+              ? (selected.final_value || selected.current_value)
+              : selected.current_value;
+            const statusLabel = selected._type === 'active' ? 'Active'
+              : selected._type === 'matured' ? 'Ready to claim' : 'Claimed';
+            return (
+              <>
+                <DrawerHeader>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl gradient-primary flex items-center justify-center">
+                      <span className="text-sm font-bold text-primary-foreground">
+                        {selected.company_ticker?.slice(0, 2)}
+                      </span>
+                    </div>
+                    <div className="text-left">
+                      <DrawerTitle>{selected.company_name}</DrawerTitle>
+                      <DrawerDescription>
+                        {selected.company_ticker} • {statusLabel}
+                      </DrawerDescription>
+                    </div>
+                  </div>
+                </DrawerHeader>
+
+                <div className="px-4 pb-2 space-y-4">
+                  {/* Value + return hero */}
+                  <div className="rounded-2xl p-4 bg-muted/40 border border-border/60">
+                    <p className="text-xs text-muted-foreground">Current value</p>
+                    <p className="text-3xl font-bold tabular-nums tracking-tight">{sle(displayValue)}</p>
+                    <div className={cn(
+                      "inline-flex items-center gap-1 mt-1 text-sm font-semibold px-2 py-0.5 rounded-md",
+                      up ? "text-success bg-success/10" : "text-destructive bg-destructive/10",
+                    )}>
+                      {up ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                      {up ? '+' : ''}{sle(displayPL)} ({up ? '+' : ''}{profitPercent.toFixed(1)}%)
+                    </div>
+                  </div>
+
+                  {/* Detail grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="glass-card p-3">
+                      <p className="text-[10px] text-muted-foreground mb-1">Invested</p>
+                      <p className="font-bold">{sle(selected.amount)}</p>
+                    </div>
+                    <div className="glass-card p-3">
+                      <p className="text-[10px] text-muted-foreground mb-1">Term</p>
+                      <p className="font-bold">{selected.maturity_days} days</p>
+                    </div>
+                    <div className="glass-card p-3">
+                      <p className="text-[10px] text-muted-foreground mb-1">Started</p>
+                      <p className="font-bold text-sm">{new Date(selected.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="glass-card p-3">
+                      <p className="text-[10px] text-muted-foreground mb-1">
+                        {isClaimed ? 'Claimed' : 'Matures'}
+                      </p>
+                      <p className="font-bold text-sm">
+                        {isClaimed
+                          ? (selected.claimed_at ? new Date(selected.claimed_at).toLocaleDateString() : '—')
+                          : (selected.maturity_date ? new Date(selected.maturity_date).toLocaleDateString() : '—')}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Progress for active */}
+                  {selected._type === 'active' && (
+                    <div className="glass-card p-4">
+                      <p className="text-xs text-muted-foreground mb-2">Maturity progress</p>
+                      <InvestmentProgressBar
+                        maturityDate={selected.maturity_date}
+                        maturityDays={selected.maturity_days}
+                        createdAt={selected.created_at}
+                        companyName={selected.company_name || ''}
+                        amount={selected.amount}
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <DrawerFooter>
+                  <button
+                    onClick={() => { setSelected(null); navigate('/market'); }}
+                    className="w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold"
+                  >
+                    View market
+                  </button>
+                </DrawerFooter>
+              </>
+            );
+          })()}
+        </DrawerContent>
+      </Drawer>
+
       <BottomNav />
     </div>
   );
