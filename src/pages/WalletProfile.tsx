@@ -43,7 +43,15 @@ const WalletProfile = () => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  if (loading || walletLoading || investmentsLoading || !user) return <PageLoader />;
+  if (loading || walletLoading || investmentsLoading || !user)
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
+          <PageLoader inline />
+        </div>
+        <BottomNav />
+      </div>
+    );
 
   const netProfitLoss = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
   const profitableInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;

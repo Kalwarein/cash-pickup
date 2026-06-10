@@ -58,7 +58,14 @@ const Payments = () => {
   );
 
   if (loading || onboardingLoading || paymentsLoading) {
-    return <PageLoader label="Loading payments…" />;
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
+          <PageLoader inline label="Loading payments…" />
+        </div>
+        <BottomNav />
+      </div>
+    );
   }
 
   if (!user) return null;
