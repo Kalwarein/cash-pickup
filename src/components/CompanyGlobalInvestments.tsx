@@ -127,7 +127,13 @@ export const CompanyGlobalInvestments = ({ companyId, ticker }: Props) => {
         </p>
         <div className="h-[200px] w-full">
           {loading ? (
-            <div className="h-full w-full rounded-xl bg-muted animate-pulse" />
+            <div className="h-full w-full flex flex-col items-center justify-center gap-3">
+              <div className="relative w-9 h-9">
+                <span className="absolute inset-0 rounded-full border-2 border-primary/15" />
+                <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-primary animate-spin" />
+              </div>
+              <p className="text-xs text-muted-foreground font-medium">Loading activity…</p>
+            </div>
           ) : series.length === 0 ? (
             <div className="h-full w-full flex items-center justify-center text-sm text-muted-foreground">
               No investment activity yet

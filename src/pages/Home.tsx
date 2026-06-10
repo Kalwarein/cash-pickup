@@ -24,7 +24,15 @@ const Home = () => {
     if (!loading && !onboardingLoading && user && completed === false) navigate('/onboarding');
   }, [user, loading, completed, onboardingLoading, navigate]);
 
-  if (loading || onboardingLoading || companiesLoading || walletLoading) return <PageLoader />;
+  if (loading || onboardingLoading || companiesLoading || walletLoading)
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
+          <PageLoader inline />
+        </div>
+        <BottomNav />
+      </div>
+    );
 
   if (!user) return null;
 
