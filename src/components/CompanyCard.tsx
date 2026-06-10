@@ -138,3 +138,5 @@ const CompanyCardComponent = ({
     </div>
   );
 };
+
+export const CompanyCard = memo(CompanyCardComponent);
