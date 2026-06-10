@@ -7,6 +7,9 @@ import { useWallet } from '@/hooks/useWallet';
 import { PageLoader } from '@/components/PageLoader';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter,
+} from '@/components/ui/drawer';
 import { cn } from '@/lib/utils';
 import { sle } from '@/lib/currency';
 import { 
@@ -22,12 +25,23 @@ const Earn = () => {
   const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
   const { loading: walletLoading, refetch: refetchWallet } = useWallet();
   const [filter, setFilter] = useState<EarnFilter>('all');
+  const [selected, setSelected] = useState<
+    (typeof investments[0] & { _type: 'active' | 'matured' | 'claimed' }) | null
+  >(null);
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  if (loading || !user || investmentsLoading || walletLoading) return <PageLoader />;
+  if (loading || !user || investmentsLoading || walletLoading)
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
+          <PageLoader inline />
+        </div>
+        <BottomNav />
+      </div>
+    );
 
   const allInvestments = [
     ...investments.map(i => ({ ...i, _type: 'active' as const })),
