@@ -4,6 +4,7 @@ import { CPRIndicator } from '@/components/CPRIndicator';
 import { RiskWarning } from '@/components/RiskWarning';
 import { TradingChart } from '@/components/TradingChart';
 import { CompanyGlobalInvestments } from '@/components/CompanyGlobalInvestments';
+import { PageLoader } from '@/components/PageLoader';
 import { useCompanyActivities } from '@/hooks/useCompanyActivities';
 import { useInvestments } from '@/hooks/useInvestments';
 import { useWallet } from '@/hooks/useWallet';
@@ -144,8 +145,8 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
 
   if (loading || !company) {
     return (
-      <div className="space-y-4 animate-fade-in">
-        <div className="glass-card p-6 h-[200px] loading-pulse" />
+      <div className="animate-fade-in">
+        <PageLoader inline label="Loading company…" />
       </div>
     );
   }
