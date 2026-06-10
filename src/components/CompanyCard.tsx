@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 import { TrendingUp, TrendingDown, Flame, ArrowUpRight, Sparkles, Globe2, MapPin } from 'lucide-react';
 import { sle, formatMarketCap } from '@/lib/currency';
@@ -18,7 +19,7 @@ interface CompanyCardProps {
   onView?: () => void;
 }
 
-export const CompanyCard = ({
+const CompanyCardComponent = ({
   name,
   ticker,
   sector,
@@ -137,3 +138,5 @@ export const CompanyCard = ({
     </div>
   );
 };
+
+export const CompanyCard = memo(CompanyCardComponent);

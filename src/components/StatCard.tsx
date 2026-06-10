@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { cn } from '@/lib/utils';
 
 interface StatCardProps {
@@ -12,7 +13,7 @@ interface StatCardProps {
 
 export type { StatCardProps };
 
-export const StatCard = ({ label, value, change, icon, className }: StatCardProps) => {
+const StatCardComponent = ({ label, value, change, icon, className }: StatCardProps) => {
   const isPositive = change !== undefined && change >= 0;
   
   return (
@@ -35,3 +36,5 @@ export const StatCard = ({ label, value, change, icon, className }: StatCardProp
     </div>
   );
 };
+
+export const StatCard = memo(StatCardComponent);
