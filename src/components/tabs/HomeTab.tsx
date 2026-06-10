@@ -126,7 +126,7 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-            <button className="cp-hdr-btn">
+              <button className="cp-hdr-btn" onClick={() => navigate('/wallet')}>
               <Bell className="cp-hdr-icon" />
               <span className="cp-notif-dot" />
             </button>
@@ -256,7 +256,7 @@ export const HomeTab = () => {
                 <p className="cp-card-title">Active Investments</p>
                 <p className="cp-card-sub">{investments.length} open positions</p>
               </div>
-              <button className="cp-see-all">
+              <button className="cp-see-all" onClick={() => navigate('/earn')}>
                 All <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
