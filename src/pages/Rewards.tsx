@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
+  ChevronLeft, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
   Sparkles, Lock, Check, Zap, Gift, TrendingUp, Wallet, Target, Timer,
   Award, Crown, CheckCircle2, Wifi, WifiOff,
 } from 'lucide-react';
@@ -41,6 +41,7 @@ const Rewards = () => {
   const { wallet, refetch: refetchWallet } = useWallet();
   const t = useTapEarn();
   const [tab, setTab] = useState<Tab>('tap');
+  const [toolbarOpen, setToolbarOpen] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -61,13 +62,16 @@ const Rewards = () => {
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
   const remainingTaps = Math.max(0, Math.ceil((1 - (t.displayUnits % 1)) / per));
 
+  const activeTabMeta = TABS.find((tb) => tb.id === tab)!;
+  const ActiveIcon = activeTabMeta.icon;
+
   return (
-    <div className="rewards-page relative min-h-screen bg-background pb-28 overflow-hidden">
+    <div className="rewards-page relative h-[100dvh] bg-background overflow-hidden flex flex-col">
       <div className="rewards-aurora" />
 
       {/* Header */}
-      <header className="relative z-10 sticky top-0 backdrop-blur-xl bg-background/70 border-b border-border/50">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-14">
+      <header className="relative z-20 shrink-0 backdrop-blur-xl bg-background/70 border-b border-border/50">
+        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
           <button onClick={() => navigate('/home')} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -81,17 +85,17 @@ const Rewards = () => {
         </div>
       </header>
 
-      <main className="relative z-10 max-w-lg mx-auto px-4 pt-4 space-y-5 animate-fade-in">
+      <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-2 flex flex-col gap-3 animate-fade-in">
         {/* Balance hero */}
-        <section className="rounded-3xl p-5 gold-border bg-card/60 backdrop-blur-xl shadow-float text-center">
-          <p className="text-[11px] uppercase tracking-widest text-muted-foreground mb-1">Total Units Mined</p>
+        <section className="shrink-0 rounded-2xl p-3.5 gold-border bg-card/60 backdrop-blur-xl shadow-float text-center">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
           <AnimatedNumber
             value={t.displayUnits}
             decimals={8}
             duration={350}
-            className="block text-3xl font-display font-black gold-text tabular-nums leading-tight"
+            className="block text-2xl font-display font-black gold-text tabular-nums leading-tight"
           />
-          <div className="mt-3 flex items-center justify-center gap-4 text-xs">
+          <div className="mt-2 flex items-center justify-center gap-4 text-xs">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Wallet className="w-3.5 h-3.5" /> {sle(wallet?.balance ?? 0)}
             </span>
@@ -101,12 +105,12 @@ const Rewards = () => {
           </div>
 
           {/* Progress to 1 unit */}
-          <div className="mt-4 text-left">
+          <div className="mt-2.5 text-left">
             <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
               <span>Progress to 1 unit</span>
               <span>{progressPct.toFixed(2)}%</span>
             </div>
-            <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
               <div className="h-full gold-surface transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground text-right">
@@ -115,35 +119,68 @@ const Rewards = () => {
           </div>
         </section>
 
-        {/* Tabs */}
-        <div className="flex gap-1 p-1 rounded-2xl bg-muted/60 backdrop-blur-sm sticky top-14 z-10">
-          {TABS.map((tb) => {
-            const Icon = tb.icon;
-            const active = tab === tb.id;
-            return (
+        {/* Expandable dashboard toolbar */}
+        <div className="relative shrink-0 z-20">
+          {!toolbarOpen ? (
+            <button
+              onClick={() => setToolbarOpen(true)}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-muted/60 backdrop-blur-sm gold-border active:scale-[0.99] transition-transform"
+            >
+              <span className="flex items-center gap-2 text-xs font-bold">
+                <span className="w-6 h-6 rounded-lg gold-surface text-black grid place-items-center">
+                  <ActiveIcon className="w-3.5 h-3.5" />
+                </span>
+                {activeTabMeta.label}
+              </span>
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                Switch
+                <ChevronDown className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          ) : (
+            <div className="rounded-2xl bg-muted/60 backdrop-blur-sm gold-border p-1 animate-fade-in">
+              <div className="flex gap-1">
+                {TABS.map((tb) => {
+                  const Icon = tb.icon;
+                  const active = tab === tb.id;
+                  return (
+                    <button
+                      key={tb.id}
+                      onClick={() => { setTab(tb.id); setToolbarOpen(false); }}
+                      className={cn(
+                        'flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-semibold transition-all',
+                        active ? 'gold-surface text-black shadow' : 'text-muted-foreground hover:text-foreground',
+                      )}
+                    >
+                      <Icon className="w-4 h-4" />
+                      {tb.label}
+                    </button>
+                  );
+                })}
+              </div>
               <button
-                key={tb.id}
-                onClick={() => setTab(tb.id)}
-                className={cn(
-                  'flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-semibold transition-all',
-                  active ? 'gold-surface text-black shadow' : 'text-muted-foreground hover:text-foreground',
-                )}
+                onClick={() => setToolbarOpen(false)}
+                className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
               >
-                <Icon className="w-4 h-4" />
-                {tb.label}
+                Collapse
               </button>
-            );
-          })}
+            </div>
+          )}
         </div>
 
-        {tab === 'tap' && <TapSection t={t} per={per} />}
-        {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
-        {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
-        {tab === 'top' && <LeaderboardSection />}
-        {tab === 'history' && <HistorySection />}
+        {/* Scrollable tab content — only this area scrolls, the shell never does */}
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
+          {tab === 'tap' && <TapSection t={t} per={per} />}
+          {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
+          {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
+          {tab === 'top' && <LeaderboardSection />}
+          {tab === 'history' && <HistorySection />}
+        </div>
       </main>
 
-      <BottomNav />
+      <div className="shrink-0">
+        <BottomNav />
+      </div>
     </div>
   );
 };
