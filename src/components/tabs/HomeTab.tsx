@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, Users, Activity, Flame, Ticket,
-  AlertTriangle, Bell, ChevronRight, Shield,
+  AlertTriangle, Coins, ChevronRight, Shield,
   ArrowUpRight, ArrowDownRight, Eye, EyeOff, Award,
   CheckCircle2, Sparkles, Wallet, BarChart3, RefreshCw,
   Info, Lock, Unlock
@@ -126,9 +126,8 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-              <button className="cp-hdr-btn" onClick={() => navigate('/rewards')}>
-              <Bell className="cp-hdr-icon" />
-              <span className="cp-notif-dot" />
+            <button className="cp-hdr-btn" onClick={() => navigate('/earn')}>
+              <Coins className="cp-hdr-icon" />
             </button>
             <ThemeToggle />
           </div>
@@ -206,6 +205,26 @@ export const HomeTab = () => {
             </button>
           ))}
         </div>
+
+        {/* ════════════════════════════════════════════
+            CASH MINER PROMO — tap-to-earn banner
+        ════════════════════════════════════════════ */}
+        <button className="cp-earn-banner" onClick={() => navigate('/rewards')}>
+          <span className="cp-earn-shimmer" />
+          <span className="cp-earn-orb" />
+          <div className="cp-earn-icon-wrap">
+            <Coins className="w-6 h-6" />
+          </div>
+          <div className="cp-earn-copy">
+            <p className="cp-earn-title">
+              Cash Miner <span className="cp-earn-badge">EARN FREE</span>
+            </p>
+            <p className="cp-earn-sub">
+              Tap to mine coins, boost your leverage & claim daily rewards
+            </p>
+          </div>
+          <ChevronRight className="w-4 h-4 cp-earn-chev" />
+        </button>
 
         {/* ════════════════════════════════════════════
             CPR SECTION
@@ -596,11 +615,6 @@ export const HomeTab = () => {
         }
         .cp-hdr-btn:active { transform: scale(0.88); }
         .cp-hdr-icon { width: 16px; height: 16px; }
-        .cp-notif-dot {
-          position: absolute; top: 7px; right: 7px;
-          width: 7px; height: 7px; border-radius: 9999px;
-          background: #ef4444; border: 1.5px solid hsl(var(--card));
-        }
 
         /* ── Hero — full bleed ── */
         .cp-hero {
@@ -689,6 +703,53 @@ export const HomeTab = () => {
         /* colour helpers */
         .cp-up   { color: #22c55e; }
         .cp-down { color: #ef4444; }
+
+        /* ── Cash Miner promo banner ── */
+        .cp-earn-banner {
+          position: relative; overflow: hidden;
+          display: flex; align-items: center; gap: 12px;
+          padding: 14px 16px; border-radius: 20px;
+          background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 45%, #ea580c 100%);
+          border: 1px solid rgba(245,158,11,0.4);
+          cursor: pointer; -webkit-tap-highlight-color: transparent;
+          width: 100%; text-align: left;
+          box-shadow: 0 10px 26px rgba(245,158,11,0.28);
+          transition: transform 0.15s;
+        }
+        .cp-earn-banner:active { transform: scale(0.98); }
+        .cp-earn-shimmer {
+          pointer-events: none; position: absolute; inset: 0;
+          background: linear-gradient(110deg, transparent 20%, rgba(255,255,255,0.28) 50%, transparent 80%);
+          background-size: 200% 100%; animation: cpShimmer 4s ease-in-out infinite;
+        }
+        .cp-earn-orb {
+          pointer-events: none; position: absolute;
+          width: 130px; height: 130px; border-radius: 9999px;
+          background: rgba(255,255,255,0.16); filter: blur(32px);
+          top: -46px; right: -24px;
+        }
+        .cp-earn-icon-wrap {
+          position: relative; z-index: 1; flex-shrink: 0;
+          width: 46px; height: 46px; border-radius: 14px;
+          background: rgba(255,255,255,0.22);
+          display: flex; align-items: center; justify-content: center;
+          color: white;
+        }
+        .cp-earn-copy { position: relative; z-index: 1; flex: 1; min-width: 0; }
+        .cp-earn-title {
+          font-size: 14px; font-weight: 900; color: white;
+          display: flex; align-items: center; gap: 6px;
+        }
+        .cp-earn-badge {
+          font-size: 9px; font-weight: 800; letter-spacing: 0.04em;
+          background: rgba(255,255,255,0.25); color: white;
+          padding: 2px 6px; border-radius: 9999px; white-space: nowrap;
+        }
+        .cp-earn-sub {
+          font-size: 11px; color: rgba(255,255,255,0.9);
+          margin-top: 3px; line-height: 1.4;
+        }
+        .cp-earn-chev { position: relative; z-index: 1; color: white; flex-shrink: 0; }
 
         /* ── Quick Actions ── */
         .cp-quick-grid {
