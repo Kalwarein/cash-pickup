@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
@@ -42,10 +42,15 @@ const Rewards = () => {
   const t = useTapEarn();
   const [tab, setTab] = useState<Tab>('tap');
   const [toolbarOpen, setToolbarOpen] = useState(false);
+  const [tapTier, setTapTier] = useState(0); // 0-4, escalates with rapid consecutive taps
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
   }, [authLoading, user, navigate]);
+
+  useEffect(() => {
+    if (tab !== 'tap') setTapTier(0);
+  }, [tab]);
 
   if (authLoading || t.loading) {
     return (
@@ -87,14 +92,36 @@ const Rewards = () => {
 
       <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-2 flex flex-col gap-3 animate-fade-in">
         {/* Balance hero */}
-        <section className="shrink-0 rounded-2xl p-3.5 gold-border bg-card/60 backdrop-blur-xl shadow-float text-center">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
-          <AnimatedNumber
-            value={t.displayUnits}
-            decimals={8}
-            duration={350}
-            className="block text-2xl font-display font-black gold-text tabular-nums leading-tight"
-          />
+        <section
+          className={cn(
+            'shrink-0 rounded-2xl p-3.5 backdrop-blur-xl shadow-float text-center transition-all duration-300 border',
+            tapTier >= 3 ? 'bg-gradient-to-br from-orange-500/25 via-card/60 to-red-500/15 border-orange-400/70' :
+            tapTier >= 1 ? 'bg-card/60 border-amber-400/50' :
+            'bg-card/60 gold-border',
+          )}
+          style={tapTier >= 1 ? {
+            boxShadow: `0 0 ${16 + tapTier * 14}px rgba(251,146,60,${0.12 + tapTier * 0.09})`,
+          } : undefined}
+        >
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
+            Total Units Mined
+            {tapTier >= 2 && <Flame className={cn('w-3 h-3', tapTier >= 4 ? 'text-red-500' : 'text-orange-400')} style={{ animation: 'flameFlicker 0.5s ease-in-out infinite' }} />}
+          </p>
+          <span
+            key={tapTier >= 2 ? `hot-${Math.floor(Date.now() / 350)}` : 'calm'}
+            className="block"
+            style={tapTier >= 2 ? { animation: 'numberPop 0.35s ease-out' } : undefined}
+          >
+            <AnimatedNumber
+              value={t.displayUnits}
+              decimals={8}
+              duration={350}
+              className={cn(
+                'block text-2xl font-display font-black tabular-nums leading-tight transition-colors',
+                tapTier >= 3 ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-orange-400 to-red-400' : 'gold-text',
+              )}
+            />
+          </span>
           <div className="mt-2 flex items-center justify-center gap-4 text-xs">
             <span className="flex items-center gap-1 text-muted-foreground">
               <Wallet className="w-3.5 h-3.5" /> {sle(wallet?.balance ?? 0)}
@@ -111,7 +138,10 @@ const Rewards = () => {
               <span>{progressPct.toFixed(2)}%</span>
             </div>
             <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div className="h-full gold-surface transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
+              <div
+                className={cn('h-full transition-[width] duration-300', tapTier >= 3 ? 'bg-gradient-to-r from-amber-400 via-orange-500 to-red-500' : 'gold-surface')}
+                style={{ width: `${progressPct}%` }}
+              />
             </div>
             <p className="mt-1 text-[10px] text-muted-foreground text-right">
               ~<AnimatedNumber value={remainingTaps} compact className="tabular-nums" /> taps left
@@ -170,7 +200,7 @@ const Rewards = () => {
 
         {/* Scrollable tab content — only this area scrolls, the shell never does */}
         <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
-          {tab === 'tap' && <TapSection t={t} per={per} />}
+          {tab === 'tap' && <TapSection t={t} per={per} onTierChange={setTapTier} />}
           {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
           {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
           {tab === 'top' && <LeaderboardSection />}
@@ -185,8 +215,106 @@ const Rewards = () => {
   );
 };
 
+/* ─────────── Combo animation keyframes (self-contained, injected once) ─────────── */
+const ComboKeyframes = () => (
+  <style>{`
+    @keyframes flameFlicker {
+      0%, 100% { transform: scale(1) rotate(-3deg); filter: brightness(1); }
+      50% { transform: scale(1.12) rotate(3deg); filter: brightness(1.35); }
+    }
+    @keyframes numberPop {
+      0% { transform: scale(1); }
+      35% { transform: scale(1.14); }
+      65% { transform: scale(0.97); }
+      100% { transform: scale(1); }
+    }
+    @keyframes popFloat {
+      0% { transform: translate(-50%, 0) scale(0.7); opacity: 0; }
+      15% { opacity: 1; transform: translate(-50%, -6px) scale(1.05); }
+      100% { transform: translate(-50%, -46px) scale(1); opacity: 0; }
+    }
+    @keyframes sparkBurst {
+      0% { transform: translate(0, 0) scale(1); opacity: 1; }
+      100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+    }
+    @keyframes ringPulse {
+      0% { transform: scale(0.85); opacity: 0.55; }
+      100% { transform: scale(1.7); opacity: 0; }
+    }
+    @keyframes coinShake {
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px) rotate(-1deg); }
+      75% { transform: translateX(2px) rotate(1deg); }
+    }
+  `}</style>
+);
+
+/* Combo tiers: how many rapid taps (within 650ms of each other) unlock each stage */
+const COMBO_TIERS = [
+  { min: 0, label: '', ring: '' },
+  { min: 12, label: 'Warm', ring: 'rgba(251,191,36,0.35)' },
+  { min: 30, label: 'Heating Up', ring: 'rgba(251,146,60,0.45)' },
+  { min: 60, label: 'Blazing', ring: 'rgba(249,115,22,0.55)' },
+  { min: 110, label: 'INFERNO', ring: 'rgba(239,68,68,0.65)' },
+];
+const getTier = (combo: number) => {
+  let tier = 0;
+  for (let i = 0; i < COMBO_TIERS.length; i++) if (combo >= COMBO_TIERS[i].min) tier = i;
+  return tier;
+};
+
 /* ─────────── TAP ─────────── */
-const TapSection = ({ t, per }: { t: ReturnType<typeof useTapEarn>; per: number }) => {
+const TapSection = ({ t, per, onTierChange }: {
+  t: ReturnType<typeof useTapEarn>; per: number; onTierChange?: (tier: number) => void;
+}) => {
+  const [combo, setCombo] = useState(0);
+  const [pops, setPops] = useState<{ id: number; label: string }[]>([]);
+  const [sparks, setSparks] = useState<{ id: number; tx: number; ty: number }[]>([]);
+  const lastTapAt = useRef(0);
+  const resetTimer = useRef<ReturnType<typeof setTimeout>>();
+  const seedRef = useRef(0);
+  const tier = getTier(combo);
+  const tierMeta = COMBO_TIERS[tier];
+
+  useEffect(() => {
+    onTierChange?.(tier);
+  }, [tier, onTierChange]);
+
+  useEffect(() => () => resetTimer.current && clearTimeout(resetTimer.current), []);
+
+  const handleTap = () => {
+    const now = Date.now();
+    const gap = now - lastTapAt.current;
+    lastTapAt.current = now;
+    const nextCombo = gap < 650 ? combo + 1 : 1;
+    setCombo(nextCombo);
+
+    if (resetTimer.current) clearTimeout(resetTimer.current);
+    resetTimer.current = setTimeout(() => setCombo(0), 900);
+
+    // floating "+amount" pop
+    const id = ++seedRef.current;
+    setPops((p) => [...p.slice(-4), { id, label: `+${formatUnits(per, 7)}` }]);
+    setTimeout(() => setPops((p) => p.filter((x) => x.id !== id)), 650);
+
+    // spark burst on every tier level-up
+    const justLeveled = getTier(nextCombo) > getTier(nextCombo - 1);
+    if (justLeveled && getTier(nextCombo) >= 2) {
+      const burst = Array.from({ length: 8 }).map((_, i) => {
+        const angle = (Math.PI * 2 * i) / 8;
+        return {
+          id: ++seedRef.current,
+          tx: Math.cos(angle) * 48,
+          ty: Math.sin(angle) * 48,
+        };
+      });
+      setSparks((s) => [...s, ...burst]);
+      setTimeout(() => setSparks((s) => s.filter((sp) => !burst.some((b) => b.id === sp.id))), 550);
+    }
+
+    t.tap();
+  };
+
   const stats = [
     { label: 'Earnings / tap', value: formatUnits(per, 8), icon: Zap },
     { label: "Today's taps", value: t.displayTodayTaps.toLocaleString(), icon: Flame },
@@ -195,21 +323,90 @@ const TapSection = ({ t, per }: { t: ReturnType<typeof useTapEarn>; per: number 
     { label: 'Leverage', value: `${leverageMult(t.profile.leverage_level)}x`, icon: Gauge },
     { label: 'Login streak', value: `${t.profile.daily_streak}d`, icon: Award },
   ];
+
   return (
     <div className="space-y-5">
-      <TapCoin onTap={t.tap} rewardLabel={formatUnits(per, 7)} />
+      <ComboKeyframes />
+
+      {/* Combo badge */}
+      <div className="flex items-center justify-center h-5">
+        {tier > 0 && (
+          <span
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide',
+              tier >= 3 ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-amber-400/20 text-amber-400',
+            )}
+            style={{ animation: tier >= 2 ? 'flameFlicker 0.5s ease-in-out infinite' : undefined }}
+          >
+            <Flame className="w-3.5 h-3.5" />
+            {tierMeta.label} • x{combo}
+          </span>
+        )}
+      </div>
+
+      {/* Coin + fire ring + floating pops + sparks, all self-contained overlay */}
+      <div className="relative flex items-center justify-center">
+        {tier >= 1 && (
+          <span
+            key={`ring-${combo}`}
+            className="absolute inset-0 m-auto w-40 h-40 rounded-full pointer-events-none"
+            style={{
+              background: `radial-gradient(circle, ${tierMeta.ring} 0%, transparent 70%)`,
+              animation: 'ringPulse 0.7s ease-out',
+            }}
+          />
+        )}
+        {sparks.map((s) => (
+          <span
+            key={s.id}
+            className={cn('absolute w-1.5 h-1.5 rounded-full pointer-events-none', tier >= 3 ? 'bg-red-500' : 'bg-amber-400')}
+            style={{ ['--tx' as any]: `${s.tx}px`, ['--ty' as any]: `${s.ty}px`, animation: 'sparkBurst 0.55s ease-out forwards' }}
+          />
+        ))}
+        {pops.map((p) => (
+          <span
+            key={p.id}
+            className={cn(
+              'absolute top-0 left-1/2 text-xs font-black tabular-nums pointer-events-none',
+              tier >= 3 ? 'text-red-400' : tier >= 1 ? 'text-orange-400' : 'text-amber-400',
+            )}
+            style={{ animation: 'popFloat 0.65s ease-out forwards' }}
+          >
+            {p.label}
+          </span>
+        ))}
+        <div style={{ animation: tier >= 3 ? 'coinShake 0.25s ease-in-out infinite' : undefined }}>
+          <TapCoin onTap={handleTap} rewardLabel={formatUnits(per, 7)} />
+        </div>
+      </div>
+
       <p className="text-center text-xs text-muted-foreground -mt-2">
         Tap fast — every tap is counted & verified {t.syncing && '• syncing…'}
       </p>
       <div className="grid grid-cols-2 gap-3">
         {stats.map((s) => {
           const Icon = s.icon;
+          const isEarnings = s.label === 'Earnings / tap';
           return (
-            <div key={s.label} className="rounded-2xl p-3 bg-card/60 backdrop-blur-md gold-border">
+            <div
+              key={s.label}
+              className={cn(
+                'rounded-2xl p-3 bg-card/60 backdrop-blur-md transition-all duration-200',
+                isEarnings && tier >= 2 ? 'gold-border' : 'gold-border',
+              )}
+              style={isEarnings && tier >= 1 ? {
+                boxShadow: `0 0 ${10 + tier * 8}px ${tierMeta.ring || 'transparent'}`,
+              } : undefined}
+            >
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                <Icon className="w-3 h-3 text-amber-400" /> {s.label}
+                <Icon className={cn('w-3 h-3', isEarnings && tier >= 2 ? 'text-orange-400' : 'text-amber-400')} /> {s.label}
               </div>
-              <p className="text-sm font-bold tabular-nums truncate">{s.value}</p>
+              <p
+                className={cn('text-sm font-bold tabular-nums truncate', isEarnings && tier >= 3 && 'text-orange-400')}
+                style={isEarnings && tier >= 2 ? { animation: 'numberPop 0.3s ease-out' } : undefined}
+              >
+                {s.value}
+              </p>
             </div>
           );
         })}
