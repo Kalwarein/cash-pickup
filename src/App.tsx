@@ -19,6 +19,7 @@ import Market from "./pages/Market";
 import Earn from "./pages/Earn";
 import WalletProfile from "./pages/WalletProfile";
 import Payments from "./pages/Payments";
+import Rewards from "./pages/Rewards";
 import { RequireAuth } from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -45,6 +46,7 @@ const App = () => (
               <Route path="/earn" element={<RequireAuth><Earn /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><WalletProfile /></RequireAuth>} />
               <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
+              <Route path="/rewards" element={<RequireAuth><Rewards /></RequireAuth>} />
               {/* Legacy redirect */}
               <Route path="/dashboard" element={<Navigate to="/home" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
