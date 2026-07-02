@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, MoreHorizontal, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
+  ChevronLeft, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
   Sparkles, Lock, Check, Zap, Gift, TrendingUp, Wallet, Target, Timer,
   Award, Crown, CheckCircle2, Wifi, WifiOff,
 } from 'lucide-react';
@@ -42,7 +42,7 @@ const Rewards = () => {
   const t = useTapEarn();
   const [tab, setTab] = useState<Tab>('tap');
   const [toolbarOpen, setToolbarOpen] = useState(false);
-  const [tapTier, setTapTier] = useState(0); // 0-6, escalates with rapid consecutive taps (Warm → Legendary)
+  const [tapTier, setTapTier] = useState(0); // 0-4, escalates with rapid consecutive taps
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -68,14 +68,11 @@ const Rewards = () => {
   const remainingTaps = Math.max(0, Math.ceil((1 - (t.displayUnits % 1)) / per));
 
   const activeTabMeta = TABS.find((tb) => tb.id === tab)!;
-  const tierMetaTop = COMBO_TIERS[tapTier];
-  const ActiveIcon = tab === 'tap' && tapTier >= 2 ? Flame : activeTabMeta.icon;
+  const ActiveIcon = activeTabMeta.icon;
 
   return (
     <div className="rewards-page relative h-[100dvh] bg-background overflow-hidden flex flex-col">
-      <ComboKeyframes />
       <div className="rewards-aurora" />
-      <ScreenFlameOverlay tier={tapTier} accent={tierMetaTop.accent} />
 
       {/* Header */}
       <header className="relative z-20 shrink-0 backdrop-blur-xl bg-background/70 border-b border-border/50">
@@ -98,23 +95,17 @@ const Rewards = () => {
         <section
           className={cn(
             'shrink-0 rounded-2xl p-3.5 backdrop-blur-xl shadow-float text-center transition-all duration-300 border',
-            tapTier >= 3 ? 'bg-gradient-to-br from-orange-500/25 via-card/60 to-red-500/15' :
-            tapTier >= 1 ? 'bg-card/60' :
+            tapTier >= 3 ? 'bg-gradient-to-br from-orange-500/25 via-card/60 to-red-500/15 border-orange-400/70' :
+            tapTier >= 1 ? 'bg-card/60 border-amber-400/50' :
             'bg-card/60 gold-border',
           )}
           style={tapTier >= 1 ? {
-            borderColor: `${tierMetaTop.accent}b0`,
-            boxShadow: `0 0 ${16 + tapTier * 16}px ${tierMetaTop.accent}${tapTier >= 5 ? '99' : '55'}`,
+            boxShadow: `0 0 ${16 + tapTier * 14}px rgba(251,146,60,${0.12 + tapTier * 0.09})`,
           } : undefined}
         >
           <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5 flex items-center justify-center gap-1">
             Total Units Mined
-            {tapTier >= 2 && (
-              <Flame
-                className="w-3 h-3"
-                style={{ color: tierMetaTop.accent, animation: 'flameFlicker 0.5s ease-in-out infinite' }}
-              />
-            )}
+            {tapTier >= 2 && <Flame className={cn('w-3 h-3', tapTier >= 4 ? 'text-red-500' : 'text-orange-400')} style={{ animation: 'flameFlicker 0.5s ease-in-out infinite' }} />}
           </p>
           <span
             key={tapTier >= 2 ? `hot-${Math.floor(Date.now() / 350)}` : 'calm'}
@@ -158,33 +149,29 @@ const Rewards = () => {
           </div>
         </section>
 
-        {/* Expandable dashboard toolbar — a three-dot control switches between tabs */}
+        {/* Expandable dashboard toolbar */}
         <div className="relative shrink-0 z-20">
-          <div
-            className={cn(
-              'flex items-center gap-1.5 rounded-2xl bg-muted/60 backdrop-blur-sm border transition-all',
-              tapTier < 1 && 'gold-border',
-              toolbarOpen ? 'p-1' : 'pl-3.5 pr-1.5 py-1.5',
-            )}
-            style={tapTier >= 1 ? {
-              borderColor: `${tierMetaTop.accent}90`,
-              boxShadow: `0 0 ${8 + tapTier * 6}px ${tierMetaTop.accent}55`,
-            } : undefined}
-          >
-            {!toolbarOpen ? (
-              <span className="flex-1 flex items-center gap-2 text-xs font-bold">
-                <span
-                  className={cn('w-6 h-6 rounded-lg text-black grid place-items-center', tapTier < 1 && 'gold-surface')}
-                  style={tapTier >= 1 ? { background: tierMetaTop.accent } : undefined}
-                >
+          {!toolbarOpen ? (
+            <button
+              onClick={() => setToolbarOpen(true)}
+              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-muted/60 backdrop-blur-sm gold-border active:scale-[0.99] transition-transform"
+            >
+              <span className="flex items-center gap-2 text-xs font-bold">
+                <span className="w-6 h-6 rounded-lg gold-surface text-black grid place-items-center">
                   <ActiveIcon className="w-3.5 h-3.5" />
                 </span>
                 {activeTabMeta.label}
               </span>
-            ) : (
-              <div className="flex-1 flex gap-1 animate-fade-in">
+              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                Switch
+                <ChevronDown className="w-3.5 h-3.5" />
+              </span>
+            </button>
+          ) : (
+            <div className="rounded-2xl bg-muted/60 backdrop-blur-sm gold-border p-1 animate-fade-in">
+              <div className="flex gap-1">
                 {TABS.map((tb) => {
-                  const Icon = tb.id === 'tap' && tapTier >= 2 ? Flame : tb.icon;
+                  const Icon = tb.icon;
                   const active = tab === tb.id;
                   return (
                     <button
@@ -192,10 +179,8 @@ const Rewards = () => {
                       onClick={() => { setTab(tb.id); setToolbarOpen(false); }}
                       className={cn(
                         'flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-semibold transition-all',
-                        active ? 'text-black shadow' : 'text-muted-foreground hover:text-foreground',
-                        active && tapTier < 1 && 'gold-surface',
+                        active ? 'gold-surface text-black shadow' : 'text-muted-foreground hover:text-foreground',
                       )}
-                      style={active && tapTier >= 1 ? { background: tierMetaTop.accent } : undefined}
                     >
                       <Icon className="w-4 h-4" />
                       {tb.label}
@@ -203,21 +188,18 @@ const Rewards = () => {
                   );
                 })}
               </div>
-            )}
-
-            <button
-              onClick={() => setToolbarOpen((o) => !o)}
-              aria-label={toolbarOpen ? 'Collapse tab switcher' : 'Switch tabs'}
-              aria-expanded={toolbarOpen}
-              className="shrink-0 w-8 h-8 rounded-xl grid place-items-center text-muted-foreground hover:text-foreground hover:bg-background/60 active:scale-90 transition-all"
-            >
-              <MoreHorizontal className={cn('w-4 h-4 transition-transform duration-200', toolbarOpen && 'rotate-90')} />
-            </button>
-          </div>
+              <button
+                onClick={() => setToolbarOpen(false)}
+                className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Collapse
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Scrollable tab content — only this area scrolls, the shell never does */}
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-4">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
           {tab === 'tap' && <TapSection t={t} per={per} onTierChange={setTapTier} />}
           {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
           {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
@@ -226,17 +208,9 @@ const Rewards = () => {
         </div>
       </main>
 
-      {/*
-        BottomNav renders itself fixed to the viewport, so it takes no space in this
-        flex column on its own — content used to run underneath and get covered by it.
-        This spacer reserves real height for it (plus the iOS home-indicator safe area)
-        and fades content out softly instead of letting it get clipped by the nav.
-      */}
-      <div className="shrink-0 relative z-10 h-[calc(4.5rem+env(safe-area-inset-bottom))]">
-        <div className="absolute inset-x-0 -top-5 h-5 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+      <div className="shrink-0">
+        <BottomNav />
       </div>
-
-      <BottomNav />
     </div>
   );
 };
@@ -268,84 +242,25 @@ const ComboKeyframes = () => (
       100% { transform: scale(1.7); opacity: 0; }
     }
     @keyframes coinShake {
-      0%, 100% { transform: translateX(0) translateY(0) rotate(0deg); }
-      25% { transform: translateX(calc(var(--shake, 2) * -1px)) translateY(1px) rotate(-1.5deg); }
-      75% { transform: translateX(calc(var(--shake, 2) * 1px)) translateY(-1px) rotate(1.5deg); }
-    }
-    @keyframes ringSpin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    @keyframes ringSpinReverse {
-      0% { transform: rotate(360deg); }
-      100% { transform: rotate(0deg); }
-    }
-    @keyframes emberRise {
-      0% { transform: translate(0, 0) scale(1); opacity: 0.95; }
-      100% { transform: translate(var(--ex), -80px) scale(0.25); opacity: 0; }
-    }
-    @keyframes neonPulse {
-      0%, 100% { filter: drop-shadow(0 0 5px var(--neon)) drop-shadow(0 0 12px var(--neon)); }
-      50% { filter: drop-shadow(0 0 12px var(--neon)) drop-shadow(0 0 26px var(--neon)); }
-    }
-    @keyframes levelFlash {
-      0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0; }
-      18% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
-      40% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-      100% { transform: translate(-50%, -50%) scale(1.35); opacity: 0; }
-    }
-    @keyframes screenIgnite {
-      0%, 100% { opacity: var(--ignite-base, 0.4); }
-      50% { opacity: var(--ignite-peak, 0.85); }
-    }
-    @keyframes hueShift {
-      0% { filter: hue-rotate(0deg) saturate(1.4); }
-      100% { filter: hue-rotate(360deg) saturate(1.4); }
+      0%, 100% { transform: translateX(0); }
+      25% { transform: translateX(-2px) rotate(-1deg); }
+      75% { transform: translateX(2px) rotate(1deg); }
     }
   `}</style>
 );
 
-/* Combo tiers: escalating stages of a rapid-tap streak (taps within ~650ms of each other) */
+/* Combo tiers: how many rapid taps (within 650ms of each other) unlock each stage */
 const COMBO_TIERS = [
-  { min: 0,     label: '',           short: '',    accent: '#94a3b8' },
-  { min: 15,    label: 'Warm',       short: 'WARM',      accent: '#fbbf24' },
-  { min: 50,    label: 'Heating Up', short: 'HEATING',   accent: '#fb923c' },
-  { min: 150,   label: 'Blazing',    short: 'BLAZING',   accent: '#f97316' },
-  { min: 400,   label: 'Inferno',    short: 'INFERNO',   accent: '#ef4444' },
-  { min: 1000,  label: 'Supernova',  short: 'SUPERNOVA', accent: '#ff2d55' },
-  { min: 10000, label: 'Legendary',  short: 'LEGENDARY', accent: '#ffd60a' },
-] as const;
-
+  { min: 0, label: '', ring: '' },
+  { min: 12, label: 'Warm', ring: 'rgba(251,191,36,0.35)' },
+  { min: 30, label: 'Heating Up', ring: 'rgba(251,146,60,0.45)' },
+  { min: 60, label: 'Blazing', ring: 'rgba(249,115,22,0.55)' },
+  { min: 110, label: 'INFERNO', ring: 'rgba(239,68,68,0.65)' },
+];
 const getTier = (combo: number) => {
   let tier = 0;
   for (let i = 0; i < COMBO_TIERS.length; i++) if (combo >= COMBO_TIERS[i].min) tier = i;
   return tier;
-};
-
-/* Full-viewport ignite layer — kicks in at Supernova (1,000) and maxes out at Legendary (10,000) */
-const ScreenFlameOverlay = ({ tier, accent }: { tier: number; accent: string }) => {
-  if (tier < 5) return null;
-  const legendary = tier >= 6;
-  return (
-    <div
-      className="fixed inset-0 z-[2] pointer-events-none overflow-hidden"
-      style={{
-        animation: `screenIgnite ${legendary ? '0.6s' : '0.9s'} ease-in-out infinite${legendary ? ', hueShift 4s linear infinite' : ''}`,
-        ['--ignite-base' as any]: legendary ? 0.55 : 0.35,
-        ['--ignite-peak' as any]: legendary ? 0.95 : 0.7,
-      }}
-    >
-      <div
-        className="absolute inset-0"
-        style={{ background: `radial-gradient(ellipse at 50% 105%, ${accent}88 0%, transparent 55%)` }}
-      />
-      <div
-        className="absolute inset-0"
-        style={{ background: `radial-gradient(ellipse at 50% -5%, ${accent}55 0%, transparent 50%)` }}
-      />
-      <div className="absolute inset-0" style={{ boxShadow: `inset 0 0 90px ${accent}` }} />
-    </div>
-  );
 };
 
 /* ─────────── TAP ─────────── */
@@ -355,8 +270,6 @@ const TapSection = ({ t, per, onTierChange }: {
   const [combo, setCombo] = useState(0);
   const [pops, setPops] = useState<{ id: number; label: string }[]>([]);
   const [sparks, setSparks] = useState<{ id: number; tx: number; ty: number }[]>([]);
-  const [embers, setEmbers] = useState<{ id: number; ex: number }[]>([]);
-  const [flash, setFlash] = useState<{ id: number; label: string } | null>(null);
   const lastTapAt = useRef(0);
   const resetTimer = useRef<ReturnType<typeof setTimeout>>();
   const seedRef = useRef(0);
@@ -369,50 +282,34 @@ const TapSection = ({ t, per, onTierChange }: {
 
   useEffect(() => () => resetTimer.current && clearTimeout(resetTimer.current), []);
 
-  // Continuous embers rising off the coin once things start heating up (tier 2+)
-  useEffect(() => {
-    if (tier < 2) return;
-    const spawn = setInterval(() => {
-      const id = ++seedRef.current;
-      const ex = (Math.random() - 0.5) * 70;
-      setEmbers((e) => [...e.slice(-16), { id, ex }]);
-      setTimeout(() => setEmbers((e) => e.filter((em) => em.id !== id)), 850);
-    }, Math.max(110, 260 - tier * 30));
-    return () => clearInterval(spawn);
-  }, [tier]);
-
   const handleTap = () => {
     const now = Date.now();
     const gap = now - lastTapAt.current;
     lastTapAt.current = now;
     const nextCombo = gap < 650 ? combo + 1 : 1;
-    const prevTier = getTier(combo);
-    const nextTier = getTier(nextCombo);
     setCombo(nextCombo);
 
     if (resetTimer.current) clearTimeout(resetTimer.current);
-    resetTimer.current = setTimeout(() => setCombo(0), 1000);
+    resetTimer.current = setTimeout(() => setCombo(0), 900);
 
-    // floating "+amount" pop, every tap
+    // floating "+amount" pop
     const id = ++seedRef.current;
     setPops((p) => [...p.slice(-4), { id, label: `+${formatUnits(per, 7)}` }]);
     setTimeout(() => setPops((p) => p.filter((x) => x.id !== id)), 650);
 
-    // level up: spark burst + big flash callout, scales with how far it jumped
-    if (nextTier > prevTier) {
-      const nextMeta = COMBO_TIERS[nextTier];
-      const count = 6 + nextTier * 3;
-      const burst = Array.from({ length: count }).map((_, i) => {
-        const angle = (Math.PI * 2 * i) / count;
-        const dist = 42 + nextTier * 9;
-        return { id: ++seedRef.current, tx: Math.cos(angle) * dist, ty: Math.sin(angle) * dist };
+    // spark burst on every tier level-up
+    const justLeveled = getTier(nextCombo) > getTier(nextCombo - 1);
+    if (justLeveled && getTier(nextCombo) >= 2) {
+      const burst = Array.from({ length: 8 }).map((_, i) => {
+        const angle = (Math.PI * 2 * i) / 8;
+        return {
+          id: ++seedRef.current,
+          tx: Math.cos(angle) * 48,
+          ty: Math.sin(angle) * 48,
+        };
       });
       setSparks((s) => [...s, ...burst]);
-      setTimeout(() => setSparks((s) => s.filter((sp) => !burst.some((b) => b.id === sp.id))), 600);
-
-      const flashId = ++seedRef.current;
-      setFlash({ id: flashId, label: nextMeta.label });
-      setTimeout(() => setFlash((f) => (f?.id === flashId ? null : f)), 850);
+      setTimeout(() => setSparks((s) => s.filter((sp) => !burst.some((b) => b.id === sp.id))), 550);
     }
 
     t.tap();
@@ -429,124 +326,56 @@ const TapSection = ({ t, per, onTierChange }: {
 
   return (
     <div className="space-y-5">
-      {/* Combo badge — grows and reads out the current streak */}
-      <div className="flex items-center justify-center h-7">
+      <ComboKeyframes />
+
+      {/* Combo badge */}
+      <div className="flex items-center justify-center h-5">
         {tier > 0 && (
           <span
-            className="flex items-center gap-1.5 px-3 py-1 rounded-full font-black uppercase tracking-wide text-white transition-all duration-200"
-            style={{
-              background: `linear-gradient(90deg, ${tierMeta.accent}, ${tierMeta.accent}bb)`,
-              boxShadow: `0 0 ${8 + tier * 6}px ${tierMeta.accent}`,
-              fontSize: `${11 + tier}px`,
-              animation: tier >= 2 ? 'flameFlicker 0.5s ease-in-out infinite' : undefined,
-            }}
+            className={cn(
+              'flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide',
+              tier >= 3 ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white' : 'bg-amber-400/20 text-amber-400',
+            )}
+            style={{ animation: tier >= 2 ? 'flameFlicker 0.5s ease-in-out infinite' : undefined }}
           >
             <Flame className="w-3.5 h-3.5" />
-            {tierMeta.short} • x{combo.toLocaleString()}
+            {tierMeta.label} • x{combo}
           </span>
         )}
       </div>
 
-      {/* Coin stage — rings, embers, sparks, pops, level-up flash, and the coin itself */}
-      <div className="relative flex items-center justify-center h-52">
-        {tier >= 2 && (
-          <span
-            className="absolute w-44 h-44 rounded-full border-2 border-dashed pointer-events-none"
-            style={{ borderColor: `${tierMeta.accent}66`, animation: 'ringSpin 6s linear infinite' }}
-          />
-        )}
-        {tier >= 4 && (
-          <span
-            className="absolute w-52 h-52 rounded-full border border-dotted pointer-events-none"
-            style={{ borderColor: `${tierMeta.accent}44`, animation: 'ringSpinReverse 9s linear infinite' }}
-          />
-        )}
+      {/* Coin + fire ring + floating pops + sparks, all self-contained overlay */}
+      <div className="relative flex items-center justify-center">
         {tier >= 1 && (
           <span
             key={`ring-${combo}`}
-            className="absolute w-40 h-40 rounded-full pointer-events-none"
+            className="absolute inset-0 m-auto w-40 h-40 rounded-full pointer-events-none"
             style={{
-              background: `radial-gradient(circle, ${tierMeta.accent}55 0%, transparent 70%)`,
+              background: `radial-gradient(circle, ${tierMeta.ring} 0%, transparent 70%)`,
               animation: 'ringPulse 0.7s ease-out',
             }}
           />
         )}
-
-        {embers.map((em) => (
-          <span
-            key={em.id}
-            className="absolute bottom-10 w-1.5 h-1.5 rounded-full pointer-events-none"
-            style={{
-              background: tierMeta.accent,
-              boxShadow: `0 0 6px ${tierMeta.accent}`,
-              ['--ex' as any]: `${em.ex}px`,
-              animation: 'emberRise 0.85s ease-out forwards',
-            }}
-          />
-        ))}
-
         {sparks.map((s) => (
           <span
             key={s.id}
-            className="absolute w-1.5 h-1.5 rounded-full pointer-events-none"
-            style={{
-              background: tierMeta.accent,
-              boxShadow: `0 0 8px ${tierMeta.accent}`,
-              ['--tx' as any]: `${s.tx}px`,
-              ['--ty' as any]: `${s.ty}px`,
-              animation: 'sparkBurst 0.6s ease-out forwards',
-            }}
+            className={cn('absolute w-1.5 h-1.5 rounded-full pointer-events-none', tier >= 3 ? 'bg-red-500' : 'bg-amber-400')}
+            style={{ ['--tx' as any]: `${s.tx}px`, ['--ty' as any]: `${s.ty}px`, animation: 'sparkBurst 0.55s ease-out forwards' }}
           />
         ))}
-
         {pops.map((p) => (
           <span
             key={p.id}
-            className="absolute top-2 left-1/2 text-xs font-black tabular-nums pointer-events-none"
-            style={{ color: tier > 0 ? tierMeta.accent : '#fbbf24', animation: 'popFloat 0.65s ease-out forwards' }}
+            className={cn(
+              'absolute top-0 left-1/2 text-xs font-black tabular-nums pointer-events-none',
+              tier >= 3 ? 'text-red-400' : tier >= 1 ? 'text-orange-400' : 'text-amber-400',
+            )}
+            style={{ animation: 'popFloat 0.65s ease-out forwards' }}
           >
             {p.label}
           </span>
         ))}
-
-        {flash && (
-          <span
-            key={flash.id}
-            className="absolute left-1/2 top-1/2 whitespace-nowrap text-2xl font-display font-black uppercase tracking-widest pointer-events-none"
-            style={{
-              color: tierMeta.accent,
-              textShadow: `0 0 10px ${tierMeta.accent}, 0 0 26px ${tierMeta.accent}`,
-              animation: 'levelFlash 0.85s ease-out forwards',
-            }}
-          >
-            {flash.label}!
-          </span>
-        )}
-
-        <div
-          className="relative"
-          style={
-            tier >= 3
-              ? {
-                  ['--shake' as any]: 1 + tier,
-                  animation: `coinShake ${Math.max(0.12, 0.3 - tier * 0.03)}s ease-in-out infinite`,
-                  filter: `drop-shadow(0 0 ${6 + tier * 6}px ${tierMeta.accent})`,
-                }
-              : tier >= 1
-              ? { filter: `drop-shadow(0 0 ${4 + tier * 4}px ${tierMeta.accent})` }
-              : undefined
-          }
-        >
-          {tier >= 2 && (
-            <Flame
-              className="absolute -top-3 -right-2 w-6 h-6 z-10"
-              style={{
-                color: tierMeta.accent,
-                ['--neon' as any]: tierMeta.accent,
-                animation: 'neonPulse 0.8s ease-in-out infinite, flameFlicker 0.5s ease-in-out infinite',
-              }}
-            />
-          )}
+        <div style={{ animation: tier >= 3 ? 'coinShake 0.25s ease-in-out infinite' : undefined }}>
           <TapCoin onTap={handleTap} rewardLabel={formatUnits(per, 7)} />
         </div>
       </div>
@@ -556,24 +385,25 @@ const TapSection = ({ t, per, onTierChange }: {
       </p>
       <div className="grid grid-cols-2 gap-3">
         {stats.map((s) => {
+          const Icon = s.icon;
           const isEarnings = s.label === 'Earnings / tap';
-          const Icon = isEarnings && tier >= 2 ? Flame : s.icon;
           return (
             <div
               key={s.label}
-              className="rounded-2xl p-3 bg-card/60 backdrop-blur-md gold-border transition-all duration-200"
-              style={isEarnings && tier >= 1 ? { boxShadow: `0 0 ${10 + tier * 8}px ${tierMeta.accent}88` } : undefined}
+              className={cn(
+                'rounded-2xl p-3 bg-card/60 backdrop-blur-md transition-all duration-200',
+                isEarnings && tier >= 2 ? 'gold-border' : 'gold-border',
+              )}
+              style={isEarnings && tier >= 1 ? {
+                boxShadow: `0 0 ${10 + tier * 8}px ${tierMeta.ring || 'transparent'}`,
+              } : undefined}
             >
               <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                <Icon className="w-3 h-3" style={{ color: isEarnings && tier >= 1 ? tierMeta.accent : '#fbbf24' }} /> {s.label}
+                <Icon className={cn('w-3 h-3', isEarnings && tier >= 2 ? 'text-orange-400' : 'text-amber-400')} /> {s.label}
               </div>
               <p
-                className="text-sm font-bold tabular-nums truncate"
-                style={
-                  isEarnings && tier >= 1
-                    ? { color: tierMeta.accent, animation: tier >= 2 ? 'numberPop 0.3s ease-out' : undefined }
-                    : undefined
-                }
+                className={cn('text-sm font-bold tabular-nums truncate', isEarnings && tier >= 3 && 'text-orange-400')}
+                style={isEarnings && tier >= 2 ? { animation: 'numberPop 0.3s ease-out' } : undefined}
               >
                 {s.value}
               </p>
