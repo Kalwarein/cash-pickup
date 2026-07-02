@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
+  ChevronLeft, MoreHorizontal, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
   Sparkles, Lock, Check, Zap, Gift, TrendingUp, Wallet, Target, Timer,
   Award, Crown, CheckCircle2, Wifi, WifiOff,
 } from 'lucide-react';
@@ -149,27 +149,23 @@ const Rewards = () => {
           </div>
         </section>
 
-        {/* Expandable dashboard toolbar */}
+        {/* Expandable dashboard toolbar — a three-dot control switches between tabs */}
         <div className="relative shrink-0 z-20">
-          {!toolbarOpen ? (
-            <button
-              onClick={() => setToolbarOpen(true)}
-              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-muted/60 backdrop-blur-sm gold-border active:scale-[0.99] transition-transform"
-            >
-              <span className="flex items-center gap-2 text-xs font-bold">
+          <div
+            className={cn(
+              'flex items-center gap-1.5 rounded-2xl bg-muted/60 backdrop-blur-sm gold-border transition-all',
+              toolbarOpen ? 'p-1' : 'pl-3.5 pr-1.5 py-1.5',
+            )}
+          >
+            {!toolbarOpen ? (
+              <span className="flex-1 flex items-center gap-2 text-xs font-bold">
                 <span className="w-6 h-6 rounded-lg gold-surface text-black grid place-items-center">
                   <ActiveIcon className="w-3.5 h-3.5" />
                 </span>
                 {activeTabMeta.label}
               </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                Switch
-                <ChevronDown className="w-3.5 h-3.5" />
-              </span>
-            </button>
-          ) : (
-            <div className="rounded-2xl bg-muted/60 backdrop-blur-sm gold-border p-1 animate-fade-in">
-              <div className="flex gap-1">
+            ) : (
+              <div className="flex-1 flex gap-1 animate-fade-in">
                 {TABS.map((tb) => {
                   const Icon = tb.icon;
                   const active = tab === tb.id;
@@ -188,18 +184,21 @@ const Rewards = () => {
                   );
                 })}
               </div>
-              <button
-                onClick={() => setToolbarOpen(false)}
-                className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Collapse
-              </button>
-            </div>
-          )}
+            )}
+
+            <button
+              onClick={() => setToolbarOpen((o) => !o)}
+              aria-label={toolbarOpen ? 'Collapse tab switcher' : 'Switch tabs'}
+              aria-expanded={toolbarOpen}
+              className="shrink-0 w-8 h-8 rounded-xl grid place-items-center text-muted-foreground hover:text-foreground hover:bg-background/60 active:scale-90 transition-all"
+            >
+              <MoreHorizontal className={cn('w-4 h-4 transition-transform duration-200', toolbarOpen && 'rotate-90')} />
+            </button>
+          </div>
         </div>
 
         {/* Scrollable tab content — only this area scrolls, the shell never does */}
-        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
+        <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-4">
           {tab === 'tap' && <TapSection t={t} per={per} onTierChange={setTapTier} />}
           {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
           {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
@@ -208,9 +207,17 @@ const Rewards = () => {
         </div>
       </main>
 
-      <div className="shrink-0">
-        <BottomNav />
+      {/*
+        BottomNav renders itself fixed to the viewport, so it takes no space in this
+        flex column on its own — content used to run underneath and get covered by it.
+        This spacer reserves real height for it (plus the iOS home-indicator safe area)
+        and fades content out softly instead of letting it get clipped by the nav.
+      */}
+      <div className="shrink-0 relative z-10 h-[calc(4.5rem+env(safe-area-inset-bottom))]">
+        <div className="absolute inset-x-0 -top-5 h-5 bg-gradient-to-t from-background to-transparent pointer-events-none" />
       </div>
+
+      <BottomNav />
     </div>
   );
 };
