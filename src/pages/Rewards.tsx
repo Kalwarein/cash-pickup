@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
+  ChevronLeft, ChevronRight, ChevronDown, Coins, Flame, Gauge, Trophy, History as HistoryIcon,
   Sparkles, Lock, Check, Zap, Gift, TrendingUp, Wallet, Target, Timer,
-  Award, Crown, CheckCircle2, Wifi, WifiOff,
+  Award, Crown, CheckCircle2, MoreVertical, X,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { PageLoader } from '@/components/PageLoader';
@@ -25,14 +25,13 @@ import {
 } from '@/components/ui/drawer';
 import { toast } from '@/hooks/use-toast';
 
-type Tab = 'tap' | 'upgrade' | 'rewards' | 'top' | 'history';
+type Tab = 'upgrade' | 'rewards' | 'top' | 'history';
 
-const TABS: { id: Tab; label: string; icon: typeof Coins }[] = [
-  { id: 'tap', label: 'Tap', icon: Coins },
-  { id: 'upgrade', label: 'Leverage', icon: Gauge },
-  { id: 'rewards', label: 'Rewards', icon: Gift },
-  { id: 'top', label: 'Top', icon: Trophy },
-  { id: 'history', label: 'History', icon: HistoryIcon },
+const MENU_ITEMS: { id: Tab; label: string; description: string; icon: typeof Coins }[] = [
+  { id: 'upgrade', label: 'Leverage', description: 'Select your tap leverage tier', icon: Gauge },
+  { id: 'rewards', label: 'Rewards', description: 'Daily bonus & achievements', icon: Gift },
+  { id: 'top', label: 'Top', description: 'See the leaderboard', icon: Trophy },
+  { id: 'history', label: 'History', description: 'Your activity log', icon: HistoryIcon },
 ];
 
 const Rewards = () => {
@@ -40,17 +39,23 @@ const Rewards = () => {
   const { user, loading: authLoading } = useAuth();
   const { wallet, refetch: refetchWallet } = useWallet();
   const t = useTapEarn();
-  const [tab, setTab] = useState<Tab>('tap');
-  const [toolbarOpen, setToolbarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeModal, setActiveModal] = useState<Tab | null>(null);
   const [tapTier, setTapTier] = useState(0); // 0-4, escalates with rapid consecutive taps
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
   }, [authLoading, user, navigate]);
 
+  // lock body scroll while the sidebar or a full-screen modal is open
   useEffect(() => {
-    if (tab !== 'tap') setTapTier(0);
-  }, [tab]);
+    if (sidebarOpen || activeModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [sidebarOpen, activeModal]);
 
   if (authLoading || t.loading) {
     return (
@@ -67,8 +72,10 @@ const Rewards = () => {
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
   const remainingTaps = Math.max(0, Math.ceil((1 - (t.displayUnits % 1)) / per));
 
-  const activeTabMeta = TABS.find((tb) => tb.id === tab)!;
-  const ActiveIcon = activeTabMeta.icon;
+  const openModal = (id: Tab) => {
+    setSidebarOpen(false);
+    setActiveModal(id);
+  };
 
   return (
     <div className="rewards-page relative h-[100dvh] bg-background overflow-hidden flex flex-col">
@@ -84,14 +91,18 @@ const Rewards = () => {
             <Sparkles className="w-4 h-4 text-amber-400" />
             <h1 className="text-base font-display font-bold gold-text">Cash Miner</h1>
           </div>
-          <div className="flex items-center gap-1.5 text-[10px] font-medium text-muted-foreground">
-            {t.online ? <Wifi className="w-3.5 h-3.5 text-success" /> : <WifiOff className="w-3.5 h-3.5 text-destructive" />}
-          </div>
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 -mr-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Open menu"
+          >
+            <MoreVertical className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
       <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-2 flex flex-col gap-3 animate-fade-in">
-        {/* Balance hero */}
+        {/* Balance hero — the only "money" display kept on the main screen */}
         <section
           className={cn(
             'shrink-0 rounded-2xl p-3.5 backdrop-blur-xl shadow-float text-center transition-all duration-300 border',
@@ -149,67 +160,124 @@ const Rewards = () => {
           </div>
         </section>
 
-        {/* Expandable dashboard toolbar */}
-        <div className="relative shrink-0 z-20">
-          {!toolbarOpen ? (
-            <button
-              onClick={() => setToolbarOpen(true)}
-              className="w-full flex items-center justify-between gap-2 px-3.5 py-2.5 rounded-2xl bg-muted/60 backdrop-blur-sm gold-border active:scale-[0.99] transition-transform"
-            >
-              <span className="flex items-center gap-2 text-xs font-bold">
-                <span className="w-6 h-6 rounded-lg gold-surface text-black grid place-items-center">
-                  <ActiveIcon className="w-3.5 h-3.5" />
-                </span>
-                {activeTabMeta.label}
-              </span>
-              <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                Switch
-                <ChevronDown className="w-3.5 h-3.5" />
-              </span>
-            </button>
-          ) : (
-            <div className="rounded-2xl bg-muted/60 backdrop-blur-sm gold-border p-1 animate-fade-in">
-              <div className="flex gap-1">
-                {TABS.map((tb) => {
-                  const Icon = tb.icon;
-                  const active = tab === tb.id;
-                  return (
-                    <button
-                      key={tb.id}
-                      onClick={() => { setTab(tb.id); setToolbarOpen(false); }}
-                      className={cn(
-                        'flex-1 flex flex-col items-center gap-0.5 py-2 rounded-xl text-[10px] font-semibold transition-all',
-                        active ? 'gold-surface text-black shadow' : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      <Icon className="w-4 h-4" />
-                      {tb.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <button
-                onClick={() => setToolbarOpen(false)}
-                className="w-full mt-1 py-1 rounded-lg text-[10px] font-semibold text-muted-foreground hover:text-foreground transition-colors"
-              >
-                Collapse
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Scrollable tab content — only this area scrolls, the shell never does */}
+        {/* Only the tap button lives here now — everything else moved to the sidebar */}
         <div className="flex-1 min-h-0 overflow-y-auto -mx-1 px-1 pb-2">
-          {tab === 'tap' && <TapSection t={t} per={per} onTierChange={setTapTier} />}
-          {tab === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
-          {tab === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
-          {tab === 'top' && <LeaderboardSection />}
-          {tab === 'history' && <HistorySection />}
+          <TapSection t={t} per={per} onTierChange={setTapTier} />
         </div>
       </main>
 
       <div className="shrink-0">
         <BottomNav />
+      </div>
+
+      {/* Sidebar (slide in from the right) */}
+      <div
+        className={cn(
+          'fixed inset-0 z-[90] transition-opacity duration-300',
+          sidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none',
+        )}
+        aria-hidden={!sidebarOpen}
+      >
+        <div
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+        <aside
+          className={cn(
+            'absolute right-0 top-0 h-[100dvh] w-[82%] max-w-xs bg-background border-l border-border/50 shadow-2xl transition-transform duration-300 flex flex-col',
+            sidebarOpen ? 'translate-x-0' : 'translate-x-full',
+          )}
+        >
+          <div className="shrink-0 flex items-center justify-between px-4 h-12 border-b border-border/50">
+            <p className="text-sm font-display font-bold gold-text">Menu</p>
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="p-2 -mr-2 rounded-xl hover:bg-muted transition-colors"
+              aria-label="Close menu"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+          <nav className="flex-1 overflow-y-auto p-3 space-y-2">
+            {MENU_ITEMS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => openModal(item.id)}
+                  className="w-full flex items-center gap-3 rounded-2xl p-3 bg-card/60 backdrop-blur-md gold-border text-left active:scale-[0.98] transition-transform"
+                >
+                  <span className="w-10 h-10 shrink-0 rounded-xl gold-surface text-black grid place-items-center">
+                    <Icon className="w-4.5 h-4.5" />
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span className="block text-sm font-bold">{item.label}</span>
+                    <span className="block text-[11px] text-muted-foreground truncate">{item.description}</span>
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </button>
+              );
+            })}
+          </nav>
+        </aside>
+      </div>
+
+      {/* Full-screen modal for the selected sidebar section */}
+      <FullScreenModal
+        open={!!activeModal}
+        onClose={() => setActiveModal(null)}
+        title={MENU_ITEMS.find((m) => m.id === activeModal)?.label ?? ''}
+        icon={MENU_ITEMS.find((m) => m.id === activeModal)?.icon}
+      >
+        {activeModal === 'upgrade' && <UpgradeSection t={t} wallet={wallet} refetchWallet={refetchWallet} />}
+        {activeModal === 'rewards' && <RewardsSection t={t} refetchWallet={refetchWallet} />}
+        {activeModal === 'top' && <LeaderboardSection />}
+        {activeModal === 'history' && <HistorySection />}
+      </FullScreenModal>
+    </div>
+  );
+};
+
+/* ─────────── Full-screen modal shell ───────────
+   Fixed to the viewport (100dvh) with its own internal scroll region, so it
+   can never overlay or get overlapped by the bottom nav / tab bar again. */
+const FullScreenModal = ({
+  open, onClose, title, icon: Icon, children,
+}: {
+  open: boolean; onClose: () => void; title: string; icon?: typeof Coins; children: React.ReactNode;
+}) => {
+  return (
+    <div
+      className={cn(
+        'fixed inset-0 z-[100] h-[100dvh] bg-background flex flex-col transition-transform duration-300',
+        open ? 'translate-y-0' : 'translate-y-full pointer-events-none',
+      )}
+      aria-hidden={!open}
+    >
+      <div className="rewards-aurora" />
+      <header className="relative z-10 shrink-0 backdrop-blur-xl bg-background/70 border-b border-border/50">
+        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
+          <span className="flex items-center gap-2 text-sm font-bold">
+            {Icon && (
+              <span className="w-7 h-7 rounded-lg gold-surface text-black grid place-items-center">
+                <Icon className="w-3.5 h-3.5" />
+              </span>
+            )}
+            {title}
+          </span>
+          <button
+            onClick={onClose}
+            className="p-2 -mr-2 rounded-xl hover:bg-muted transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+      </header>
+      <div className="relative z-10 flex-1 min-h-0 overflow-y-auto">
+        <div className="max-w-lg w-full mx-auto px-4 pt-3 pb-8">
+          {open && children}
+        </div>
       </div>
     </div>
   );
@@ -315,15 +383,6 @@ const TapSection = ({ t, per, onTierChange }: {
     t.tap();
   };
 
-  const stats = [
-    { label: 'Earnings / tap', value: formatUnits(per, 8), icon: Zap },
-    { label: "Today's taps", value: t.displayTodayTaps.toLocaleString(), icon: Flame },
-    { label: 'Lifetime taps', value: t.displayTaps.toLocaleString(), icon: Target },
-    { label: "Today's units", value: formatUnits(t.displayTodayUnits, 8), icon: Coins },
-    { label: 'Leverage', value: `${leverageMult(t.profile.leverage_level)}x`, icon: Gauge },
-    { label: 'Login streak', value: `${t.profile.daily_streak}d`, icon: Award },
-  ];
-
   return (
     <div className="space-y-5">
       <ComboKeyframes />
@@ -383,34 +442,6 @@ const TapSection = ({ t, per, onTierChange }: {
       <p className="text-center text-xs text-muted-foreground -mt-2">
         Tap fast — every tap is counted & verified {t.syncing && '• syncing…'}
       </p>
-      <div className="grid grid-cols-2 gap-3">
-        {stats.map((s) => {
-          const Icon = s.icon;
-          const isEarnings = s.label === 'Earnings / tap';
-          return (
-            <div
-              key={s.label}
-              className={cn(
-                'rounded-2xl p-3 bg-card/60 backdrop-blur-md transition-all duration-200',
-                isEarnings && tier >= 2 ? 'gold-border' : 'gold-border',
-              )}
-              style={isEarnings && tier >= 1 ? {
-                boxShadow: `0 0 ${10 + tier * 8}px ${tierMeta.ring || 'transparent'}`,
-              } : undefined}
-            >
-              <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground mb-1">
-                <Icon className={cn('w-3 h-3', isEarnings && tier >= 2 ? 'text-orange-400' : 'text-amber-400')} /> {s.label}
-              </div>
-              <p
-                className={cn('text-sm font-bold tabular-nums truncate', isEarnings && tier >= 3 && 'text-orange-400')}
-                style={isEarnings && tier >= 2 ? { animation: 'numberPop 0.3s ease-out' } : undefined}
-              >
-                {s.value}
-              </p>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 };
