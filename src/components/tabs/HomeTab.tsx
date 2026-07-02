@@ -126,7 +126,7 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-              <button className="cp-hdr-btn" onClick={() => navigate('/wallet')}>
+              <button className="cp-hdr-btn" onClick={() => navigate('/rewards')}>
               <Bell className="cp-hdr-icon" />
               <span className="cp-notif-dot" />
             </button>

@@ -694,6 +694,114 @@ export type Database = {
         }
         Relationships: []
       }
+      tap_achievements: {
+        Row: {
+          achievement_key: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          achievement_key: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          achievement_key?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tap_history: {
+        Row: {
+          amount_sle: number
+          amount_units: number
+          created_at: string
+          description: string | null
+          id: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          amount_sle?: number
+          amount_units?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          amount_sle?: number
+          amount_units?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      tap_profiles: {
+        Row: {
+          created_at: string
+          daily_streak: number
+          id: string
+          last_daily_claim: string | null
+          last_sync_at: string
+          leverage_level: number
+          lifetime_taps: number
+          lifetime_units: number
+          longest_streak: number
+          today_date: string
+          today_taps: number
+          today_units: number
+          total_units: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_streak?: number
+          id?: string
+          last_daily_claim?: string | null
+          last_sync_at?: string
+          leverage_level?: number
+          lifetime_taps?: number
+          lifetime_units?: number
+          longest_streak?: number
+          today_date?: string
+          today_taps?: number
+          today_units?: number
+          total_units?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_streak?: number
+          id?: string
+          last_daily_claim?: string | null
+          last_sync_at?: string
+          leverage_level?: number
+          lifetime_taps?: number
+          lifetime_units?: number
+          longest_streak?: number
+          today_date?: string
+          today_taps?: number
+          today_units?: number
+          total_units?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
@@ -911,6 +1019,17 @@ export type Database = {
           total_invested: number
           week_start: string
           wins: number
+        }[]
+      }
+      get_tap_leaderboard: {
+        Args: { p_limit?: number; p_metric?: string }
+        Returns: {
+          leverage_level: number
+          lifetime_taps: number
+          rank: number
+          total_units: number
+          user_id: string
+          user_name: string
         }[]
       }
       update_leaderboard_cache: { Args: never; Returns: undefined }
