@@ -318,7 +318,7 @@ const WalletProfile = () => {
         </Drawer>
 
         {/* Modals */}
-        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
+        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={handleDepositSuccess} initialAmount={depositAmount} />
         <DepositWithdrawModal isOpen={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} type="withdraw" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
       </main>
       <BottomNav />
