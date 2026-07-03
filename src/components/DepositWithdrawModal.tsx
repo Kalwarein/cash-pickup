@@ -12,6 +12,7 @@ interface DepositWithdrawModalProps {
   type: 'deposit' | 'withdraw';
   balance: number;
   onSuccess?: () => void;
+  initialAmount?: string;
 }
 
 const QUICK_AMOUNTS = [100, 500, 1000, 5000, 10000];
@@ -26,8 +27,14 @@ export const DepositWithdrawModal = ({
   type,
   balance,
   onSuccess,
+  initialAmount,
 }: DepositWithdrawModalProps) => {
   const [amount, setAmount] = useState('');
+
+  // Prefill amount when opened from a leverage-unlock deep link.
+  useEffect(() => {
+    if (isOpen && type === 'deposit' && initialAmount) setAmount(initialAmount);
+  }, [isOpen, type, initialAmount]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [provider, setProvider] = useState('m17');
   const [loading, setLoading] = useState(false);
