@@ -80,6 +80,23 @@ const WalletProfile = () => {
     refetchWallet();
   };
 
+  // After a deposit lands, auto-unlock the leverage tier the user chose on the Mine page.
+  const handleDepositSuccess = async () => {
+    refetchWallet();
+    const pending = localStorage.getItem('mine_pending_leverage');
+    if (!pending) return;
+    const level = parseInt(pending, 10);
+    if (!level) { localStorage.removeItem('mine_pending_leverage'); return; }
+    const { data } = await supabase.functions.invoke('tap-earn', {
+      body: { action: 'buy_leverage', level },
+    });
+    if (data && !data.error) {
+      localStorage.removeItem('mine_pending_leverage');
+      refetchWallet();
+      toast({ title: 'Leverage unlocked! ⚡', description: 'Your mining power just increased.' });
+    }
+  };
+
   const handleTestNotification = async () => {
     if (permission !== 'granted') {
       const result = await requestPermission();
