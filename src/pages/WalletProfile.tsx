@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { BottomNav } from '@/components/BottomNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/hooks/useWallet';
@@ -35,13 +37,28 @@ const WalletProfile = () => {
 
   const [depositModalOpen, setDepositModalOpen] = useState(false);
   const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<string>('');
   const [showPromos, setShowPromos] = useState(false);
   const [showPerformance, setShowPerformance] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
+
+  // Deep-link from the Mine page: open the deposit modal, prefilled with the
+  // leverage cost, and remember which tier to auto-unlock after payment.
+  useEffect(() => {
+    if (searchParams.get('deposit') === '1') {
+      const amt = searchParams.get('amount');
+      if (amt) setDepositAmount(amt);
+      setDepositModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('deposit'); next.delete('amount'); next.delete('leverage');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (loading || walletLoading || investmentsLoading || !user)
     return (
