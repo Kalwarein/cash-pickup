@@ -16,10 +16,9 @@ import NotFound from "./pages/NotFound";
 import Home from "./pages/Home";
 import Invest from "./pages/Invest";
 import Market from "./pages/Market";
-import Earn from "./pages/Earn";
 import WalletProfile from "./pages/WalletProfile";
 import Payments from "./pages/Payments";
-import Rewards from "./pages/Rewards";
+import Mine from "./pages/Mine";
 import { RequireAuth } from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -43,11 +42,12 @@ const App = () => (
               <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
               <Route path="/invest" element={<RequireAuth><Invest /></RequireAuth>} />
               <Route path="/market" element={<RequireAuth><Market /></RequireAuth>} />
-              <Route path="/earn" element={<RequireAuth><Earn /></RequireAuth>} />
+              <Route path="/mine" element={<RequireAuth><Mine /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><WalletProfile /></RequireAuth>} />
               <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
-              <Route path="/rewards" element={<RequireAuth><Rewards /></RequireAuth>} />
-              {/* Legacy redirect */}
+              {/* Legacy redirects */}
+              <Route path="/earn" element={<Navigate to="/mine" replace />} />
+              <Route path="/rewards" element={<Navigate to="/mine" replace />} />
               <Route path="/dashboard" element={<Navigate to="/home" replace />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />

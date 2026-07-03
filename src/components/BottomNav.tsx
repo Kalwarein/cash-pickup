@@ -1,4 +1,4 @@
-import { Home, TrendingUp, BarChart3, Coins, Wallet } from 'lucide-react';
+import { Home, TrendingUp, BarChart3, Pickaxe, Wallet } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -6,7 +6,7 @@ const tabs = [
   { id: 'home', path: '/home', label: 'Home', icon: Home },
   { id: 'invest', path: '/invest', label: 'Invest', icon: TrendingUp },
   { id: 'market', path: '/market', label: 'Market', icon: BarChart3 },
-  { id: 'earn', path: '/earn', label: 'Earn', icon: Coins },
+  { id: 'mine', path: '/mine', label: 'Mine', icon: Pickaxe },
   { id: 'wallet', path: '/wallet', label: 'Wallet', icon: Wallet },
 ];
 

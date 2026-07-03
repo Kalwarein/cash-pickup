@@ -575,3 +575,96 @@
   .rewards-aurora::before, .rewards-aurora::after,
   .tap-coin::after { animation: none; }
 }
+
+/* ─────────────── MINE / HEAT SYSTEM ─────────────── */
+.mine-page-bg {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 50% 120%, hsl(var(--mine-heat-h, 43) 96% 50% / calc(0.05 + var(--mine-heat, 0) * 0.0022)), transparent 60%);
+  transition: background 0.4s ease;
+}
+
+/* Heat-reactive mine button. --mine-heat is 0–100, --mine-heat-h is a hue. */
+.mine-btn {
+  --mine-heat: 0;
+  --mine-heat-h: 210;
+  position: relative;
+  width: min(66vw, 264px);
+  height: min(66vw, 264px);
+  border-radius: 9999px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  border: none;
+  color: hsl(30 60% 20%);
+  background:
+    radial-gradient(circle at 32% 26%, hsl(48 100% 82%), transparent 46%),
+    linear-gradient(150deg,
+      hsl(calc(45 - var(--mine-heat) * 0.28) 96% calc(62% - var(--mine-heat) * 0.06)),
+      hsl(calc(36 - var(--mine-heat) * 0.30) 92% calc(44% - var(--mine-heat) * 0.02)) 70%,
+      hsl(calc(30 - var(--mine-heat) * 0.22) 88% 34%));
+  box-shadow:
+    0 0 0 6px hsl(var(--mine-heat-h) 96% 56% / calc(0.10 + var(--mine-heat) * 0.0022)),
+    0 0 calc(40px + var(--mine-heat) * 1.1px) calc(4px + var(--mine-heat) * 0.14px)
+      hsl(var(--mine-heat-h) 96% 56% / calc(0.35 + var(--mine-heat) * 0.005)),
+    inset 0 4px 12px hsl(48 100% 84% / 0.7),
+    inset 0 -16px 28px hsl(30 80% 24% / 0.6);
+  transform: translateZ(0) scale(1);
+  transition: transform 0.08s cubic-bezier(0.34, 1.56, 0.64, 1),
+              box-shadow 0.25s ease, background 0.25s ease;
+  will-change: transform;
+}
+.mine-btn.is-pressed { transform: translateZ(0) scale(0.93); }
+.mine-btn::after {
+  content: '';
+  position: absolute;
+  inset: -5px;
+  border-radius: 9999px;
+  box-shadow: 0 0 calc(50px + var(--mine-heat) * 0.9px) calc(8px + var(--mine-heat) * 0.14px)
+    hsl(var(--mine-heat-h) 96% 56% / calc(0.4 + var(--mine-heat) * 0.004));
+  animation: coin-glow 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+.mine-btn-inner {
+  display: grid;
+  place-items: center;
+  gap: 4px;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.mine-spark {
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: mine-spark 0.6s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+}
+@keyframes mine-spark {
+  0% { transform: translate(0,0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--sx), var(--sy)) scale(0.2); opacity: 0; }
+}
+
+.mine-ring {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  border-radius: 9999px;
+  pointer-events: none;
+  animation: mine-ring 0.7s ease-out forwards;
+}
+@keyframes mine-ring {
+  0% { transform: scale(0.8); opacity: 0.6; }
+  100% { transform: scale(1.9); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mine-btn::after { animation: none; }
+}
