@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   TrendingUp, TrendingDown, Users, Activity, Flame, Ticket,
-  AlertTriangle, Coins, ChevronRight, Shield,
+  AlertTriangle, Coins, Pickaxe, ChevronRight, Shield,
   ArrowUpRight, ArrowDownRight, Eye, EyeOff, Award,
   CheckCircle2, Sparkles, Wallet, BarChart3, RefreshCw,
   Info, Lock, Unlock
