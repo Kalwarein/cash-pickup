@@ -94,7 +94,7 @@ export const HomeTab = () => {
   const actions = [
     { label: 'Invest',    icon: TrendingUp, c: '#6366f1', bg: 'rgba(99,102,241,0.1)',  path: '/invest'   },
     { label: 'Withdraw',  icon: Wallet,     c: '#10b981', bg: 'rgba(16,185,129,0.1)',  path: '/wallet'   },
-    { label: 'Returns',   icon: BarChart3,  c: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  path: '/earn'     },
+    { label: 'Returns',   icon: BarChart3,  c: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  path: '/wallet'   },
     { label: 'History',   icon: RefreshCw,  c: '#ec4899', bg: 'rgba(236,72,153,0.1)',  path: '/payments' },
   ];
 
@@ -126,8 +126,8 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-            <button className="cp-hdr-btn" onClick={() => navigate('/earn')}>
-              <Coins className="cp-hdr-icon" />
+            <button className="cp-hdr-btn" onClick={() => navigate('/mine')}>
+              <Pickaxe className="cp-hdr-icon" />
             </button>
             <ThemeToggle />
           </div>
@@ -209,18 +209,18 @@ export const HomeTab = () => {
         {/* ════════════════════════════════════════════
             CASH MINER PROMO — tap-to-earn banner
         ════════════════════════════════════════════ */}
-        <button className="cp-earn-banner" onClick={() => navigate('/rewards')}>
+        <button className="cp-earn-banner" onClick={() => navigate('/mine')}>
           <span className="cp-earn-shimmer" />
           <span className="cp-earn-orb" />
           <div className="cp-earn-icon-wrap">
-            <Coins className="w-6 h-6" />
+            <Pickaxe className="w-6 h-6" />
           </div>
           <div className="cp-earn-copy">
             <p className="cp-earn-title">
-              Cash Miner <span className="cp-earn-badge">EARN FREE</span>
+              Cash Miner <span className="cp-earn-badge">MINE NOW</span>
             </p>
             <p className="cp-earn-sub">
-              Tap to mine coins, boost your leverage & claim daily rewards
+              Tap to mine coins & boost your leverage power
             </p>
           </div>
           <ChevronRight className="w-4 h-4 cp-earn-chev" />
@@ -275,7 +275,7 @@ export const HomeTab = () => {
                 <p className="cp-card-title">Active Investments</p>
                 <p className="cp-card-sub">{investments.length} open positions</p>
               </div>
-              <button className="cp-see-all" onClick={() => navigate('/earn')}>
+              <button className="cp-see-all" onClick={() => navigate('/wallet')}>
                 All <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
