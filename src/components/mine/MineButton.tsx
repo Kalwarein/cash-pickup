@@ -80,19 +80,22 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
     if (releaseTimer.current) clearTimeout(releaseTimer.current);
     releaseTimer.current = setTimeout(() => setPressed(false), 85);
 
-    // Floating "+reward" — anchored to the button's actual screen position
-    // (fixed positioning, not tied to the button's own box) so it can climb
-    // the whole viewport like a livestream like-burst instead of a short
-    // local pop. Capped at 3 concurrent, thinned out past a big combo.
-    if (combo < 25 || combo % 2 === 0) {
+    // Floating reward token — fires on EVERY tap, no exceptions, so it holds
+    // up under an autoclicker just as reliably as a real finger. Anchored to
+    // the button's actual screen position (fixed, not local), launching from
+    // its top edge. The cap here is just a safety net against unbounded
+    // growth during sustained automated spam — at the animation's 1.9s life,
+    // even 50 taps/sec only ever needs ~95 concurrent, so 160 never engages
+    // in practice.
+    {
       const id = ++seq;
       const rect = wrapRef.current?.getBoundingClientRect();
-      const originX = (rect ? rect.left + rect.width / 2 : window.innerWidth / 2) + (Math.random() - 0.5) * 24;
-      const originY = rect ? rect.top + rect.height * 0.18 : window.innerHeight / 2;
-      const rise = originY + 90; // travels past the top edge, not just up a few px
-      const dx = (Math.random() - 0.5) * 120;
-      const rot = (Math.random() - 0.5) * 24;
-      setFloats((f) => (f.length > 2 ? f.slice(-2) : f).concat({ id, x: originX, y: originY, dx, rise, rot }));
+      const originX = (rect ? rect.left + rect.width / 2 : window.innerWidth / 2) + (Math.random() - 0.5) * 20;
+      const originY = rect ? rect.top - 4 : window.innerHeight / 2; // launches from the button's top edge
+      const rise = (rect ? rect.top : window.innerHeight / 2) + 100;
+      const dx = (Math.random() - 0.5) * 130;
+      const rot = (Math.random() - 0.5) * 26;
+      setFloats((f) => (f.length > 160 ? f.slice(-160) : f).concat({ id, x: originX, y: originY, dx, rise, rot }));
       setTimeout(() => setFloats((f) => f.filter((v) => v.id !== id)), 1900);
     }
 
@@ -125,7 +128,7 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
       {floats.map((f) => (
         <span
           key={f.id}
-          className="mnb-pop"
+          className="mnb-coin"
           style={{
             left: f.x,
             top: f.y,
@@ -224,32 +227,39 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
           .mnb-blob, .mnb-ripple { animation: none; }
         }
 
-        /* Floating reward — pinned to the viewport (not the button), rises
-           the full screen height with a gentle weave, and only fades in the
-           last stretch, like a livestream like-burst. */
-        .mnb-pop {
+        /* Floating reward token — a rounded gold coin/chip, launched from the
+           button's top edge, pinned to the viewport (not the button) so it
+           can climb the full screen height with a weave, like a livestream
+           like-burst. Only fades in the very last stretch. */
+        .mnb-coin {
           position: fixed;
           z-index: 60;
+          display: inline-flex; align-items: center; justify-content: center;
+          padding: 3px 10px;
+          border-radius: 9999px;
+          background: linear-gradient(145deg, hsl(50 95% 68%), hsl(30 90% 52%));
+          box-shadow: 0 3px 10px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.5);
           transform: translate(-50%, 0);
-          font-size: 14px; font-weight: 900;
-          color: hsl(38 95% 50%);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.28);
+          font-size: 12px; font-weight: 900; letter-spacing: 0.01em;
+          color: rgba(0,0,0,0.72);
+          white-space: nowrap;
           pointer-events: none;
-          animation: mnbPopRise 1.9s cubic-bezier(0.15,0.62,0.35,1) forwards;
+          animation: mnbCoinRise 1.9s cubic-bezier(0.16,0.72,0.32,1) forwards;
           will-change: transform, opacity;
         }
-        @keyframes mnbPopRise {
-          0%   { transform: translate(-50%, 0) rotate(0deg) scale(0.7); opacity: 0; }
-          8%   { opacity: 1; transform: translate(-50%, calc(var(--rise) * -0.06)) rotate(calc(var(--rot) * 0.2)) scale(1.08); }
-          35%  { transform: translate(calc(-50% + var(--dx) * 0.45), calc(var(--rise) * -0.42)) rotate(calc(var(--rot) * 0.6)) scale(1); }
-          65%  { transform: translate(calc(-50% + var(--dx) * 0.85), calc(var(--rise) * -0.74)) rotate(var(--rot)) scale(0.94); }
-          85%  { opacity: 1; }
-          100% { transform: translate(calc(-50% + var(--dx)), calc(var(--rise) * -1.08)) rotate(calc(var(--rot) * 1.2)) scale(0.82); opacity: 0; }
+        @keyframes mnbCoinRise {
+          0%   { transform: translate(-50%, 0) rotate(0deg) scale(0.5); opacity: 0; }
+          6%   { opacity: 1; transform: translate(-50%, calc(var(--rise) * -0.12)) rotate(calc(var(--rot) * 0.2)) scale(1.15); }
+          14%  { transform: translate(-50%, calc(var(--rise) * -0.22)) rotate(calc(var(--rot) * 0.35)) scale(1); }
+          40%  { transform: translate(calc(-50% + var(--dx) * 0.45), calc(var(--rise) * -0.48)) rotate(calc(var(--rot) * 0.65)) scale(1); }
+          68%  { transform: translate(calc(-50% + var(--dx) * 0.85), calc(var(--rise) * -0.78)) rotate(var(--rot)) scale(0.94); }
+          86%  { opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--dx)), calc(var(--rise) * -1.08)) rotate(calc(var(--rot) * 1.2)) scale(0.8); opacity: 0; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .mnb-pop { animation: mnbPopFade 0.6s ease-out forwards; }
+          .mnb-coin { animation: mnbCoinFade 0.6s ease-out forwards; }
         }
-        @keyframes mnbPopFade {
+        @keyframes mnbCoinFade {
           0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -24px); }
         }
       `}</style>
