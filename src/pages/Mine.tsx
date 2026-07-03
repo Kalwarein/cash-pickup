@@ -19,13 +19,14 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
 
-/* Heat → visual language. Hue shifts cool → gold → ember as combo climbs. */
-const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string; hue: number; hue2: number }> = {
-  normal:   { text: 'text-sky-400',    dot: 'bg-sky-400',    hue: 217, hue2: 265 },
-  warm:     { text: 'text-amber-400',  dot: 'bg-amber-400',  hue: 42,  hue2: 24  },
-  hot:      { text: 'text-orange-400', dot: 'bg-orange-400', hue: 30,  hue2: 12  },
-  'very-hot': { text: 'text-red-400',  dot: 'bg-red-400',    hue: 18,  hue2: 4   },
-  max:      { text: 'text-red-500',    dot: 'bg-red-500',    hue: 10,  hue2: 355 },
+/* Heat → small badge/text accents only. No large-area color animation —
+   that's what was costing frames on rapid taps. */
+const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string }> = {
+  normal:     { text: 'text-sky-400',    dot: 'bg-sky-400' },
+  warm:       { text: 'text-amber-400',  dot: 'bg-amber-400' },
+  hot:        { text: 'text-orange-400', dot: 'bg-orange-400' },
+  'very-hot': { text: 'text-red-400',    dot: 'bg-red-400' },
+  max:        { text: 'text-red-500',    dot: 'bg-red-500' },
 };
 
 const Mine = () => {
@@ -199,11 +200,7 @@ const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
 
   const handleState = useCallback((s: { heat: number; level: HeatLevel; combo: number }) => {
     setHeat((prev) => {
-      // Skip the state update entirely if nothing meaningfully changed —
-      // cuts wasted re-renders during a fast tap burst.
-      if (prev.combo === s.combo && prev.level === s.level && Math.abs(prev.heat - s.heat) < 0.01) {
-        return prev;
-      }
+      if (prev.combo === s.combo && prev.level === s.level) return prev;
       return s;
     });
     if (s.level !== lastLevel.current) {
@@ -212,36 +209,40 @@ const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
     }
   }, [onLevelChange]);
 
-  const style = HEAT_STYLE[heat.level];
-
   return (
     <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
-      <div
-        className="mn-heat-glow"
-        style={{
-          ['--h' as string]: style.hue,
-          ['--h2' as string]: style.hue2,
-          ['--heat' as string]: heat.heat,
-        }}
-      />
-
-      {heat.combo >= 5 && (
-        <span
-          className={cn(
-            'absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide will-change-transform',
-            heat.level === 'max' || heat.level === 'very-hot'
-              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-              : 'bg-amber-400/20 text-amber-400',
-          )}
-        >
-          <Flame className="w-3.5 h-3.5" /> Combo x{heat.combo}
-        </span>
-      )}
-
+      <ComboBadge combo={heat.combo} level={heat.level} />
       <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
     </div>
   );
 };
+
+/* ─────────── Combo badge — upgraded: tiered gradient, icon, and a light
+   one-shot pop-in on every combo increment (transform/opacity only, no
+   layout or paint-heavy work, and it unmounts entirely below combo 5 so it
+   costs nothing at rest). ─────────── */
+const COMBO_STYLE: Record<HeatLevel, string> = {
+  normal: 'bg-amber-400/15 text-amber-400 border border-amber-400/30',
+  warm: 'bg-amber-400/20 text-amber-300 border border-amber-400/40',
+  hot: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-transparent',
+  'very-hot': 'bg-gradient-to-r from-orange-500 to-red-500 text-white border border-transparent',
+  max: 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 text-white border border-transparent',
+};
+const ComboBadge = memo(({ combo, level }: { combo: number; level: HeatLevel }) => {
+  if (combo < 5) return null;
+  return (
+    <span
+      key={combo}
+      className={cn(
+        'absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wide shadow-lg mn-combo-pop',
+        COMBO_STYLE[level],
+      )}
+    >
+      <Flame className="w-3.5 h-3.5" /> x{combo}
+    </span>
+  );
+});
+ComboBadge.displayName = 'ComboBadge';
 
 /* ─────────── Leverage list item ─────────── */
 const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
@@ -307,19 +308,13 @@ const MineStyles = () => (
         hsl(var(--background));
     }
     .mn-tap-zone { contain: layout paint; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
-    .mn-heat-glow {
-      position: fixed; inset: 0; z-index: 0; pointer-events: none;
-      background:
-        radial-gradient(circle at 50% 38%,
-          hsla(var(--h), 92%, 58%, calc(0.10 + var(--heat) * 0.30)) 0%,
-          hsla(var(--h2), 88%, 45%, calc(0.04 + var(--heat) * 0.16)) 38%,
-          transparent 68%);
-      opacity: 1;
-      transition: background 0.18s linear;
-      will-change: background;
+    .mn-combo-pop { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
+    @keyframes mnComboPop {
+      0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
+      100% { transform: translateX(-50%) scale(1); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .mn-heat-glow { transition: none; }
+      .mn-combo-pop { animation: none; }
     }
   `}</style>
 );
