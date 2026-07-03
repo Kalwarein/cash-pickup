@@ -3,7 +3,7 @@ import { Pickaxe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { heatLevel, HeatLevel } from '@/lib/tapEarn';
 
-interface Float { id: number; x: number }
+interface Float { id: number; x: number; y: number; dx: number; rise: number; rot: number }
 
 interface Props {
   onTap: () => void;
@@ -16,6 +16,7 @@ const HEAT_PER_TAP = 9;
 const HEAT_MAX = 100;
 
 export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [pressed, setPressed] = useState(false);
   const [idle, setIdle] = useState(true);   // liquid "mixing" animation plays only while idle
   const [floats, setFloats] = useState<Float[]>([]);
@@ -79,12 +80,20 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
     if (releaseTimer.current) clearTimeout(releaseTimer.current);
     releaseTimer.current = setTimeout(() => setPressed(false), 85);
 
-    // Floating "+reward" — capped at 3 concurrent, and thinned out past a
-    // big combo so the DOM never juggles more than a couple at once.
+    // Floating "+reward" — anchored to the button's actual screen position
+    // (fixed positioning, not tied to the button's own box) so it can climb
+    // the whole viewport like a livestream like-burst instead of a short
+    // local pop. Capped at 3 concurrent, thinned out past a big combo.
     if (combo < 25 || combo % 2 === 0) {
       const id = ++seq;
-      setFloats((f) => (f.length > 2 ? f.slice(-2) : f).concat({ id, x: (Math.random() - 0.5) * 26 }));
-      setTimeout(() => setFloats((f) => f.filter((v) => v.id !== id)), 520);
+      const rect = wrapRef.current?.getBoundingClientRect();
+      const originX = (rect ? rect.left + rect.width / 2 : window.innerWidth / 2) + (Math.random() - 0.5) * 24;
+      const originY = rect ? rect.top + rect.height * 0.18 : window.innerHeight / 2;
+      const rise = originY + 90; // travels past the top edge, not just up a few px
+      const dx = (Math.random() - 0.5) * 120;
+      const rot = (Math.random() - 0.5) * 24;
+      setFloats((f) => (f.length > 2 ? f.slice(-2) : f).concat({ id, x: originX, y: originY, dx, rise, rot }));
+      setTimeout(() => setFloats((f) => f.filter((v) => v.id !== id)), 1900);
     }
 
     onTap();
@@ -112,9 +121,19 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
   }, []);
 
   return (
-    <div className="relative grid place-items-center select-none">
+    <div ref={wrapRef} className="relative grid place-items-center select-none">
       {floats.map((f) => (
-        <span key={f.id} className="mnb-pop" style={{ ['--x' as string]: `${f.x}px` }}>
+        <span
+          key={f.id}
+          className="mnb-pop"
+          style={{
+            left: f.x,
+            top: f.y,
+            ['--dx' as string]: `${f.dx}px`,
+            ['--rise' as string]: `${f.rise}px`,
+            ['--rot' as string]: `${f.rot}deg`,
+          }}
+        >
           +{rewardLabel}
         </span>
       ))}
@@ -205,19 +224,33 @@ export const MineButton = memo(({ onTap, rewardLabel, onState }: Props) => {
           .mnb-blob, .mnb-ripple { animation: none; }
         }
 
-        /* Floating reward pop */
+        /* Floating reward — pinned to the viewport (not the button), rises
+           the full screen height with a gentle weave, and only fades in the
+           last stretch, like a livestream like-burst. */
         .mnb-pop {
-          position: absolute; top: 8%; left: 50%; z-index: 3;
-          transform: translate(calc(-50% + var(--x)), 0);
-          font-size: 12px; font-weight: 900; color: hsl(38 95% 45%);
-          text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+          position: fixed;
+          z-index: 60;
+          transform: translate(-50%, 0);
+          font-size: 14px; font-weight: 900;
+          color: hsl(38 95% 50%);
+          text-shadow: 0 1px 2px rgba(0,0,0,0.28);
           pointer-events: none;
-          animation: mnbPop 0.52s ease-out forwards;
+          animation: mnbPopRise 1.9s cubic-bezier(0.15,0.62,0.35,1) forwards;
+          will-change: transform, opacity;
         }
-        @keyframes mnbPop {
-          0%   { opacity: 0; transform: translate(calc(-50% + var(--x)), 0) scale(0.8); }
-          15%  { opacity: 1; }
-          100% { opacity: 0; transform: translate(calc(-50% + var(--x)), -46px) scale(1); }
+        @keyframes mnbPopRise {
+          0%   { transform: translate(-50%, 0) rotate(0deg) scale(0.7); opacity: 0; }
+          8%   { opacity: 1; transform: translate(-50%, calc(var(--rise) * -0.06)) rotate(calc(var(--rot) * 0.2)) scale(1.08); }
+          35%  { transform: translate(calc(-50% + var(--dx) * 0.45), calc(var(--rise) * -0.42)) rotate(calc(var(--rot) * 0.6)) scale(1); }
+          65%  { transform: translate(calc(-50% + var(--dx) * 0.85), calc(var(--rise) * -0.74)) rotate(var(--rot)) scale(0.94); }
+          85%  { opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--dx)), calc(var(--rise) * -1.08)) rotate(calc(var(--rot) * 1.2)) scale(0.82); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .mnb-pop { animation: mnbPopFade 0.6s ease-out forwards; }
+        }
+        @keyframes mnbPopFade {
+          0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -24px); }
         }
       `}</style>
     </div>
