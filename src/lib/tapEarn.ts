@@ -26,27 +26,6 @@ export const LEVERAGE: LeverageTier[] = [
   { level: 10, mult: 1000, cost: 1000000 },
 ];
 
-export interface AchievementDef {
-  key: string;
-  title: string;
-  description: string;
-  taps?: number;
-  leverage?: number;
-  reward: number;
-}
-
-export const ACHIEVEMENTS: AchievementDef[] = [
-  { key: 'first_tap', title: 'First Tap', description: 'Make your very first tap', taps: 1, reward: 5 },
-  { key: 'taps_100', title: '100 Taps', description: 'Tap 100 times', taps: 100, reward: 10 },
-  { key: 'taps_1k', title: '1,000 Taps', description: 'Tap 1,000 times', taps: 1000, reward: 25 },
-  { key: 'taps_10k', title: '10,000 Taps', description: 'Tap 10,000 times', taps: 10000, reward: 100 },
-  { key: 'taps_100k', title: '100,000 Taps', description: 'Tap 100,000 times', taps: 100000, reward: 500 },
-  { key: 'taps_500k', title: '500,000 Taps', description: 'Tap 500,000 times', taps: 500000, reward: 2000 },
-  { key: 'taps_1m', title: '1 Million Taps', description: 'Reach one million taps', taps: 1000000, reward: 10000 },
-  { key: 'first_leverage', title: 'First Leverage', description: 'Buy your first upgrade', leverage: 2, reward: 20 },
-  { key: 'max_leverage', title: 'Maximum Leverage', description: 'Reach 1000x leverage', leverage: 10, reward: 5000 },
-];
-
 export interface TapProfile {
   total_units: number;
   lifetime_units: number;
@@ -54,9 +33,6 @@ export interface TapProfile {
   lifetime_taps: number;
   today_taps: number;
   leverage_level: number;
-  daily_streak: number;
-  longest_streak: number;
-  last_daily_claim: string | null;
 }
 
 export const emptyProfile: TapProfile = {
@@ -66,15 +42,32 @@ export const emptyProfile: TapProfile = {
   lifetime_taps: 0,
   today_taps: 0,
   leverage_level: 1,
-  daily_streak: 0,
-  longest_streak: 0,
-  last_daily_claim: null,
 };
 
 export const leverageMult = (level: number) =>
   LEVERAGE[Math.max(0, Math.min(level, LEVERAGE.length) - 1)]?.mult ?? 1;
 
 export const rewardPerTap = (level: number) => BASE_REWARD * leverageMult(level);
+
+/* ─── Heat system (visual only) ───
+   heat is a 0–100 value driven by tapping intensity. */
+export type HeatLevel = 'normal' | 'warm' | 'hot' | 'very-hot' | 'max';
+
+export const heatLevel = (heat: number): HeatLevel => {
+  if (heat >= 90) return 'max';
+  if (heat >= 70) return 'very-hot';
+  if (heat >= 45) return 'hot';
+  if (heat >= 20) return 'warm';
+  return 'normal';
+};
+
+export const HEAT_LABEL: Record<HeatLevel, string> = {
+  normal: 'Normal',
+  warm: 'Warm',
+  hot: 'Hot',
+  'very-hot': 'Very Hot',
+  max: 'Maximum',
+};
 
 /** Format a unit balance like a crypto balance (many decimals). */
 export function formatUnits(value: number, decimals = 8): string {

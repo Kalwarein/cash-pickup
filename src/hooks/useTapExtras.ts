@@ -1,6 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 
 export interface LeaderRow {
   user_id: string;
@@ -38,56 +37,4 @@ export function useTapLeaderboard(metric: LeaderMetric) {
   }, [metric]);
 
   return { rows, loading };
-}
-
-export interface HistoryRow {
-  id: string;
-  type: string;
-  title: string;
-  description: string | null;
-  amount_units: number;
-  amount_sle: number;
-  created_at: string;
-}
-
-export function useTapHistory() {
-  const { user } = useAuth();
-  const [rows, setRows] = useState<HistoryRow[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data } = await supabase
-      .from('tap_history')
-      .select('*')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setRows(((data as any[]) || []).map((r) => ({
-      ...r,
-      amount_units: Number(r.amount_units),
-      amount_sle: Number(r.amount_sle),
-    })));
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { load(); }, [load]);
-  return { rows, loading, refetch: load };
-}
-
-export function useTapAchievements() {
-  const { user } = useAuth();
-  const [keys, setKeys] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
-
-  const load = useCallback(async () => {
-    if (!user) return;
-    setLoading(true);
-    const { data } = await supabase.from('tap_achievements').select('achievement_key');
-    setKeys(new Set(((data as any[]) || []).map((r) => r.achievement_key)));
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => { load(); }, [load]);
-  return { keys, loading, refetch: load };
 }

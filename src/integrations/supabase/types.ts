@@ -694,71 +694,14 @@ export type Database = {
         }
         Relationships: []
       }
-      tap_achievements: {
-        Row: {
-          achievement_key: string
-          created_at: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          achievement_key: string
-          created_at?: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          achievement_key?: string
-          created_at?: string
-          id?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
-      tap_history: {
-        Row: {
-          amount_sle: number
-          amount_units: number
-          created_at: string
-          description: string | null
-          id: string
-          title: string
-          type: string
-          user_id: string
-        }
-        Insert: {
-          amount_sle?: number
-          amount_units?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          title: string
-          type: string
-          user_id: string
-        }
-        Update: {
-          amount_sle?: number
-          amount_units?: number
-          created_at?: string
-          description?: string | null
-          id?: string
-          title?: string
-          type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       tap_profiles: {
         Row: {
           created_at: string
-          daily_streak: number
           id: string
-          last_daily_claim: string | null
           last_sync_at: string
           leverage_level: number
           lifetime_taps: number
           lifetime_units: number
-          longest_streak: number
           today_date: string
           today_taps: number
           today_units: number
@@ -768,14 +711,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          daily_streak?: number
           id?: string
-          last_daily_claim?: string | null
           last_sync_at?: string
           leverage_level?: number
           lifetime_taps?: number
           lifetime_units?: number
-          longest_streak?: number
           today_date?: string
           today_taps?: number
           today_units?: number
@@ -785,14 +725,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          daily_streak?: number
           id?: string
-          last_daily_claim?: string | null
           last_sync_at?: string
           leverage_level?: number
           lifetime_taps?: number
           lifetime_units?: number
-          longest_streak?: number
           today_date?: string
           today_taps?: number
           today_units?: number

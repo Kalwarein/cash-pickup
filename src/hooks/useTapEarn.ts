@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  TapProfile, emptyProfile, rewardPerTap, todayISO,
+  TapProfile, emptyProfile, rewardPerTap,
 } from '@/lib/tapEarn';
 
 const PENDING_KEY = 'tap_pending_v1';
@@ -122,17 +122,6 @@ export function useTapEarn() {
     return { error: null, unlocked: res?.unlocked };
   }, [flush, applyProfile]);
 
-  const claimDaily = useCallback(async () => {
-    const { data, error } = await supabase.functions.invoke('tap-earn', {
-      body: { action: 'claim_daily' },
-    });
-    if (error) return { error: 'Claim failed' };
-    const res = data as SyncResult & { error?: string; bonus?: number; streak?: number };
-    if (res?.error) return { error: res.error };
-    if (res?.profile) applyProfile(res.profile);
-    return { error: null, bonus: res?.bonus, streak: res?.streak };
-  }, [applyProfile]);
-
   useEffect(() => { load(); }, [load]);
 
   // Online / offline handling
@@ -158,13 +147,10 @@ export function useTapEarn() {
     };
   }, [flush]);
 
-  const canClaimDaily = profile.last_daily_claim !== todayISO();
-
   return {
     profile, loading, syncing, online,
     displayUnits, displayTaps, displayTodayTaps, displayTodayUnits,
     pending: pendingRef.current,
-    tap, buyLeverage, claimDaily, refetch: load, flush,
-    canClaimDaily,
+    tap, buyLeverage, refetch: load, flush,
   };
 }
