@@ -1,8 +1,7 @@
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check,
-  ChevronRight, Activity, Hash,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { PageLoader } from '@/components/PageLoader';
@@ -20,12 +19,13 @@ import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
 
-const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string }> = {
-  normal: { text: 'text-sky-400', dot: 'bg-sky-400' },
-  warm: { text: 'text-amber-400', dot: 'bg-amber-400' },
-  hot: { text: 'text-orange-400', dot: 'bg-orange-400' },
-  'very-hot': { text: 'text-red-400', dot: 'bg-red-400' },
-  max: { text: 'text-red-500', dot: 'bg-red-500' },
+/* Heat → visual language. Hue shifts cool → gold → ember as combo climbs. */
+const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string; hue: number; hue2: number }> = {
+  normal:   { text: 'text-sky-400',    dot: 'bg-sky-400',    hue: 217, hue2: 265 },
+  warm:     { text: 'text-amber-400',  dot: 'bg-amber-400',  hue: 42,  hue2: 24  },
+  hot:      { text: 'text-orange-400', dot: 'bg-orange-400', hue: 30,  hue2: 12  },
+  'very-hot': { text: 'text-red-400',  dot: 'bg-red-400',    hue: 18,  hue2: 4   },
+  max:      { text: 'text-red-500',    dot: 'bg-red-500',    hue: 10,  hue2: 355 },
 };
 
 const Mine = () => {
@@ -34,8 +34,10 @@ const Mine = () => {
   const { wallet } = useWallet();
   const t = useTapEarn();
   const [leverageOpen, setLeverageOpen] = useState(false);
-  const [sessionTaps, setSessionTaps] = useState(0);
-  const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
+  // Only the coarse heat *level* is lifted up — it changes rarely (a handful
+  // of times per session), unlike combo/heat which change on every single
+  // tap. This keeps Header/BalanceHero from re-rendering on every tap.
+  const [heatLevel, setHeatLevel] = useState<HeatLevel>('normal');
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -46,19 +48,15 @@ const Mine = () => {
 
   const handleTap = useCallback(() => {
     t.tap();
-    setSessionTaps((n) => n + 1);
   }, [t]);
 
-  const handleState = useCallback((s: { heat: number; level: HeatLevel; combo: number }) => {
-    setHeat(s);
-  }, []);
+  const openLeverage = useCallback(() => setLeverageOpen(true), []);
+  const goHome = useCallback(() => navigate('/home'), [navigate]);
 
   const unlock = useCallback((level: number, cost: number) => {
     localStorage.setItem('mine_pending_leverage', String(level));
     navigate(`/wallet?deposit=1&amount=${cost}&leverage=${level}`);
   }, [navigate]);
-
-  const heatStyle = HEAT_STYLE[heat.level];
 
   if (authLoading || t.loading) {
     return (
@@ -73,93 +71,33 @@ const Mine = () => {
 
   return (
     <div className="relative h-[100dvh] bg-background overflow-hidden flex flex-col">
-      <div className="mine-page-bg" style={{ ['--mine-heat' as string]: heat.heat, ['--mine-heat-h' as string]: heat.level === 'normal' ? 210 : 40 }} />
-      <div className="rewards-aurora" />
+      <MineStyles />
+      {/* Static ambient base layer — pure CSS animation, no JS state, effectively free */}
+      <div className="mn-ambient" />
 
-      {/* Header */}
-      <header className="relative z-20 shrink-0 backdrop-blur-xl bg-background/70 border-b border-border/50">
-        <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
-          <button onClick={() => navigate('/home')} className="p-2 -ml-2 rounded-xl hover:bg-muted transition-colors">
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-          <div className="flex items-center gap-2">
-            <Pickaxe className="w-4 h-4 text-amber-400" />
-            <h1 className="text-base font-display font-bold gold-text">Mine</h1>
-          </div>
-          <button
-            onClick={() => setLeverageOpen(true)}
-            className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
-          >
-            <Zap className="w-3.5 h-3.5" /> {leverageMult(t.profile.leverage_level)}x
-          </button>
-        </div>
-      </header>
+      <Header multiplier={leverageMult(t.profile.leverage_level)} onBack={goHome} onLeverage={openLeverage} />
 
-      <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-2 flex flex-col animate-fade-in">
-        {/* Balance hero */}
-        <section className="shrink-0 rounded-2xl p-3.5 bg-card/60 backdrop-blur-xl gold-border shadow-float text-center">
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
-          <AnimatedNumber
-            value={t.displayUnits}
-            decimals={8}
-            duration={350}
-            className="block text-[26px] leading-tight font-display font-black tabular-nums gold-text"
-          />
-          <div className="mt-2 flex items-center justify-center gap-4 text-xs">
-            <span className="flex items-center gap-1 text-muted-foreground">
-              <Wallet className="w-3.5 h-3.5" /> {sle(wallet?.balance ?? 0)}
-            </span>
-            <span className={cn('flex items-center gap-1 font-semibold', heatStyle.text)}>
-              <span className={cn('w-2 h-2 rounded-full', heatStyle.dot)} /> {HEAT_LABEL[heat.level]}
-            </span>
-          </div>
-          <div className="mt-2.5 text-left">
-            <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Progress to next unit</span>
-              <span>{progressPct.toFixed(2)}%</span>
-            </div>
-            <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-              <div className="h-full gold-surface transition-[width] duration-300" style={{ width: `${progressPct}%` }} />
-            </div>
-          </div>
-        </section>
+      <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-3 flex flex-col gap-3 animate-fade-in">
+        <BalanceHero
+          displayUnits={t.displayUnits}
+          walletBalance={wallet?.balance ?? 0}
+          heatLevel={heatLevel}
+          progressPct={progressPct}
+        />
 
-        {/* Combo badge + button */}
-        <div className="flex-1 min-h-0 grid place-items-center relative">
-          {heat.combo >= 5 && (
-            <span
-              className={cn(
-                'absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide',
-                heat.level === 'max' || heat.level === 'very-hot'
-                  ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
-                  : 'bg-amber-400/20 text-amber-400',
-              )}
-            >
-              <Flame className="w-3.5 h-3.5" /> Combo x{heat.combo}
-            </span>
-          )}
-          <MineButton onTap={handleTap} rewardLabel={formatUnits(per, 7)} onState={handleState} />
-        </div>
-
-        {/* Live stats row */}
-        <section className="shrink-0 grid grid-cols-3 gap-2 mb-1">
-          <Stat icon={<Zap className="w-3.5 h-3.5" />} label="Rate / tap" value={formatUnits(per, 7)} />
-          <Stat icon={<Hash className="w-3.5 h-3.5" />} label="Total taps" value={<AnimatedNumber value={t.displayTaps} compact className="tabular-nums" />} />
-          <Stat icon={<Activity className="w-3.5 h-3.5" />} label="Session" value={<AnimatedNumber value={sessionTaps} compact className="tabular-nums" />} />
-        </section>
-
-        <button
-          onClick={() => setLeverageOpen(true)}
-          className="shrink-0 w-full flex items-center justify-between rounded-2xl p-3 gold-surface text-black font-bold text-sm active:scale-[0.98] transition-transform"
-        >
-          <span className="flex items-center gap-2"><Gauge className="w-4 h-4" /> Boost Mining Power</span>
-          <ChevronRight className="w-4 h-4" />
-        </button>
+        {/* Tap zone owns its own heat state — its re-renders never touch
+            Header or BalanceHero, and it drives the fixed full-screen glow
+            layer itself, so the "page background reacting to your taps"
+            effect stays isolated to this subtree. */}
+        <TapArea
+          onTap={handleTap}
+          rewardLabel={formatUnits(per, 7)}
+          onLevelChange={setHeatLevel}
+        />
       </main>
 
-      <div className="shrink-0"><BottomNav /></div>
+      <div className="relative z-10 shrink-0"><BottomNav /></div>
 
-      {/* Leverage drawer */}
       <Drawer open={leverageOpen} onOpenChange={setLeverageOpen}>
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader className="text-left">
@@ -185,16 +123,128 @@ const Mine = () => {
   );
 };
 
-const Stat = ({ icon, label, value }: { icon: React.ReactNode; label: string; value: React.ReactNode }) => (
-  <div className="rounded-xl bg-card/60 backdrop-blur-md border border-border/50 p-2.5 text-center">
-    <span className="flex items-center justify-center gap-1 text-[9px] uppercase tracking-wider text-muted-foreground">
-      <span className="text-amber-400">{icon}</span> {label}
-    </span>
-    <span className="block mt-0.5 text-sm font-bold tabular-nums">{value}</span>
-  </div>
-);
+/* ─────────── Header (memoized — only re-renders when multiplier changes) ─────────── */
+const Header = memo(({ multiplier, onBack, onLeverage }: {
+  multiplier: number; onBack: () => void; onLeverage: () => void;
+}) => (
+  <header className="relative z-20 shrink-0 backdrop-blur-md bg-background/70 border-b border-border/50">
+    <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
+      <button onClick={onBack} className="p-2 -ml-2 rounded-xl hover:bg-muted active:scale-90 transition-transform">
+        <ChevronLeft className="w-5 h-5" />
+      </button>
+      <div className="flex items-center gap-2">
+        <Pickaxe className="w-4 h-4 text-amber-400" />
+        <h1 className="text-base font-display font-bold gold-text">Mine</h1>
+      </div>
+      <button
+        onClick={onLeverage}
+        className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
+      >
+        <Zap className="w-3.5 h-3.5" /> {multiplier}x
+      </button>
+    </div>
+  </header>
+));
+Header.displayName = 'Header';
 
-const LeverageCard = ({ tier, current, balance, onUnlock }: {
+/* ─────────── Balance hero (memoized — re-renders only when its own props change) ─────────── */
+const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct }: {
+  displayUnits: number; walletBalance: number; heatLevel: HeatLevel; progressPct: number;
+}) => {
+  const heatStyle = HEAT_STYLE[heatLevel];
+  return (
+    <section className="shrink-0 rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float text-center">
+      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
+      <AnimatedNumber
+        value={displayUnits}
+        decimals={8}
+        duration={280}
+        className="block text-[27px] leading-tight font-display font-black tabular-nums gold-text"
+      />
+      <div className="mt-2 flex items-center justify-center gap-4 text-xs">
+        <span className="flex items-center gap-1 text-muted-foreground">
+          <Wallet className="w-3.5 h-3.5" /> {sle(walletBalance)}
+        </span>
+        <span className={cn('flex items-center gap-1 font-semibold', heatStyle.text)}>
+          <span className={cn('w-2 h-2 rounded-full', heatStyle.dot)} /> {HEAT_LABEL[heatLevel]}
+        </span>
+      </div>
+      <div className="mt-3 text-left">
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+          <span>Progress to next unit</span>
+          <span className="tabular-nums">{progressPct.toFixed(2)}%</span>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          {/* transform (not width) — GPU-composited, buttery even at high tap rates */}
+          <div
+            className="h-full w-full origin-left gold-surface"
+            style={{ transform: `scaleX(${progressPct / 100})`, transition: 'transform 0.25s ease-out' }}
+          />
+        </div>
+      </div>
+    </section>
+  );
+});
+BalanceHero.displayName = 'BalanceHero';
+
+/* ─────────── Tap zone: owns heat/combo state locally so rapid taps never
+   ripple up into the rest of the tree. Also renders the fixed, full-screen
+   heat-reactive glow (mounted here, painted over the whole viewport via
+   position:fixed, but structurally isolated to this component). ─────────── */
+const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
+  onTap: () => void; rewardLabel: string; onLevelChange: (l: HeatLevel) => void;
+}) => {
+  const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
+  const lastLevel = useRef<HeatLevel>('normal');
+
+  const handleState = useCallback((s: { heat: number; level: HeatLevel; combo: number }) => {
+    setHeat((prev) => {
+      // Skip the state update entirely if nothing meaningfully changed —
+      // cuts wasted re-renders during a fast tap burst.
+      if (prev.combo === s.combo && prev.level === s.level && Math.abs(prev.heat - s.heat) < 0.01) {
+        return prev;
+      }
+      return s;
+    });
+    if (s.level !== lastLevel.current) {
+      lastLevel.current = s.level;
+      onLevelChange(s.level);
+    }
+  }, [onLevelChange]);
+
+  const style = HEAT_STYLE[heat.level];
+
+  return (
+    <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
+      <div
+        className="mn-heat-glow"
+        style={{
+          ['--h' as string]: style.hue,
+          ['--h2' as string]: style.hue2,
+          ['--heat' as string]: heat.heat,
+        }}
+      />
+
+      {heat.combo >= 5 && (
+        <span
+          className={cn(
+            'absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wide will-change-transform',
+            heat.level === 'max' || heat.level === 'very-hot'
+              ? 'bg-gradient-to-r from-orange-500 to-red-500 text-white'
+              : 'bg-amber-400/20 text-amber-400',
+          )}
+        >
+          <Flame className="w-3.5 h-3.5" /> Combo x{heat.combo}
+        </span>
+      )}
+
+      <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
+    </div>
+  );
+};
+
+/* ─────────── Leverage list item ─────────── */
+const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
   tier: typeof LEVERAGE[number]; current: number; balance: number; onUnlock: () => void;
 }) => {
   const owned = current >= tier.level;
@@ -241,6 +291,37 @@ const LeverageCard = ({ tier, current, balance, onUnlock }: {
       </div>
     </div>
   );
-};
+});
+LeverageCard.displayName = 'LeverageCard';
+
+/* ─────────── Styles: self-contained, GPU-cheap (opacity/transform only —
+   no backdrop-filter in the animated layers, so 100fps stays reachable
+   even on mid-range phones while tapping as fast as physically possible). ─────────── */
+const MineStyles = () => (
+  <style>{`
+    .mn-ambient {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(circle at 18% 12%, hsla(217, 70%, 55%, 0.10) 0%, transparent 50%),
+        radial-gradient(circle at 85% 88%, hsla(38, 80%, 55%, 0.07) 0%, transparent 55%),
+        hsl(var(--background));
+    }
+    .mn-tap-zone { contain: layout paint; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+    .mn-heat-glow {
+      position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background:
+        radial-gradient(circle at 50% 38%,
+          hsla(var(--h), 92%, 58%, calc(0.10 + var(--heat) * 0.30)) 0%,
+          hsla(var(--h2), 88%, 45%, calc(0.04 + var(--heat) * 0.16)) 38%,
+          transparent 68%);
+      opacity: 1;
+      transition: background 0.18s linear;
+      will-change: background;
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mn-heat-glow { transition: none; }
+    }
+  `}</style>
+);
 
 export default Mine;
