@@ -19,6 +19,13 @@ import Market from "./pages/Market";
 import WalletProfile from "./pages/WalletProfile";
 import Payments from "./pages/Payments";
 import Mine from "./pages/Mine";
+import Settings from "./pages/Settings";
+import Deposit from "./pages/wallet/Deposit";
+import Withdraw from "./pages/wallet/Withdraw";
+import Transfer from "./pages/wallet/Transfer";
+import History from "./pages/wallet/History";
+import PromoCenter from "./pages/wallet/PromoCenter";
+import Analytics from "./pages/wallet/Analytics";
 import { RequireAuth } from "./components/RequireAuth";
 
 const queryClient = new QueryClient();
@@ -44,6 +51,13 @@ const App = () => (
               <Route path="/market" element={<RequireAuth><Market /></RequireAuth>} />
               <Route path="/mine" element={<RequireAuth><Mine /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><WalletProfile /></RequireAuth>} />
+              <Route path="/wallet/deposit" element={<RequireAuth><Deposit /></RequireAuth>} />
+              <Route path="/wallet/withdraw" element={<RequireAuth><Withdraw /></RequireAuth>} />
+              <Route path="/wallet/transfer" element={<RequireAuth><Transfer /></RequireAuth>} />
+              <Route path="/wallet/history" element={<RequireAuth><History /></RequireAuth>} />
+              <Route path="/wallet/promo" element={<RequireAuth><PromoCenter /></RequireAuth>} />
+              <Route path="/wallet/analytics" element={<RequireAuth><Analytics /></RequireAuth>} />
+              <Route path="/settings" element={<RequireAuth><Settings /></RequireAuth>} />
               <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
               {/* Legacy redirects */}
               <Route path="/earn" element={<Navigate to="/mine" replace />} />
