@@ -10,6 +10,7 @@ const PromoCenter = () => {
   const { promoCodes, userPromoCodes, purchasePromoCode, refetch } = usePromoCodes();
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showMarket, setShowMarket] = useState(false);
 
   const { active, expired } = useMemo(() => {
     const now = new Date();
@@ -80,10 +81,11 @@ const PromoCenter = () => {
         </div>
       )}
 
-      <div>
-        <div className="flex items-center gap-2 mb-2 px-1"><Gift className="w-4 h-4 text-purple-500" /><span className="font-semibold text-sm">Campaign Rewards</span></div>
-        <PromoCodeMarketplace />
-      </div>
+      <button onClick={() => setShowMarket(true)} className="w-full py-4 rounded-2xl bg-primary text-primary-foreground font-semibold flex items-center justify-center gap-2 active:scale-[0.98] transition-transform">
+        <Gift className="w-5 h-5" /> Browse Promo Marketplace
+      </button>
+
+      <PromoCodeMarketplace isOpen={showMarket} onClose={() => setShowMarket(false)} />
     </SubPage>
   );
 };
