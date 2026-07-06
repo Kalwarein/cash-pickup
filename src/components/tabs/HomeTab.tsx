@@ -129,7 +129,9 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn" onClick={() => navigate('/mine')}>
               <Pickaxe className="cp-hdr-icon" />
             </button>
-            <ThemeToggle />
+            <button className="cp-hdr-btn" onClick={() => navigate('/settings')} aria-label="Settings">
+              <Settings className="cp-hdr-icon" />
+            </button>
           </div>
         </div>
       </header>
