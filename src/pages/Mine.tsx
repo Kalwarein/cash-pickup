@@ -348,7 +348,7 @@ const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
               {tier.mult}x Power
               {isActive && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">ACTIVE</span>}
             </p>
-            <p className="text-[11px] text-muted-foreground">{formatUnits(0.0000005 * tier.mult, 8)} / tap</p>
+            <p className="text-[11px] text-muted-foreground">{formatUnits(BASE_REWARD * tier.mult, 8)} / tap</p>
           </div>
         </div>
         <div className="text-right shrink-0">
