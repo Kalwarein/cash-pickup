@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '@/components/BottomNav';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,12 +13,14 @@ import { PageLoader } from '@/components/PageLoader';
 import { cn } from '@/lib/utils';
 import {
   Settings, Plus, Minus, ArrowLeftRight, History, ArrowDownLeft, LifeBuoy,
-  Sparkles, ChevronRight, Briefcase,
+  Sparkles, ChevronRight, Briefcase, Eye, EyeOff, ArrowDownCircle, ArrowUpCircle,
+  TrendingUp, TrendingDown, Wallet as WalletIcon, Activity, Trophy, Clock, Users, Gift,
 } from 'lucide-react';
 
 const WalletProfile = () => {
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+  const [showBalance, setShowBalance] = useState(true);
   const { wallet, transactions, loading: walletLoading, refetch: refetchWallet } = useWallet();
   const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
   const { getActivePromoCodes } = usePromoCodes();
@@ -85,25 +87,30 @@ const WalletProfile = () => {
     { label: 'Support', icon: LifeBuoy, tint: 'text-amber-500', bg: 'bg-amber-500/15', path: '/support' },
   ];
 
-  const metrics: { label: string; value: number; sign?: boolean; pl?: boolean }[] = [
-    { label: 'Invested Amount', value: stats.invested },
-    { label: 'Unrealized P/L', value: stats.unrealized, sign: true, pl: true },
-    { label: "Today's P/L", value: stats.todayPL, sign: true, pl: true },
-    { label: 'Lifetime Profit', value: stats.lifetime, sign: true, pl: true },
-    { label: 'Total Deposits', value: stats.totalDeposits },
-    { label: 'Total Withdrawals', value: stats.totalWithdrawals },
-    { label: 'Pending Withdrawals', value: stats.pendingWithdrawals },
-    { label: 'Referral Earnings', value: stats.referral },
-    { label: 'Promo Balance', value: stats.promoBalance },
+  const metrics: { label: string; value: number; sign?: boolean; pl?: boolean; icon: typeof Plus; tint: string; bg: string }[] = [
+    { label: 'Invested Amount', value: stats.invested, icon: WalletIcon, tint: 'text-indigo-500', bg: 'bg-indigo-500/15' },
+    { label: 'Unrealized P/L', value: stats.unrealized, sign: true, pl: true, icon: stats.unrealized >= 0 ? TrendingUp : TrendingDown, tint: stats.unrealized >= 0 ? 'text-success' : 'text-destructive', bg: stats.unrealized >= 0 ? 'bg-success/15' : 'bg-destructive/15' },
+    { label: "Today's P/L", value: stats.todayPL, sign: true, pl: true, icon: Activity, tint: 'text-blue-500', bg: 'bg-blue-500/15' },
+    { label: 'Lifetime Profit', value: stats.lifetime, sign: true, pl: true, icon: Trophy, tint: 'text-amber-500', bg: 'bg-amber-500/15' },
+    { label: 'Total Deposits', value: stats.totalDeposits, icon: ArrowDownCircle, tint: 'text-success', bg: 'bg-success/15' },
+    { label: 'Total Withdrawals', value: stats.totalWithdrawals, icon: ArrowUpCircle, tint: 'text-rose-500', bg: 'bg-rose-500/15' },
+    { label: 'Pending Withdrawals', value: stats.pendingWithdrawals, icon: Clock, tint: 'text-amber-500', bg: 'bg-amber-500/15' },
+    { label: 'Referral Earnings', value: stats.referral, icon: Users, tint: 'text-purple-500', bg: 'bg-purple-500/15' },
+    { label: 'Promo Balance', value: stats.promoBalance, icon: Gift, tint: 'text-pink-500', bg: 'bg-pink-500/15' },
   ];
 
   return (
     <div className="min-h-screen bg-background pb-24">
       <main className="max-w-lg mx-auto animate-fade-in">
         {/* Hero header */}
-        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-8 shadow-float">
+        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-9 shadow-float rounded-b-[2rem]">
           <span className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-white/15 blur-3xl" />
           <span className="pointer-events-none absolute -bottom-16 -left-8 w-48 h-48 rounded-full bg-black/10 blur-3xl" />
+          <svg className="pointer-events-none absolute right-0 bottom-6 w-2/3 opacity-25" viewBox="0 0 300 100" fill="none">
+            <path d="M0 60 C 60 10, 100 90, 160 50 S 260 20, 300 55" stroke="white" strokeWidth="2" />
+            <path d="M0 80 C 60 30, 100 100, 160 70 S 260 40, 300 75" stroke="white" strokeWidth="1.5" opacity="0.6" />
+          </svg>
+
           <div className="relative flex items-center justify-between mb-7">
             <div>
               <p className="text-xs text-primary-foreground/70">Welcome back</p>
@@ -119,9 +126,26 @@ const WalletProfile = () => {
           </div>
 
           <div className="relative">
-            <p className="text-xs text-primary-foreground/70 mb-1">Available Balance</p>
-            <Money value={stats.balance} className="text-4xl font-display font-bold tracking-tight text-primary-foreground block" />
-            <div className="mt-4 flex items-center gap-4 pt-4 border-t border-white/15">
+            <div className="flex items-center gap-2 mb-1">
+              <p className="text-xs text-primary-foreground/70">Wallet Balance</p>
+              <button
+                onClick={() => setShowBalance(v => !v)}
+                className="text-primary-foreground/70 active:scale-90 transition-transform"
+                aria-label={showBalance ? 'Hide balance' : 'Show balance'}
+              >
+                {showBalance ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+            {showBalance ? (
+              <Money value={stats.balance} className="text-4xl font-display font-bold tracking-tight text-primary-foreground block" />
+            ) : (
+              <span className="text-4xl font-display font-bold tracking-tight text-primary-foreground block">••••••</span>
+            )}
+            <span className="inline-block mt-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-white/15 backdrop-blur text-primary-foreground">
+              AVAILABLE BALANCE
+            </span>
+
+            <div className="mt-5 flex items-center gap-4 pt-4 border-t border-white/15">
               <div>
                 <p className="text-[10px] text-primary-foreground/60">Total Portfolio Value</p>
                 <Money value={stats.portfolio} className="text-sm font-bold text-primary-foreground" />
@@ -154,19 +178,21 @@ const WalletProfile = () => {
           )}
 
           {/* Quick actions */}
-          <div className="grid grid-cols-3 gap-3">
-            {actions.map(a => (
-              <button
-                key={a.label}
-                onClick={() => navigate(a.path)}
-                className="glass-card p-4 flex flex-col items-center gap-2 rounded-2xl border border-border/40 shadow-sm hover:shadow-float hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all"
-              >
-                <span className={cn('w-12 h-12 rounded-2xl flex items-center justify-center', a.bg)}>
-                  <a.icon className={cn('w-[22px] h-[22px]', a.tint)} />
-                </span>
-                <span className="text-xs font-semibold">{a.label}</span>
-              </button>
-            ))}
+          <div className="glass-card p-4">
+            <div className="grid grid-cols-3 gap-y-4">
+              {actions.map(a => (
+                <button
+                  key={a.label}
+                  onClick={() => navigate(a.path)}
+                  className="flex flex-col items-center gap-2 active:scale-90 transition-transform"
+                >
+                  <span className={cn('w-12 h-12 rounded-full flex items-center justify-center', a.bg)}>
+                    <a.icon className={cn('w-5 h-5', a.tint)} />
+                  </span>
+                  <span className="text-xs font-semibold">{a.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Ready to claim */}
@@ -190,17 +216,27 @@ const WalletProfile = () => {
           )}
 
           {/* Metrics grid */}
-          <div className="glass-card p-4">
-            <h3 className="font-semibold text-sm mb-3">Account Overview</h3>
-            <div className="grid grid-cols-2 gap-2.5">
+          <div>
+            <div className="flex items-center justify-between mb-3 px-1">
+              <h3 className="font-bold text-base">Overview</h3>
+              <button onClick={() => navigate('/wallet/history')} className="flex items-center text-sm font-semibold text-primary">
+                View All <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
               {metrics.map(m => (
-                <div key={m.label} className="rounded-2xl bg-muted/40 p-3">
-                  <p className="text-[10px] text-muted-foreground mb-1">{m.label}</p>
+                <div key={m.label} className="glass-card p-4 rounded-2xl relative">
+                  <div className="flex items-start justify-between mb-3">
+                    <p className="text-xs text-muted-foreground">{m.label}</p>
+                    <span className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', m.bg)}>
+                      <m.icon className={cn('w-4 h-4', m.tint)} />
+                    </span>
+                  </div>
                   <Money
                     value={m.value}
                     showSign={m.sign}
                     className={cn(
-                      'text-sm font-bold',
+                      'text-lg font-bold block',
                       m.pl && m.value > 0 && 'text-success',
                       m.pl && m.value < 0 && 'text-destructive',
                     )}
