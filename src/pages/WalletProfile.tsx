@@ -12,8 +12,8 @@ import { Money } from '@/components/wallet/Money';
 import { PageLoader } from '@/components/PageLoader';
 import { cn } from '@/lib/utils';
 import {
-  Settings, Plus, Minus, ArrowLeftRight, TrendingUp, History, Gift,
-  BarChart3, Sparkles, ShieldCheck, ShieldAlert, ChevronRight, Briefcase,
+  Settings, Plus, Minus, ArrowLeftRight, History, ArrowDownLeft, LifeBuoy,
+  Sparkles, ChevronRight, Briefcase,
 } from 'lucide-react';
 
 const WalletProfile = () => {
@@ -73,7 +73,6 @@ const WalletProfile = () => {
       </div>
     );
 
-  const verified = !!profile?.name && !!profile?.email;
   const lastTx = transactions[0];
   const hasActive = investments.length > 0;
 
@@ -81,10 +80,9 @@ const WalletProfile = () => {
     { label: 'Deposit', icon: Plus, tint: 'text-success', bg: 'bg-success/15', path: '/wallet/deposit' },
     { label: 'Withdraw', icon: Minus, tint: 'text-primary', bg: 'bg-primary/15', path: '/wallet/withdraw' },
     { label: 'Transfer', icon: ArrowLeftRight, tint: 'text-blue-500', bg: 'bg-blue-500/15', path: '/wallet/transfer' },
-    { label: 'Invest', icon: TrendingUp, tint: 'text-indigo-500', bg: 'bg-indigo-500/15', path: '/invest' },
+    { label: 'Request', icon: ArrowDownLeft, tint: 'text-teal-500', bg: 'bg-teal-500/15', path: '/wallet/request' },
     { label: 'History', icon: History, tint: 'text-pink-500', bg: 'bg-pink-500/15', path: '/wallet/history' },
-    { label: 'Promo', icon: Gift, tint: 'text-purple-500', bg: 'bg-purple-500/15', path: '/wallet/promo' },
-    { label: 'Analytics', icon: BarChart3, tint: 'text-amber-500', bg: 'bg-amber-500/15', path: '/wallet/analytics' },
+    { label: 'Support', icon: LifeBuoy, tint: 'text-amber-500', bg: 'bg-amber-500/15', path: '/support' },
   ];
 
   const metrics: { label: string; value: number; sign?: boolean; pl?: boolean }[] = [
@@ -106,27 +104,18 @@ const WalletProfile = () => {
         <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-8 shadow-float">
           <span className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-white/15 blur-3xl" />
           <span className="pointer-events-none absolute -bottom-16 -left-8 w-48 h-48 rounded-full bg-black/10 blur-3xl" />
-          <div className="relative flex items-center justify-between mb-6">
+          <div className="relative flex items-center justify-between mb-7">
             <div>
               <p className="text-xs text-primary-foreground/70">Welcome back</p>
-              <h1 className="text-lg font-display font-bold tracking-tight text-primary-foreground">{profile?.name || 'My Wallet'}</h1>
+              <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">{profile?.name || 'My Wallet'}</h1>
             </div>
-            <div className="flex items-center gap-2">
-              <span className={cn(
-                "inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold backdrop-blur",
-                verified ? "bg-white/20 text-primary-foreground" : "bg-black/20 text-amber-200"
-              )}>
-                {verified ? <ShieldCheck className="w-3.5 h-3.5" /> : <ShieldAlert className="w-3.5 h-3.5" />}
-                {verified ? 'Verified' : 'Unverified'}
-              </span>
-              <button
-                onClick={() => navigate('/settings')}
-                className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center text-primary-foreground active:scale-90 transition-transform"
-                aria-label="Settings"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
-            </div>
+            <button
+              onClick={() => navigate('/settings')}
+              className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-primary-foreground active:scale-90 transition-transform shadow-sm"
+              aria-label="Settings"
+            >
+              <Settings className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="relative">
@@ -165,17 +154,17 @@ const WalletProfile = () => {
           )}
 
           {/* Quick actions */}
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-3 gap-3">
             {actions.map(a => (
               <button
                 key={a.label}
                 onClick={() => navigate(a.path)}
-                className="glass-card py-3 flex flex-col items-center gap-1.5 active:scale-95 transition-transform"
+                className="glass-card p-4 flex flex-col items-center gap-2 rounded-2xl border border-border/40 shadow-sm hover:shadow-float hover:-translate-y-0.5 active:scale-95 active:translate-y-0 transition-all"
               >
-                <span className={cn('w-10 h-10 rounded-2xl flex items-center justify-center', a.bg)}>
-                  <a.icon className={cn('w-5 h-5', a.tint)} />
+                <span className={cn('w-12 h-12 rounded-2xl flex items-center justify-center', a.bg)}>
+                  <a.icon className={cn('w-[22px] h-[22px]', a.tint)} />
                 </span>
-                <span className="text-[10px] font-medium">{a.label}</span>
+                <span className="text-xs font-semibold">{a.label}</span>
               </button>
             ))}
           </div>
