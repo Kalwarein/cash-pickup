@@ -126,7 +126,7 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-            <button className="cp-hdr-btn" onClick={() => navigate('/mine')}>
+            <button className="cp-hdr-btn" onClick={() => navigate('/earn')}>
               <Pickaxe className="cp-hdr-icon" />
             </button>
             <ThemeToggle />
