@@ -47,9 +47,16 @@ const Mine = () => {
   const per = rewardPerTap(t.profile.leverage_level);
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
 
+  const balance = wallet?.balance ?? 0;
+  const canMine = balance >= 50;
+
   const handleTap = useCallback(() => {
+    if (!canMine) {
+      navigate('/wallet?deposit=1&amount=50');
+      return;
+    }
     t.tap();
-  }, [t]);
+  }, [t, canMine, navigate]);
 
   const openLeverage = useCallback(() => setLeverageOpen(true), []);
   const goHome = useCallback(() => navigate('/home'), [navigate]);
@@ -94,7 +101,11 @@ const Mine = () => {
           onTap={handleTap}
           rewardLabel={formatUnits(per, 7)}
           onLevelChange={setHeatLevel}
+          locked={!canMine}
+          onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
+
+        <StreakCard />
       </main>
 
       <div className="relative z-10 shrink-0"><BottomNav /></div>
