@@ -395,6 +395,39 @@ const MineStyles = () => (
     @media (prefers-reduced-motion: reduce) {
       .mn-combo-pop { animation: none; }
     }
+
+    /* Streak liquid orb — GPU-cheap transform-only waves */
+    .mn-streak-orb {
+      position: relative; width: 64px; height: 64px; border-radius: 9999px;
+      overflow: hidden; display: grid; place-items: center;
+      background: hsla(38, 80%, 55%, 0.10);
+      border: 1px solid hsla(38, 80%, 55%, 0.35);
+    }
+    .mn-streak-liquid {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: var(--fill, 50%);
+      transition: height 0.9s cubic-bezier(0.34,1.1,0.64,1);
+      background: linear-gradient(180deg, hsl(45 90% 58%), hsl(28 85% 48%));
+    }
+    .mn-streak-wave {
+      position: absolute; left: -50%; top: -14px; width: 200%; height: 28px;
+      border-radius: 45%;
+      background: hsla(0,0%,100%,0.35);
+      will-change: transform;
+    }
+    .mn-streak-wave--a { animation: mnWave 3.2s linear infinite; }
+    .mn-streak-wave--b { top: -18px; opacity: 0.5; animation: mnWave 4.6s linear infinite reverse; }
+    @keyframes mnWave {
+      0% { transform: translateX(0) rotate(0deg); }
+      100% { transform: translateX(25%) rotate(360deg); }
+    }
+    .mn-streak-num {
+      position: relative; z-index: 2; font-size: 12px; font-weight: 900;
+      color: rgba(0,0,0,0.7); text-shadow: 0 1px 2px hsla(0,0%,100%,0.3);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mn-streak-wave { animation: none; }
+    }
   `}</style>
 );
 
