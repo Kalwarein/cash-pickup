@@ -4,7 +4,7 @@
  * The server is always authoritative for actual balances.
  */
 
-export const BASE_REWARD = 0.0000005; // units per tap at 1x
+export const BASE_REWARD = 0.00005; // units per tap at 1x
 export const UNIT_TARGET = Math.round(1 / BASE_REWARD); // ≈ 2,000,000 taps / unit
 
 export interface LeverageTier {
@@ -15,15 +15,15 @@ export interface LeverageTier {
 
 export const LEVERAGE: LeverageTier[] = [
   { level: 1, mult: 1, cost: 0 },
-  { level: 2, mult: 2, cost: 500 },
-  { level: 3, mult: 5, cost: 1500 },
-  { level: 4, mult: 10, cost: 4000 },
-  { level: 5, mult: 25, cost: 10000 },
-  { level: 6, mult: 50, cost: 25000 },
-  { level: 7, mult: 100, cost: 60000 },
-  { level: 8, mult: 250, cost: 150000 },
-  { level: 9, mult: 500, cost: 400000 },
-  { level: 10, mult: 1000, cost: 1000000 },
+  { level: 2, mult: 2, cost: 20 },
+  { level: 3, mult: 5, cost: 30 },
+  { level: 4, mult: 10, cost: 40 },
+  { level: 5, mult: 25, cost: 50 },
+  { level: 6, mult: 50, cost: 60 },
+  { level: 7, mult: 100, cost: 70 },
+  { level: 8, mult: 250, cost: 80 },
+  { level: 9, mult: 500, cost: 90 },
+  { level: 10, mult: 1000, cost: 100 },
 ];
 
 export interface TapProfile {
