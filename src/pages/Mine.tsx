@@ -203,8 +203,9 @@ BalanceHero.displayName = 'BalanceHero';
    ripple up into the rest of the tree. Also renders the fixed, full-screen
    heat-reactive glow (mounted here, painted over the whole viewport via
    position:fixed, but structurally isolated to this component). ─────────── */
-const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
+const TapArea = ({ onTap, rewardLabel, onLevelChange, locked, onUnlock }: {
   onTap: () => void; rewardLabel: string; onLevelChange: (l: HeatLevel) => void;
+  locked?: boolean; onUnlock?: () => void;
 }) => {
   const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
   const lastLevel = useRef<HeatLevel>('normal');
@@ -224,9 +225,76 @@ const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
     <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
       <ComboBadge combo={heat.combo} level={heat.level} />
       <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
+      {locked && (
+        <button
+          onClick={onUnlock}
+          className="absolute inset-0 z-30 grid place-items-center rounded-2xl bg-background/70 backdrop-blur-sm"
+        >
+          <div className="flex flex-col items-center gap-3 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl grid place-items-center gold-surface text-black">
+              <Lock className="w-6 h-6" />
+            </div>
+            <p className="font-display font-bold text-base">Mining Locked</p>
+            <p className="text-xs text-muted-foreground max-w-[220px]">
+              Deposit or hold at least <span className="text-amber-400 font-bold">{sle(50)}</span> in your wallet to start mining.
+            </p>
+            <span className="mt-1 px-4 py-2 rounded-xl gold-surface text-black text-sm font-bold active:scale-95 transition-transform">
+              Deposit {sle(50)}
+            </span>
+          </div>
+        </button>
+      )}
     </div>
   );
 };
+
+/* ─────────── Daily streak with live liquid-wave fill ─────────── */
+const STREAK_KEY = 'mine_streak_v1';
+const StreakCard = memo(() => {
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let count = 1;
+    try {
+      const raw = localStorage.getItem(STREAK_KEY);
+      if (raw) {
+        const { last, count: c } = JSON.parse(raw) as { last: string; count: number };
+        if (last === today) count = c || 1;
+        else {
+          const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          count = last === y ? (c || 0) + 1 : 1;
+        }
+      }
+      localStorage.setItem(STREAK_KEY, JSON.stringify({ last: today, count }));
+    } catch { /* noop */ }
+    setStreak(count);
+  }, []);
+
+  const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
+
+  return (
+    <section className="shrink-0 relative overflow-hidden rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float">
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Daily Streak</p>
+          <p className="text-2xl font-display font-black gold-text flex items-center gap-1.5">
+            <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
+        </div>
+        <div className="mn-streak-orb">
+          <span className="mn-streak-liquid" style={{ ['--fill' as string]: `${pct}%` }}>
+            <span className="mn-streak-wave mn-streak-wave--a" />
+            <span className="mn-streak-wave mn-streak-wave--b" />
+          </span>
+          <span className="mn-streak-num">{streak % 7 || 7}/7</span>
+        </div>
+      </div>
+    </section>
+  );
+});
+StreakCard.displayName = 'StreakCard';
 
 /* ─────────── Combo badge — upgraded: tiered gradient, icon, and a light
    one-shot pop-in on every combo increment (transform/opacity only, no
