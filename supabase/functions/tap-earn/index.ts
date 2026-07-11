@@ -62,6 +62,12 @@ Deno.serve(async (req) => {
       if (requested <= 0) return json({ profile: shape(profile) })
       if (requested > 100000) return json({ error: 'Invalid tap batch' }, 400)
 
+      // Gate: must hold at least SLE 50 to mine
+      const { data: mineWallet } = await admin.from('wallets').select('balance').eq('user_id', userId).single()
+      if (!mineWallet || Number(mineWallet.balance) < MIN_MINE_BALANCE) {
+        return json({ error: 'Deposit at least SLE 50 to start mining.', profile: shape(profile) }, 403)
+      }
+
       // Anti-cheat: cap taps by elapsed time since last sync
       const now = Date.now()
       const lastSync = new Date(profile.last_sync_at).getTime()
