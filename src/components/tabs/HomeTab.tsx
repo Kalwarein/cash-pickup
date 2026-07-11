@@ -5,12 +5,13 @@ import {
   AlertTriangle, Coins, Pickaxe, ChevronRight, Shield,
   ArrowUpRight, ArrowDownRight, Eye, EyeOff, Award,
   CheckCircle2, Sparkles, Wallet, BarChart3, RefreshCw,
-  Info, Lock, Unlock, Settings
+  Info, Lock, Unlock
 } from 'lucide-react';
 import { StatCard } from '@/components/StatCard';
 import { useCPR } from '@/hooks/useCPR';
 import { useCompanies } from '@/hooks/useCompanies';
 import { useInvestments } from '@/hooks/useInvestments';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { CPRIndicator } from '@/components/CPRIndicator';
 import { InvestmentProgressBar } from '@/components/InvestmentProgressBar';
 import { RiskWarning } from '@/components/RiskWarning';
@@ -128,9 +129,7 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn" onClick={() => navigate('/mine')}>
               <Pickaxe className="cp-hdr-icon" />
             </button>
-            <button className="cp-hdr-btn" onClick={() => navigate('/settings')} aria-label="Settings">
-              <Settings className="cp-hdr-icon" />
-            </button>
+            <ThemeToggle />
           </div>
         </div>
       </header>

@@ -1,272 +1,325 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
 import { BottomNav } from '@/components/BottomNav';
 import { useAuth } from '@/contexts/AuthContext';
 import { useWallet } from '@/hooks/useWallet';
 import { useInvestments } from '@/hooks/useInvestments';
 import { usePromoCodes } from '@/hooks/usePromoCodes';
 import { useProfile } from '@/hooks/useProfile';
-import { usePaymentTransactions } from '@/hooks/usePaymentTransactions';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
-import { Money } from '@/components/wallet/Money';
-import { PageLoader } from '@/components/PageLoader';
+import { DepositWithdrawModal } from '@/components/DepositWithdrawModal';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { cn } from '@/lib/utils';
-import {
-  Settings, Plus, Minus, ArrowLeftRight, History, ArrowDownLeft, LifeBuoy,
-  Sparkles, ChevronRight, Briefcase, Eye, EyeOff, ArrowDownCircle, ArrowUpCircle,
-  TrendingUp, TrendingDown, Wallet as WalletIcon, Activity, Trophy, Clock, Users, Gift,
+import { sle } from '@/lib/currency';
+import { 
+  User, Wallet, Plus, Minus, Gift, TrendingUp, TrendingDown,
+  Award, BellRing, Clock, Sparkles, History, ChevronRight,
+  Settings, CreditCard
 } from 'lucide-react';
+import {
+  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription
+} from '@/components/ui/drawer';
+import { PageLoader } from '@/components/PageLoader';
 
 const WalletProfile = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const [showBalance, setShowBalance] = useState(true);
   const { wallet, transactions, loading: walletLoading, refetch: refetchWallet } = useWallet();
   const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
-  const { getActivePromoCodes } = usePromoCodes();
+  const { getActivePromoCodes, userPromoCodes } = usePromoCodes();
   const { profile } = useProfile();
-  const { paymentTransactions } = usePaymentTransactions();
+  const { permission, requestPermission, sendNotification } = usePushNotifications();
   const activePromoCodes = getActivePromoCodes();
+  const completedInvestments = claimedInvestments;
+
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState<string>('');
+  const [showPromos, setShowPromos] = useState(false);
+  const [showPerformance, setShowPerformance] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
   }, [user, loading, navigate]);
 
-  const stats = useMemo(() => {
-    const completed = claimedInvestments;
-    const unrealized = investments.reduce((s, i) => s + i.profit_loss, 0);
-    const activeValue = investments.reduce((s, i) => s + i.current_value, 0);
-    const invested = investments.reduce((s, i) => s + i.amount, 0);
-    const lifetime = completed.reduce((s, i) => s + (i.final_profit_loss || 0), 0);
-    const wins = completed.filter(i => (i.final_profit_loss || 0) > 0).length;
-    const winRate = completed.length ? (wins / completed.length) * 100 : 0;
-    const balance = wallet?.balance || 0;
-
-    const today = new Date().toDateString();
-    const todayPL = completed
-      .filter(i => i.claimed_at && new Date(i.claimed_at).toDateString() === today)
-      .reduce((s, i) => s + (i.final_profit_loss || 0), 0) + unrealized;
-
-    const sumTx = (type: string, status: string) => paymentTransactions
-      .filter(t => t.type === type && t.status === status)
-      .reduce((s, t) => s + t.amount, 0);
-
-    return {
-      balance,
-      portfolio: balance + activeValue,
-      invested,
-      unrealized,
-      todayPL,
-      lifetime,
-      winRate,
-      totalDeposits: sumTx('deposit', 'completed'),
-      totalWithdrawals: sumTx('withdrawal', 'completed'),
-      pendingWithdrawals: sumTx('withdrawal', 'pending'),
-      referral: 0,
-      promoBalance: activePromoCodes.length * 0,
-    };
-  }, [wallet, investments, claimedInvestments, paymentTransactions, activePromoCodes]);
+  // Deep-link from the Mine page: open the deposit modal, prefilled with the
+  // leverage cost, and remember which tier to auto-unlock after payment.
+  useEffect(() => {
+    if (searchParams.get('deposit') === '1') {
+      const amt = searchParams.get('amount');
+      if (amt) setDepositAmount(amt);
+      setDepositModalOpen(true);
+      const next = new URLSearchParams(searchParams);
+      next.delete('deposit'); next.delete('amount'); next.delete('leverage');
+      setSearchParams(next, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   if (loading || walletLoading || investmentsLoading || !user)
     return (
       <div className="min-h-screen bg-background pb-24">
-        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center"><PageLoader inline /></div>
+        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
+          <PageLoader inline />
+        </div>
         <BottomNav />
       </div>
     );
 
-  const lastTx = transactions[0];
-  const hasActive = investments.length > 0;
+  const netProfitLoss = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
+  const profitableInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
+  const lossInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) < 0).length;
+  const winRate = completedInvestments.length > 0 ? (profitableInvestments / completedInvestments.length) * 100 : 0;
 
-  const actions = [
-    { label: 'Deposit', icon: Plus, tint: 'text-success', bg: 'bg-success/15', path: '/wallet/deposit' },
-    { label: 'Withdraw', icon: Minus, tint: 'text-primary', bg: 'bg-primary/15', path: '/wallet/withdraw' },
-    { label: 'Transfer', icon: ArrowLeftRight, tint: 'text-blue-500', bg: 'bg-blue-500/15', path: '/wallet/transfer' },
-    { label: 'Request', icon: ArrowDownLeft, tint: 'text-teal-500', bg: 'bg-teal-500/15', path: '/wallet/request' },
-    { label: 'History', icon: History, tint: 'text-pink-500', bg: 'bg-pink-500/15', path: '/wallet/history' },
-    { label: 'Support', icon: LifeBuoy, tint: 'text-amber-500', bg: 'bg-amber-500/15', path: '/support' },
-  ];
+  const handleClaimed = () => { refetchInvestments(); refetchWallet(); };
+  const handlePaymentRefresh = () => {
+    refetchWallet();
+  };
 
-  const metrics: { label: string; value: number; sign?: boolean; pl?: boolean; icon: typeof Plus; tint: string; bg: string }[] = [
-    { label: 'Invested Amount', value: stats.invested, icon: WalletIcon, tint: 'text-indigo-500', bg: 'bg-indigo-500/15' },
-    { label: 'Unrealized P/L', value: stats.unrealized, sign: true, pl: true, icon: stats.unrealized >= 0 ? TrendingUp : TrendingDown, tint: stats.unrealized >= 0 ? 'text-success' : 'text-destructive', bg: stats.unrealized >= 0 ? 'bg-success/15' : 'bg-destructive/15' },
-    { label: "Today's P/L", value: stats.todayPL, sign: true, pl: true, icon: Activity, tint: 'text-blue-500', bg: 'bg-blue-500/15' },
-    { label: 'Lifetime Profit', value: stats.lifetime, sign: true, pl: true, icon: Trophy, tint: 'text-amber-500', bg: 'bg-amber-500/15' },
-    { label: 'Total Deposits', value: stats.totalDeposits, icon: ArrowDownCircle, tint: 'text-success', bg: 'bg-success/15' },
-    { label: 'Total Withdrawals', value: stats.totalWithdrawals, icon: ArrowUpCircle, tint: 'text-rose-500', bg: 'bg-rose-500/15' },
-    { label: 'Pending Withdrawals', value: stats.pendingWithdrawals, icon: Clock, tint: 'text-amber-500', bg: 'bg-amber-500/15' },
-    { label: 'Referral Earnings', value: stats.referral, icon: Users, tint: 'text-purple-500', bg: 'bg-purple-500/15' },
-    { label: 'Promo Balance', value: stats.promoBalance, icon: Gift, tint: 'text-pink-500', bg: 'bg-pink-500/15' },
-  ];
+  // After a deposit lands, auto-unlock the leverage tier the user chose on the Mine page.
+  const handleDepositSuccess = async () => {
+    refetchWallet();
+    const pending = localStorage.getItem('mine_pending_leverage');
+    if (!pending) return;
+    const level = parseInt(pending, 10);
+    if (!level) { localStorage.removeItem('mine_pending_leverage'); return; }
+    const { data } = await supabase.functions.invoke('tap-earn', {
+      body: { action: 'buy_leverage', level },
+    });
+    if (data && !data.error) {
+      localStorage.removeItem('mine_pending_leverage');
+      refetchWallet();
+      toast({ title: 'Leverage unlocked! ⚡', description: 'Your mining power just increased.' });
+    }
+  };
+
+  const handleTestNotification = async () => {
+    if (permission !== 'granted') {
+      const result = await requestPermission();
+      if (result !== 'granted') return;
+    }
+    sendNotification('Cash Pickup 🔔', {
+      body: `Hey! Your balance is ${sle(wallet?.balance || 0)}. Check the market for new opportunities!`,
+      tag: 'test-notification',
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background pb-24">
-      <main className="max-w-lg mx-auto animate-fade-in">
-        {/* Hero header */}
-        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-9 shadow-float rounded-b-[2rem]">
-          <span className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full bg-white/15 blur-3xl" />
-          <span className="pointer-events-none absolute -bottom-16 -left-8 w-48 h-48 rounded-full bg-black/10 blur-3xl" />
-          <svg className="pointer-events-none absolute right-0 bottom-6 w-2/3 opacity-25" viewBox="0 0 300 100" fill="none">
-            <path d="M0 60 C 60 10, 100 90, 160 50 S 260 20, 300 55" stroke="white" strokeWidth="2" />
-            <path d="M0 80 C 60 30, 100 100, 160 70 S 260 40, 300 75" stroke="white" strokeWidth="1.5" opacity="0.6" />
-          </svg>
-
-          <div className="relative flex items-center justify-between mb-7">
-            <div>
-              <p className="text-xs text-primary-foreground/70">Welcome back</p>
-              <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">{profile?.name || 'My Wallet'}</h1>
+      <main className="max-w-lg mx-auto space-y-4 animate-fade-in">
+        {/* Profile Header - edge to edge */}
+        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-6 shadow-float">
+          <span className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full bg-white/15 blur-3xl" />
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                <Wallet className="w-7 h-7 text-primary-foreground" />
+              </div>
+              <div>
+                <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">My Wallet</h1>
+                <p className="text-xs text-primary-foreground/60">{profile?.name || profile?.email}</p>
+              </div>
             </div>
-            <button
-              onClick={() => navigate('/settings')}
-              className="w-11 h-11 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center text-primary-foreground active:scale-90 transition-transform shadow-sm"
-              aria-label="Settings"
-            >
-              <Settings className="w-5 h-5" />
-            </button>
+            <ThemeToggle />
           </div>
 
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-1">
-              <p className="text-xs text-primary-foreground/70">Wallet Balance</p>
-              <button
-                onClick={() => setShowBalance(v => !v)}
-                className="text-primary-foreground/70 active:scale-90 transition-transform"
-                aria-label={showBalance ? 'Hide balance' : 'Show balance'}
-              >
-                {showBalance ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-              </button>
-            </div>
-            {showBalance ? (
-              <Money value={stats.balance} className="text-4xl font-display font-bold tracking-tight text-primary-foreground block" />
-            ) : (
-              <span className="text-4xl font-display font-bold tracking-tight text-primary-foreground block">••••••</span>
-            )}
-            <span className="inline-block mt-3 px-3 py-1 rounded-full text-[10px] font-semibold tracking-wide bg-white/15 backdrop-blur text-primary-foreground">
-              AVAILABLE BALANCE
-            </span>
-
-            <div className="mt-5 flex items-center gap-4 pt-4 border-t border-white/15">
-              <div>
-                <p className="text-[10px] text-primary-foreground/60">Total Portfolio Value</p>
-                <Money value={stats.portfolio} className="text-sm font-bold text-primary-foreground" />
-              </div>
-              <div className="h-8 w-px bg-white/15" />
-              <div>
-                <p className="text-[10px] text-primary-foreground/60">Win Rate</p>
-                <span className="text-sm font-bold text-primary-foreground tabular-nums">{stats.winRate.toFixed(0)}%</span>
-              </div>
+          {/* Balance */}
+          <div className="relative bg-black/20 backdrop-blur rounded-2xl p-4">
+            <p className="text-xs text-primary-foreground/60 mb-1">Available Balance</p>
+            <p className="text-3xl font-display font-bold tabular-nums tracking-tight text-primary-foreground mb-3">{sle(wallet?.balance || 0)}</p>
+            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10">
+              <div><p className="text-[10px] text-primary-foreground/50">Invested</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{sle(wallet?.invested_amount || 0)}</p></div>
+              <div><p className="text-[10px] text-primary-foreground/50">Net P/L</p><p className={cn("text-sm font-semibold tabular-nums", netProfitLoss >= 0 ? "text-green-300" : "text-red-300")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p></div>
+              <div><p className="text-[10px] text-primary-foreground/50">Win Rate</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{winRate.toFixed(0)}%</p></div>
             </div>
           </div>
         </div>
 
-        <div className="px-4 space-y-4 -mt-4">
-          {/* View My Investments */}
-          {hasActive && (
-            <button
-              onClick={() => navigate('/invest')}
-              className="w-full glass-card p-4 flex items-center gap-3 shadow-float hover:bg-muted/40 active:scale-[0.99] transition-all"
-            >
-              <div className="w-11 h-11 rounded-2xl bg-indigo-500/15 flex items-center justify-center">
-                <Briefcase className="w-5 h-5 text-indigo-500" />
+        <div className="px-4 space-y-4">
+          {/* Deposit/Withdraw */}
+          <div className="grid grid-cols-2 gap-3">
+            <button onClick={() => setDepositModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-success/10 transition-colors group">
+              <div className="w-8 h-8 rounded-xl bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Plus className="w-4 h-4 text-success" />
               </div>
-              <div className="flex-1 text-left">
-                <p className="font-semibold text-sm">View My Investments</p>
-                <p className="text-[11px] text-muted-foreground">{investments.length} active · <Money value={stats.invested} decimals={0} /> deployed</p>
-              </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <span className="font-semibold text-sm">Deposit</span>
             </button>
-          )}
-
-          {/* Quick actions */}
-          <div className="glass-card p-4">
-            <div className="grid grid-cols-3 gap-y-4">
-              {actions.map(a => (
-                <button
-                  key={a.label}
-                  onClick={() => navigate(a.path)}
-                  className="flex flex-col items-center gap-2 active:scale-90 transition-transform"
-                >
-                  <span className={cn('w-12 h-12 rounded-full flex items-center justify-center', a.bg)}>
-                    <a.icon className={cn('w-5 h-5', a.tint)} />
-                  </span>
-                  <span className="text-xs font-semibold">{a.label}</span>
-                </button>
-              ))}
-            </div>
+            <button onClick={() => setWithdrawModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors group">
+              <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Minus className="w-4 h-4 text-primary" />
+              </div>
+              <span className="font-semibold text-sm">Withdraw</span>
+            </button>
           </div>
 
-          {/* Ready to claim */}
+          {/* Matured - Claim Section */}
           {maturedInvestments && maturedInvestments.length > 0 && (
             <div className="glass-card p-4">
               <div className="flex items-center gap-2 mb-3">
                 <Sparkles className="w-5 h-5 text-success animate-pulse" />
-                <h3 className="font-semibold text-sm">Ready to Claim</h3>
+                <h3 className="font-semibold">Ready to Claim</h3>
                 <span className="ml-auto text-xs bg-success/20 text-success px-2 py-0.5 rounded-full font-medium">{maturedInvestments.length} ready</span>
               </div>
               <div className="space-y-3">
-                {maturedInvestments.map(inv => (
-                  <ClaimInvestmentCard
-                    key={inv.id}
-                    investment={{ ...inv, company_name: inv.company_name ?? null, company_ticker: inv.company_ticker ?? null }}
-                    onClaimed={() => { refetchInvestments(); refetchWallet(); }}
-                  />
+                {maturedInvestments.map((inv) => (
+                  <ClaimInvestmentCard key={inv.id} investment={{ ...inv, company_name: inv.company_name ?? null, company_ticker: inv.company_ticker ?? null }} onClaimed={handleClaimed} />
                 ))}
               </div>
             </div>
           )}
 
-          {/* Metrics grid */}
-          <div>
-            <div className="flex items-center justify-between mb-3 px-1">
-              <h3 className="font-bold text-base">Overview</h3>
-              <button onClick={() => navigate('/wallet/history')} className="flex items-center text-sm font-semibold text-primary">
-                View All <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              {metrics.map(m => (
-                <div key={m.label} className="glass-card p-4 rounded-2xl relative">
-                  <div className="flex items-start justify-between mb-3">
-                    <p className="text-xs text-muted-foreground">{m.label}</p>
-                    <span className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0', m.bg)}>
-                      <m.icon className={cn('w-4 h-4', m.tint)} />
-                    </span>
-                  </div>
-                  <Money
-                    value={m.value}
-                    showSign={m.sign}
-                    className={cn(
-                      'text-lg font-bold block',
-                      m.pl && m.value > 0 && 'text-success',
-                      m.pl && m.value < 0 && 'text-destructive',
-                    )}
-                  />
-                </div>
-              ))}
-            </div>
+          {/* Quick Action Buttons - Drawer style */}
+          <div className="space-y-2">
+            <button onClick={() => navigate('/payments')} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center"><History className="w-4 h-4 text-blue-500" /></div>
+                <span className="font-medium text-sm">Payments History</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            <button onClick={() => setShowPromos(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center"><Gift className="w-4 h-4 text-purple-500" /></div>
+                <span className="font-medium text-sm">My Promo Codes</span>
+                {activePromoCodes.length > 0 && <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-[10px] font-medium">{activePromoCodes.length} active</span>}
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            <button onClick={() => setShowPerformance(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center"><Award className="w-4 h-4 text-emerald-500" /></div>
+                <span className="font-medium text-sm">Performance Stats</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+
+            <button onClick={handleTestNotification} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center"><BellRing className="w-4 h-4 text-amber-500" /></div>
+                <span className="font-medium text-sm">Test Notifications</span>
+              </div>
+              <span className={cn("text-xs px-2 py-0.5 rounded-full", permission === 'granted' ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
+                {permission === 'granted' ? 'Enabled' : permission === 'denied' ? 'Blocked' : 'Off'}
+              </span>
+            </button>
+
+            <button onClick={() => setShowSettings(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-gray-500/10 flex items-center justify-center"><Settings className="w-4 h-4 text-gray-500" /></div>
+                <span className="font-medium text-sm">Account Settings</span>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
           </div>
 
-          {/* Last transaction */}
+          {/* Account Info */}
           <div className="glass-card p-4">
-            <div className="flex items-center justify-between mb-1">
-              <h3 className="font-semibold text-sm">Last Transaction</h3>
-              <button onClick={() => navigate('/wallet/history')} className="text-xs text-primary font-medium">View all</button>
+            <h3 className="font-semibold mb-3 text-sm">Account</h3>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-muted-foreground">Member Since</span><span>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '-'}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Total Investments</span><span>{investments.length + completedInvestments.length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Payment Method</span><span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Mobile Money & USSD</span></div>
             </div>
-            {lastTx ? (
-              <div className="flex items-center justify-between pt-2">
-                <div>
-                  <p className="text-sm font-medium capitalize">{lastTx.description || lastTx.type}</p>
-                  <p className="text-[11px] text-muted-foreground">{new Date(lastTx.created_at).toLocaleString()}</p>
-                </div>
-                <span className={cn('text-sm font-bold tabular-nums', Number(lastTx.amount) >= 0 ? 'text-success' : 'text-destructive')}>
-                  <Money value={Number(lastTx.amount)} showSign />
-                </span>
-              </div>
-            ) : (
-              <p className="text-sm text-muted-foreground py-2">No transactions yet</p>
-            )}
           </div>
         </div>
+
+        {/* Promo Codes Drawer */}
+        <Drawer open={showPromos} onOpenChange={setShowPromos}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>My Promo Codes</DrawerTitle>
+              <DrawerDescription>Manage your promotional codes</DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 pb-6">
+              {userPromoCodes.length > 0 ? (
+                <div className="space-y-3">
+                  {userPromoCodes.map((upc) => {
+                    const isExpired = new Date(upc.expires_at) < new Date();
+                    const isActive = upc.is_active && !isExpired;
+                    return (
+                      <div key={upc.id} className={cn("p-3 rounded-xl border transition-all", isActive ? "bg-primary/10 border-primary/30" : "bg-muted/50 border-border opacity-60")}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="flex items-center gap-2">
+                            <Sparkles className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
+                            <span className="font-medium text-sm">{upc.promo_code?.name || upc.promo_code?.code}</span>
+                          </div>
+                          <span className={cn("text-xs px-2 py-0.5 rounded-full", isActive ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
+                            {isActive ? 'Active' : isExpired ? 'Expired' : 'Used'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{upc.promo_code?.description}</p>
+                        <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
+                          <Clock className="w-3 h-3" />
+                          <span>{isExpired ? 'Expired' : `Expires ${new Date(upc.expires_at).toLocaleDateString()}`}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-center text-muted-foreground py-8">No promo codes yet</p>
+              )}
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Performance Drawer */}
+        <Drawer open={showPerformance} onOpenChange={setShowPerformance}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Performance Stats</DrawerTitle>
+              <DrawerDescription>Your investment performance overview</DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 pb-6">
+              <div className="grid grid-cols-2 gap-3">
+                <div className={cn("p-4 rounded-xl", netProfitLoss >= 0 ? "bg-success/10" : "bg-destructive/10")}>
+                  {netProfitLoss >= 0 ? <TrendingUp className="w-5 h-5 text-success mb-2" /> : <TrendingDown className="w-5 h-5 text-destructive mb-2" />}
+                  <p className="text-xs text-muted-foreground">Net P/L</p>
+                  <p className={cn("text-xl font-bold", netProfitLoss >= 0 ? "text-success" : "text-destructive")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p>
+                </div>
+                <div className="p-4 bg-primary/10 rounded-xl">
+                  <Award className="w-5 h-5 text-primary mb-2" />
+                  <p className="text-xs text-muted-foreground">Win Rate</p>
+                  <p className="text-xl font-bold text-primary">{winRate.toFixed(0)}%</p>
+                  <p className="text-xs text-muted-foreground">{profitableInvestments}W / {lossInvestments}L</p>
+                </div>
+              </div>
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Settings Drawer */}
+        <Drawer open={showSettings} onOpenChange={setShowSettings}>
+          <DrawerContent>
+            <DrawerHeader>
+              <DrawerTitle>Account Settings</DrawerTitle>
+              <DrawerDescription>Manage your account</DrawerDescription>
+            </DrawerHeader>
+            <div className="px-4 pb-6 space-y-3">
+              <div className="p-4 bg-muted/50 rounded-xl">
+                <p className="text-sm font-medium mb-1">Email</p>
+                <p className="text-sm text-muted-foreground">{profile?.email}</p>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-xl">
+                <p className="text-sm font-medium mb-1">Name</p>
+                <p className="text-sm text-muted-foreground">{profile?.name}</p>
+              </div>
+              <button onClick={signOut} className="w-full p-4 flex items-center justify-center gap-2 text-destructive bg-destructive/10 rounded-xl font-medium hover:bg-destructive/20 transition-colors">
+                Sign Out
+              </button>
+            </div>
+          </DrawerContent>
+        </Drawer>
+
+        {/* Modals */}
+        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={handleDepositSuccess} initialAmount={depositAmount} />
+        <DepositWithdrawModal isOpen={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} type="withdraw" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
       </main>
       <BottomNav />
     </div>
