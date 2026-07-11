@@ -11,7 +11,7 @@ import { useTapEarn } from '@/hooks/useTapEarn';
 import { MineButton } from '@/components/mine/MineButton';
 import { AnimatedNumber } from '@/components/tap/AnimatedNumber';
 import {
-  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL,
+  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL, BASE_REWARD,
 } from '@/lib/tapEarn';
 import { sle } from '@/lib/currency';
 import { cn } from '@/lib/utils';
