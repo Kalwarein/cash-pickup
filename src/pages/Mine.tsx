@@ -11,7 +11,7 @@ import { useTapEarn } from '@/hooks/useTapEarn';
 import { MineButton } from '@/components/mine/MineButton';
 import { AnimatedNumber } from '@/components/tap/AnimatedNumber';
 import {
-  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL,
+  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL, BASE_REWARD,
 } from '@/lib/tapEarn';
 import { sle } from '@/lib/currency';
 import { cn } from '@/lib/utils';
@@ -47,9 +47,16 @@ const Mine = () => {
   const per = rewardPerTap(t.profile.leverage_level);
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
 
+  const balance = wallet?.balance ?? 0;
+  const canMine = balance >= 50;
+
   const handleTap = useCallback(() => {
+    if (!canMine) {
+      navigate('/wallet?deposit=1&amount=50');
+      return;
+    }
     t.tap();
-  }, [t]);
+  }, [t, canMine, navigate]);
 
   const openLeverage = useCallback(() => setLeverageOpen(true), []);
   const goHome = useCallback(() => navigate('/home'), [navigate]);
@@ -94,7 +101,11 @@ const Mine = () => {
           onTap={handleTap}
           rewardLabel={formatUnits(per, 7)}
           onLevelChange={setHeatLevel}
+          locked={!canMine}
+          onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
+
+        <StreakCard />
       </main>
 
       <div className="relative z-10 shrink-0"><BottomNav /></div>
@@ -135,7 +146,7 @@ const Header = memo(({ multiplier, onBack, onLeverage }: {
       </button>
       <div className="flex items-center gap-2">
         <Pickaxe className="w-4 h-4 text-amber-400" />
-        <h1 className="text-base font-display font-bold gold-text">Mine</h1>
+        <h1 className="text-base font-display font-bold gold-text">Earn</h1>
       </div>
       <button
         onClick={onLeverage}
@@ -192,8 +203,9 @@ BalanceHero.displayName = 'BalanceHero';
    ripple up into the rest of the tree. Also renders the fixed, full-screen
    heat-reactive glow (mounted here, painted over the whole viewport via
    position:fixed, but structurally isolated to this component). ─────────── */
-const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
+const TapArea = ({ onTap, rewardLabel, onLevelChange, locked, onUnlock }: {
   onTap: () => void; rewardLabel: string; onLevelChange: (l: HeatLevel) => void;
+  locked?: boolean; onUnlock?: () => void;
 }) => {
   const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
   const lastLevel = useRef<HeatLevel>('normal');
@@ -213,9 +225,76 @@ const TapArea = ({ onTap, rewardLabel, onLevelChange }: {
     <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
       <ComboBadge combo={heat.combo} level={heat.level} />
       <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
+      {locked && (
+        <button
+          onClick={onUnlock}
+          className="absolute inset-0 z-30 grid place-items-center rounded-2xl bg-background/70 backdrop-blur-sm"
+        >
+          <div className="flex flex-col items-center gap-3 px-6 text-center">
+            <div className="w-14 h-14 rounded-2xl grid place-items-center gold-surface text-black">
+              <Lock className="w-6 h-6" />
+            </div>
+            <p className="font-display font-bold text-base">Mining Locked</p>
+            <p className="text-xs text-muted-foreground max-w-[220px]">
+              Deposit or hold at least <span className="text-amber-400 font-bold">{sle(50)}</span> in your wallet to start mining.
+            </p>
+            <span className="mt-1 px-4 py-2 rounded-xl gold-surface text-black text-sm font-bold active:scale-95 transition-transform">
+              Deposit {sle(50)}
+            </span>
+          </div>
+        </button>
+      )}
     </div>
   );
 };
+
+/* ─────────── Daily streak with live liquid-wave fill ─────────── */
+const STREAK_KEY = 'mine_streak_v1';
+const StreakCard = memo(() => {
+  const [streak, setStreak] = useState(0);
+
+  useEffect(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let count = 1;
+    try {
+      const raw = localStorage.getItem(STREAK_KEY);
+      if (raw) {
+        const { last, count: c } = JSON.parse(raw) as { last: string; count: number };
+        if (last === today) count = c || 1;
+        else {
+          const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+          count = last === y ? (c || 0) + 1 : 1;
+        }
+      }
+      localStorage.setItem(STREAK_KEY, JSON.stringify({ last: today, count }));
+    } catch { /* noop */ }
+    setStreak(count);
+  }, []);
+
+  const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
+
+  return (
+    <section className="shrink-0 relative overflow-hidden rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float">
+      <div className="relative z-10 flex items-center justify-between">
+        <div>
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Daily Streak</p>
+          <p className="text-2xl font-display font-black gold-text flex items-center gap-1.5">
+            <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
+        </div>
+        <div className="mn-streak-orb">
+          <span className="mn-streak-liquid" style={{ ['--fill' as string]: `${pct}%` }}>
+            <span className="mn-streak-wave mn-streak-wave--a" />
+            <span className="mn-streak-wave mn-streak-wave--b" />
+          </span>
+          <span className="mn-streak-num">{streak % 7 || 7}/7</span>
+        </div>
+      </div>
+    </section>
+  );
+});
+StreakCard.displayName = 'StreakCard';
 
 /* ─────────── Combo badge — upgraded: tiered gradient, icon, and a light
    one-shot pop-in on every combo increment (transform/opacity only, no
@@ -269,7 +348,7 @@ const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
               {tier.mult}x Power
               {isActive && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-semibold">ACTIVE</span>}
             </p>
-            <p className="text-[11px] text-muted-foreground">{formatUnits(0.0000005 * tier.mult, 8)} / tap</p>
+            <p className="text-[11px] text-muted-foreground">{formatUnits(BASE_REWARD * tier.mult, 8)} / tap</p>
           </div>
         </div>
         <div className="text-right shrink-0">
@@ -315,6 +394,39 @@ const MineStyles = () => (
     }
     @media (prefers-reduced-motion: reduce) {
       .mn-combo-pop { animation: none; }
+    }
+
+    /* Streak liquid orb — GPU-cheap transform-only waves */
+    .mn-streak-orb {
+      position: relative; width: 64px; height: 64px; border-radius: 9999px;
+      overflow: hidden; display: grid; place-items: center;
+      background: hsla(38, 80%, 55%, 0.10);
+      border: 1px solid hsla(38, 80%, 55%, 0.35);
+    }
+    .mn-streak-liquid {
+      position: absolute; left: 0; right: 0; bottom: 0;
+      height: var(--fill, 50%);
+      transition: height 0.9s cubic-bezier(0.34,1.1,0.64,1);
+      background: linear-gradient(180deg, hsl(45 90% 58%), hsl(28 85% 48%));
+    }
+    .mn-streak-wave {
+      position: absolute; left: -50%; top: -14px; width: 200%; height: 28px;
+      border-radius: 45%;
+      background: hsla(0,0%,100%,0.35);
+      will-change: transform;
+    }
+    .mn-streak-wave--a { animation: mnWave 3.2s linear infinite; }
+    .mn-streak-wave--b { top: -18px; opacity: 0.5; animation: mnWave 4.6s linear infinite reverse; }
+    @keyframes mnWave {
+      0% { transform: translateX(0) rotate(0deg); }
+      100% { transform: translateX(25%) rotate(360deg); }
+    }
+    .mn-streak-num {
+      position: relative; z-index: 2; font-size: 12px; font-weight: 900;
+      color: rgba(0,0,0,0.7); text-shadow: 0 1px 2px hsla(0,0%,100%,0.3);
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .mn-streak-wave { animation: none; }
     }
   `}</style>
 );

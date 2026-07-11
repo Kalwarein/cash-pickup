@@ -5,20 +5,21 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
    Cash Miner economy — tapping + leverage only.
    Mirrored on the client in src/lib/tapEarn.ts (keep in sync).
 ──────────────────────────────────────────────────────────── */
-const BASE_REWARD = 0.0000005 // units per tap at 1x
+const BASE_REWARD = 0.00005 // units per tap at 1x
+const MIN_MINE_BALANCE = 50 // must have at least SLE 50 to mine
 
 // index === leverage_level - 1
 const LEVERAGE = [
   { level: 1, mult: 1, cost: 0 },
-  { level: 2, mult: 2, cost: 500 },
-  { level: 3, mult: 5, cost: 1500 },
-  { level: 4, mult: 10, cost: 4000 },
-  { level: 5, mult: 25, cost: 10000 },
-  { level: 6, mult: 50, cost: 25000 },
-  { level: 7, mult: 100, cost: 60000 },
-  { level: 8, mult: 250, cost: 150000 },
-  { level: 9, mult: 500, cost: 400000 },
-  { level: 10, mult: 1000, cost: 1000000 },
+  { level: 2, mult: 2, cost: 20 },
+  { level: 3, mult: 5, cost: 30 },
+  { level: 4, mult: 10, cost: 40 },
+  { level: 5, mult: 25, cost: 50 },
+  { level: 6, mult: 50, cost: 60 },
+  { level: 7, mult: 100, cost: 70 },
+  { level: 8, mult: 250, cost: 80 },
+  { level: 9, mult: 500, cost: 90 },
+  { level: 10, mult: 1000, cost: 100 },
 ]
 
 // Anti-cheat: max sustainable taps per second + a burst allowance
@@ -60,6 +61,12 @@ Deno.serve(async (req) => {
       const requested = Math.floor(Number(body.taps) || 0)
       if (requested <= 0) return json({ profile: shape(profile) })
       if (requested > 100000) return json({ error: 'Invalid tap batch' }, 400)
+
+      // Gate: must hold at least SLE 50 to mine
+      const { data: mineWallet } = await admin.from('wallets').select('balance').eq('user_id', userId).single()
+      if (!mineWallet || Number(mineWallet.balance) < MIN_MINE_BALANCE) {
+        return json({ error: 'Deposit at least SLE 50 to start mining.', profile: shape(profile) }, 403)
+      }
 
       // Anti-cheat: cap taps by elapsed time since last sync
       const now = Date.now()

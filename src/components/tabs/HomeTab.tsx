@@ -126,7 +126,7 @@ export const HomeTab = () => {
             <button className="cp-hdr-btn cp-hdr-btn--bell" onClick={() => setShowPromo(true)}>
               <Ticket className="cp-hdr-icon" />
             </button>
-            <button className="cp-hdr-btn" onClick={() => navigate('/mine')}>
+            <button className="cp-hdr-btn" onClick={() => navigate('/earn')}>
               <Pickaxe className="cp-hdr-icon" />
             </button>
             <ThemeToggle />
@@ -209,7 +209,7 @@ export const HomeTab = () => {
         {/* ════════════════════════════════════════════
             CASH MINER PROMO — tap-to-earn banner
         ════════════════════════════════════════════ */}
-        <button className="cp-earn-banner" onClick={() => navigate('/mine')}>
+        <button className="cp-earn-banner" onClick={() => navigate('/earn')}>
           <span className="cp-earn-shimmer" />
           <span className="cp-earn-orb" />
           <div className="cp-earn-icon-wrap">
@@ -217,10 +217,10 @@ export const HomeTab = () => {
           </div>
           <div className="cp-earn-copy">
             <p className="cp-earn-title">
-              Cash Miner <span className="cp-earn-badge">MINE NOW</span>
+              Cash Miner <span className="cp-earn-badge">EARN NOW</span>
             </p>
             <p className="cp-earn-sub">
-              Tap to mine coins & boost your leverage power
+              Tap to earn coins & boost your leverage power
             </p>
           </div>
           <ChevronRight className="w-4 h-4 cp-earn-chev" />
