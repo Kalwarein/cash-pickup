@@ -42,7 +42,7 @@ const App = () => (
               <Route path="/home" element={<RequireAuth><Home /></RequireAuth>} />
               <Route path="/invest" element={<RequireAuth><Invest /></RequireAuth>} />
               <Route path="/market" element={<RequireAuth><Market /></RequireAuth>} />
-              <Route path="/mine" element={<RequireAuth><Mine /></RequireAuth>} />
+              <Route path="/earn" element={<RequireAuth><Mine /></RequireAuth>} />
               <Route path="/wallet" element={<RequireAuth><WalletProfile /></RequireAuth>} />
               <Route path="/payments" element={<RequireAuth><Payments /></RequireAuth>} />
               {/* Legacy redirects */}
