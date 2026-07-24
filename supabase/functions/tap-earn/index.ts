@@ -5,8 +5,9 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
    Cash Miner economy — tapping + leverage only.
    Mirrored on the client in src/lib/tapEarn.ts (keep in sync).
 ──────────────────────────────────────────────────────────── */
-const BASE_REWARD = 0.00005 // units per tap at 1x
+const BASE_REWARD = 0.05 // units per tap at 1x (1 unit = 1 SLE)
 const MIN_MINE_BALANCE = 50 // must have at least SLE 50 to mine
+const MIN_TRANSFER_UNITS = 20.99 // must have >= 20.99 mined units to transfer
 
 // index === leverage_level - 1
 const LEVERAGE = [
@@ -126,6 +127,33 @@ Deno.serve(async (req) => {
 
       log('buy_leverage', userId, '->', targetLevel)
       return json({ profile: shape(profile) })
+    }
+
+    if (action === 'transfer_to_wallet') {
+      const requested = Number(body.amount)
+      const available = Number(profile.total_units || 0)
+      if (!isFinite(requested) || requested <= 0) return json({ error: 'Invalid amount' }, 400)
+      if (available < MIN_TRANSFER_UNITS) {
+        return json({ error: `You need at least ${MIN_TRANSFER_UNITS} mined units to transfer.` }, 400)
+      }
+      if (requested > available) return json({ error: 'Amount exceeds mined balance' }, 400)
+
+      const { data: wallet } = await admin.from('wallets').select('*').eq('user_id', userId).single()
+      if (!wallet) return json({ error: 'Wallet not found' }, 400)
+
+      const newBalance = Number(wallet.balance) + requested
+      await admin.from('wallets').update({ balance: newBalance }).eq('user_id', userId)
+      await admin.from('transactions').insert({
+        user_id: userId, type: 'earn_transfer', amount: requested,
+        description: `Transferred ${requested.toFixed(2)} mined units to wallet`,
+      })
+      const { data: updated } = await admin
+        .from('tap_profiles')
+        .update({ total_units: available - requested })
+        .eq('user_id', userId).select().single()
+      profile = updated
+      log('transfer_to_wallet', userId, requested)
+      return json({ profile: shape(profile), transferred: requested, new_balance: newBalance })
     }
 
     return json({ error: 'Unknown action' }, 400)
