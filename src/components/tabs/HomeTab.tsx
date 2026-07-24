@@ -275,7 +275,7 @@ export const HomeTab = () => {
                 <p className="cp-card-title">Active Investments</p>
                 <p className="cp-card-sub">{investments.length} open positions</p>
               </div>
-              <button className="cp-see-all" onClick={() => navigate('/wallet')}>
+              <button className="cp-see-all" onClick={() => navigate('/investments')}>
                 All <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>

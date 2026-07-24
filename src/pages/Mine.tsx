@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check,
+  ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check, MoreVertical, ArrowRightLeft,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { PageLoader } from '@/components/PageLoader';
@@ -18,6 +18,12 @@ import { cn } from '@/lib/utils';
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription,
 } from '@/components/ui/drawer';
+import { notify } from '@/lib/notify';
+import {
+  Popover, PopoverContent, PopoverTrigger,
+} from '@/components/ui/popover';
+
+const MIN_TRANSFER = 20.99;
 
 /* Heat → small badge/text accents only. No large-area color animation —
    that's what was costing frames on rapid taps. */
@@ -32,9 +38,11 @@ const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string }> = {
 const Mine = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
-  const { wallet } = useWallet();
+  const { wallet, refetch: refetchWallet } = useWallet();
   const t = useTapEarn();
   const [leverageOpen, setLeverageOpen] = useState(false);
+  const [transferOpen, setTransferOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   // Only the coarse heat *level* is lifted up — it changes rarely (a handful
   // of times per session), unlike combo/heat which change on every single
   // tap. This keeps Header/BalanceHero from re-rendering on every tap.
@@ -60,6 +68,10 @@ const Mine = () => {
 
   const openLeverage = useCallback(() => setLeverageOpen(true), []);
   const goHome = useCallback(() => navigate('/home'), [navigate]);
+  const openTransfer = useCallback(() => {
+    setMenuOpen(false);
+    setTransferOpen(true);
+  }, []);
 
   const unlock = useCallback((level: number, cost: number) => {
     localStorage.setItem('mine_pending_leverage', String(level));
@@ -83,7 +95,14 @@ const Mine = () => {
       {/* Static ambient base layer — pure CSS animation, no JS state, effectively free */}
       <div className="mn-ambient" />
 
-      <Header multiplier={leverageMult(t.profile.leverage_level)} onBack={goHome} onLeverage={openLeverage} />
+      <Header
+        multiplier={leverageMult(t.profile.leverage_level)}
+        onBack={goHome}
+        onLeverage={openLeverage}
+        menuOpen={menuOpen}
+        onMenuChange={setMenuOpen}
+        onTransfer={openTransfer}
+      />
 
       <main className="relative z-10 flex-1 min-h-0 max-w-lg w-full mx-auto px-4 pt-3 pb-3 flex flex-col gap-3 animate-fade-in">
         <BalanceHero
@@ -131,13 +150,38 @@ const Mine = () => {
           </div>
         </DrawerContent>
       </Drawer>
+
+      <TransferDrawer
+        open={transferOpen}
+        onOpenChange={setTransferOpen}
+        available={t.displayUnits}
+        onTransfer={async (amount) => {
+          const res = await t.transferToWallet(amount);
+          if (res.error) {
+            notify({ title: 'Transfer failed', body: res.error, tone: 'error' });
+            return false;
+          }
+          await refetchWallet();
+          notify({
+            title: 'Transfer successful',
+            body: `${sle(amount)} moved to your wallet.`,
+            tone: 'success',
+          });
+          return true;
+        }}
+      />
     </div>
   );
 };
 
 /* ─────────── Header (memoized — only re-renders when multiplier changes) ─────────── */
-const Header = memo(({ multiplier, onBack, onLeverage }: {
-  multiplier: number; onBack: () => void; onLeverage: () => void;
+const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, onTransfer }: {
+  multiplier: number;
+  onBack: () => void;
+  onLeverage: () => void;
+  menuOpen: boolean;
+  onMenuChange: (v: boolean) => void;
+  onTransfer: () => void;
 }) => (
   <header className="relative z-20 shrink-0 backdrop-blur-md bg-background/70 border-b border-border/50">
     <div className="max-w-lg mx-auto flex items-center justify-between px-4 h-12">
@@ -148,16 +192,134 @@ const Header = memo(({ multiplier, onBack, onLeverage }: {
         <Pickaxe className="w-4 h-4 text-amber-400" />
         <h1 className="text-base font-display font-bold gold-text">Earn</h1>
       </div>
-      <button
-        onClick={onLeverage}
-        className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
-      >
-        <Zap className="w-3.5 h-3.5" /> {multiplier}x
-      </button>
+      <div className="flex items-center gap-1.5">
+        <button
+          onClick={onLeverage}
+          className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
+        >
+          <Zap className="w-3.5 h-3.5" /> {multiplier}x
+        </button>
+        <Popover open={menuOpen} onOpenChange={onMenuChange}>
+          <PopoverTrigger asChild>
+            <button className="p-1.5 rounded-xl hover:bg-muted active:scale-90 transition-transform" aria-label="More options">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-52 p-1.5 bg-card/95 backdrop-blur-xl border-border/60 shadow-float">
+            <button
+              onClick={onTransfer}
+              className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted active:scale-[0.98] transition-all"
+            >
+              <ArrowRightLeft className="w-4 h-4 text-amber-400" />
+              Transfer to Wallet
+            </button>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   </header>
 ));
 Header.displayName = 'Header';
+
+/* ─────────── Transfer drawer ─────────── */
+const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  available: number;
+  onTransfer: (amount: number) => Promise<boolean>;
+}) => {
+  const [amount, setAmount] = useState('');
+  const [busy, setBusy] = useState(false);
+  const num = Number(amount);
+  const canTransfer = available >= MIN_TRANSFER && num >= MIN_TRANSFER && num <= available;
+
+  useEffect(() => {
+    if (!open) { setAmount(''); setBusy(false); }
+  }, [open]);
+
+  const submit = async () => {
+    if (!canTransfer || busy) return;
+    setBusy(true);
+    const ok = await onTransfer(Number(num.toFixed(2)));
+    setBusy(false);
+    if (ok) onOpenChange(false);
+  };
+
+  return (
+    <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
+      <DrawerContent className="max-h-[90dvh]">
+        <DrawerHeader className="text-left">
+          <DrawerTitle className="flex items-center gap-2">
+            <ArrowRightLeft className="w-5 h-5 text-amber-400" /> Transfer to Wallet
+          </DrawerTitle>
+          <DrawerDescription>
+            Move your mined balance into your main wallet as SLE. Minimum transfer is {sle(MIN_TRANSFER)}.
+          </DrawerDescription>
+        </DrawerHeader>
+        <div className="px-4 pb-8 space-y-4">
+          <div className="rounded-2xl p-4 gold-border bg-amber-500/5">
+            <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Available to transfer</p>
+            <p className="text-2xl font-display font-black gold-text tabular-nums">{formatUnits(available, 5)}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">1 unit = SLE 1.00</p>
+          </div>
+
+          {available < MIN_TRANSFER ? (
+            <div className="rounded-xl p-3 bg-destructive/10 border border-destructive/30 text-xs text-destructive">
+              You need at least <span className="font-bold">{formatUnits(MIN_TRANSFER, 2)}</span> mined units to transfer.
+              Keep mining!
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="text-[11px] uppercase tracking-widest text-muted-foreground font-semibold">
+                  Amount (SLE)
+                </label>
+                <div className="mt-1 flex items-center gap-2">
+                  <input
+                    type="number"
+                    inputMode="decimal"
+                    step="0.01"
+                    min={MIN_TRANSFER}
+                    max={available}
+                    value={amount}
+                    onChange={(e) => setAmount(e.target.value)}
+                    placeholder={`Min ${MIN_TRANSFER.toFixed(2)}`}
+                    className="flex-1 h-12 px-4 rounded-xl bg-muted/40 border border-border/60 text-lg font-bold tabular-nums outline-none focus:border-amber-400 transition-colors"
+                  />
+                  <button
+                    onClick={() => setAmount(available.toFixed(2))}
+                    className="h-12 px-3 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
+                  >
+                    MAX
+                  </button>
+                </div>
+                {num > 0 && num < MIN_TRANSFER && (
+                  <p className="mt-1.5 text-[11px] text-destructive">Minimum is {MIN_TRANSFER.toFixed(2)}.</p>
+                )}
+                {num > available && (
+                  <p className="mt-1.5 text-[11px] text-destructive">Exceeds available balance.</p>
+                )}
+              </div>
+
+              <button
+                onClick={submit}
+                disabled={!canTransfer || busy}
+                className={cn(
+                  'w-full h-12 rounded-xl font-bold text-sm transition-all',
+                  canTransfer && !busy
+                    ? 'gold-surface text-black active:scale-[0.98] shadow-float'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed',
+                )}
+              >
+                {busy ? 'Transferring…' : `Transfer ${num > 0 ? sle(num) : ''}`}
+              </button>
+            </>
+          )}
+        </div>
+      </DrawerContent>
+    </Drawer>
+  );
+};
 
 /* ─────────── Balance hero (memoized — re-renders only when its own props change) ─────────── */
 const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct }: {
