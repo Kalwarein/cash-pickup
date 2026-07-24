@@ -4,7 +4,7 @@
  * The server is always authoritative for actual balances.
  */
 
-export const BASE_REWARD = 0.00005; // units per tap at 1x
+export const BASE_REWARD = 0.05; // units per tap at 1x (1 unit = 1 SLE)
 export const UNIT_TARGET = Math.round(1 / BASE_REWARD); // ≈ 2,000,000 taps / unit
 
 export interface LeverageTier {
@@ -70,7 +70,7 @@ export const HEAT_LABEL: Record<HeatLevel, string> = {
 };
 
 /** Format a unit balance like a crypto balance (many decimals). */
-export function formatUnits(value: number, decimals = 8): string {
+export function formatUnits(value: number, decimals = 5): string {
   if (!isFinite(value)) return (0).toFixed(decimals);
   return value.toLocaleString('en-US', {
     minimumFractionDigits: decimals,
