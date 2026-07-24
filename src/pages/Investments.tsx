@@ -148,7 +148,10 @@ const Investments = () => {
                       <InvestmentProgressBar
                         createdAt={inv.created_at}
                         maturityDate={inv.maturity_date}
-                        isMatured={inv.is_matured}
+                        maturityDays={inv.maturity_days}
+                        companyName={inv.company_name || 'Company'}
+                        amount={inv.amount}
+                        showDetails={false}
                       />
                     </div>
                   )}
