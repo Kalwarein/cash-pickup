@@ -122,6 +122,18 @@ export function useTapEarn() {
     return { error: null, unlocked: res?.unlocked };
   }, [flush, applyProfile]);
 
+  const transferToWallet = useCallback(async (amount: number) => {
+    await flush();
+    const { data, error } = await supabase.functions.invoke('tap-earn', {
+      body: { action: 'transfer_to_wallet', amount },
+    });
+    if (error) return { error: 'Transfer failed' };
+    const res = data as SyncResult & { error?: string; transferred?: number; new_balance?: number };
+    if (res?.error) return { error: res.error };
+    if (res?.profile) applyProfile(res.profile);
+    return { error: null, transferred: res?.transferred, new_balance: res?.new_balance };
+  }, [flush, applyProfile]);
+
   useEffect(() => { load(); }, [load]);
 
   // Online / offline handling
@@ -151,6 +163,6 @@ export function useTapEarn() {
     profile, loading, syncing, online,
     displayUnits, displayTaps, displayTodayTaps, displayTodayUnits,
     pending: pendingRef.current,
-    tap, buyLeverage, refetch: load, flush,
+    tap, buyLeverage, transferToWallet, refetch: load, flush,
   };
 }
