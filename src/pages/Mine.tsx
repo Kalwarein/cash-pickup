@@ -158,14 +158,14 @@ const Mine = () => {
         onTransfer={async (amount) => {
           const res = await t.transferToWallet(amount);
           if (res.error) {
-            notify({ title: 'Transfer failed', description: res.error, variant: 'error' });
+            notify({ title: 'Transfer failed', body: res.error, tone: 'error' });
             return false;
           }
           await refetchWallet();
           notify({
             title: 'Transfer successful',
-            description: `${sle(amount)} moved to your wallet.`,
-            variant: 'success',
+            body: `${sle(amount)} moved to your wallet.`,
+            tone: 'success',
           });
           return true;
         }}
