@@ -102,6 +102,7 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
         <span className="irb-body" aria-hidden>
           <span className="irb-film" />
           <span className="irb-film irb-film--b" />
+          <span className="irb-shade" />
           <span className="irb-core" />
           <span className="irb-rim" />
           <span className="irb-spec" />
@@ -130,8 +131,8 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           border-radius: 50%;
           background: conic-gradient(from 0deg,
             #00e0ff, #6a3cff, #ff2fd0, #ff3b1f, #ffd60a, #35ff9e, #00e0ff);
-          filter: blur(30px);
-          opacity: calc(0.30 + var(--i) * 0.55);
+          filter: blur(34px);
+          opacity: calc(0.16 + var(--i) * 0.34);
           transform: translateZ(0);
           animation: irbSpin 12s linear infinite, irbBreath 5.5s ease-in-out infinite;
           animation-duration: calc(12s / (0.7 + var(--i) * 1.6)), 5.5s;
@@ -152,28 +153,38 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
             0 18px 50px rgba(0,0,0,0.5);
           will-change: transform, border-radius;
         }
+        /* Darkens the middle so the iridescence reads as a thin refracting
+           film over a deep translucent body — the look from the reference. */
+        .irb-shade {
+          position: absolute; inset: -2%;
+          background:
+            radial-gradient(circle at 46% 42%, rgba(4,2,8,0.86) 0%, rgba(6,2,10,0.72) 34%,
+              rgba(90,10,26,0.34) 58%, rgba(0,0,0,0) 78%),
+            radial-gradient(circle at 62% 74%, rgba(120,12,20,0.32), transparent 55%);
+        }
         .irb-core {
           position: absolute; inset: 0;
-          background: radial-gradient(circle at 38% 30%,
-            rgba(255,255,255,0.55) 0%, rgba(255,190,60,0.25) 22%,
-            rgba(150,20,40,0.55) 55%, rgba(10,4,16,0.9) 100%);
-          mix-blend-mode: overlay;
+          background: radial-gradient(circle at 36% 28%,
+            rgba(255,255,255,0.42) 0%, rgba(255,190,60,0.16) 20%, transparent 46%);
+          mix-blend-mode: screen;
         }
         .irb-film {
-          position: absolute; inset: -18%;
+          position: absolute; inset: -20%;
           background: conic-gradient(from 20deg,
             #00e5ff, #1e5cff, #b026ff, #ff1fa8, #ff3a12, #ffdd00, #57ff8f, #00e5ff);
-          filter: blur(10px) saturate(calc(1.1 + var(--i) * 0.9));
-          opacity: calc(0.72 + var(--i) * 0.28);
+          filter: blur(26px) saturate(calc(1.2 + var(--i) * 0.8));
+          opacity: calc(0.85 + var(--i) * 0.15);
           animation: irbSwirl 9s linear infinite;
           animation-duration: calc(9s / (0.7 + var(--i) * 1.8));
           will-change: transform;
         }
         .irb-film--b {
-          inset: -26%;
-          filter: blur(20px);
+          inset: -34%;
+          background: conic-gradient(from 200deg,
+            #ff2fb0, #ffe23a, #35ff9e, #00d0ff, #7a3cff, #ff2fb0);
+          filter: blur(40px);
           mix-blend-mode: color-dodge;
-          opacity: calc(0.28 + var(--i) * 0.4);
+          opacity: calc(0.22 + var(--i) * 0.3);
           animation-direction: reverse;
         }
         /* Thin refracting rim — the bright cyan/magenta edge from the reference */
@@ -181,9 +192,10 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           position: absolute; inset: 0; border-radius: inherit;
           background: conic-gradient(from 120deg,
             #00f0ff, #2b6bff, #c02bff, #ff2fb0, #ff5a19, #ffe23a, #00f0ff);
-          -webkit-mask: radial-gradient(circle at 50% 50%, transparent 66%, #000 76%, #000 96%, transparent 100%);
-          mask: radial-gradient(circle at 50% 50%, transparent 66%, #000 76%, #000 96%, transparent 100%);
-          opacity: calc(0.75 + var(--i) * 0.25);
+          filter: blur(1.5px) saturate(1.6);
+          -webkit-mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
+          mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
+          opacity: calc(0.85 + var(--i) * 0.15);
           animation: irbSpin 7s linear infinite reverse;
           animation-duration: calc(7s / (0.7 + var(--i) * 1.5));
         }
