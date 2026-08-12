@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, memo } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check, MoreVertical, ArrowRightLeft,
@@ -11,7 +11,8 @@ import { useTapEarn } from '@/hooks/useTapEarn';
 import { MineButton } from '@/components/mine/MineButton';
 import { AnimatedNumber } from '@/components/tap/AnimatedNumber';
 import {
-  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL, BASE_REWARD,
+  LEVERAGE, rewardPerTap, leverageMult, formatUnits, BASE_REWARD,
+  streakProgress, tapIntensity,
 } from '@/lib/tapEarn';
 import { sle } from '@/lib/currency';
 import { cn } from '@/lib/utils';
@@ -25,16 +26,6 @@ import {
 
 const MIN_TRANSFER = 20.99;
 
-/* Heat → small badge/text accents only. No large-area color animation —
-   that's what was costing frames on rapid taps. */
-const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string }> = {
-  normal:     { text: 'text-sky-400',    dot: 'bg-sky-400' },
-  warm:       { text: 'text-amber-400',  dot: 'bg-amber-400' },
-  hot:        { text: 'text-orange-400', dot: 'bg-orange-400' },
-  'very-hot': { text: 'text-red-400',    dot: 'bg-red-400' },
-  max:        { text: 'text-red-500',    dot: 'bg-red-500' },
-};
-
 const Mine = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -43,10 +34,6 @@ const Mine = () => {
   const [leverageOpen, setLeverageOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Only the coarse heat *level* is lifted up — it changes rarely (a handful
-  // of times per session), unlike combo/heat which change on every single
-  // tap. This keeps Header/BalanceHero from re-rendering on every tap.
-  const [heatLevel, setHeatLevel] = useState<HeatLevel>('normal');
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -54,6 +41,8 @@ const Mine = () => {
 
   const per = rewardPerTap(t.profile.leverage_level);
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
+  const streakInfo = streakProgress(t.streak);
+  const intensity = tapIntensity(t.streak);
 
   const balance = wallet?.balance ?? 0;
   const canMine = balance >= 50;
@@ -108,18 +97,18 @@ const Mine = () => {
         <BalanceHero
           displayUnits={t.displayUnits}
           walletBalance={wallet?.balance ?? 0}
-          heatLevel={heatLevel}
           progressPct={progressPct}
+          multiplier={streakInfo.mult}
         />
 
-        {/* Tap zone owns its own heat state — its re-renders never touch
-            Header or BalanceHero, and it drives the fixed full-screen glow
-            layer itself, so the "page background reacting to your taps"
-            effect stays isolated to this subtree. */}
         <TapArea
           onTap={handleTap}
-          rewardLabel={formatUnits(per, 7)}
-          onLevelChange={setHeatLevel}
+          rewardLabel={formatUnits(per, 8)}
+          streak={t.streak}
+          multiplier={streakInfo.mult}
+          nextAt={streakInfo.next}
+          stepPct={streakInfo.pct}
+          intensity={intensity}
           locked={!canMine}
           onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
@@ -321,26 +310,28 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
   );
 };
 
-/* ─────────── Balance hero (memoized — re-renders only when its own props change) ─────────── */
-const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct }: {
-  displayUnits: number; walletBalance: number; heatLevel: HeatLevel; progressPct: number;
+/* ─────────── Balance hero — luxury glass panel with iridescent edge ─────────── */
+const BalanceHero = memo(({ displayUnits, walletBalance, progressPct, multiplier }: {
+  displayUnits: number; walletBalance: number; progressPct: number; multiplier: number;
 }) => {
-  const heatStyle = HEAT_STYLE[heatLevel];
   return (
-    <section className="shrink-0 rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float text-center">
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
+    <section className="mn-hero shrink-0 rounded-3xl p-4 text-center">
+      <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Total Units Mined</p>
       <AnimatedNumber
         value={displayUnits}
-        decimals={8}
+        decimals={9}
         duration={280}
-        className="block text-[27px] leading-tight font-display font-black tabular-nums gold-text"
+        className="block text-[26px] leading-tight font-display font-black tabular-nums mn-iri-text"
       />
-      <div className="mt-2 flex items-center justify-center gap-4 text-xs">
-        <span className="flex items-center gap-1 text-muted-foreground">
+      <div className="mt-2 flex items-center justify-center gap-3 text-xs">
+        <span className="flex items-center gap-1 text-muted-foreground tabular-nums">
           <Wallet className="w-3.5 h-3.5" /> {sle(walletBalance)}
         </span>
-        <span className={cn('flex items-center gap-1 font-semibold', heatStyle.text)}>
-          <span className={cn('w-2 h-2 rounded-full', heatStyle.dot)} /> {HEAT_LABEL[heatLevel]}
+        <span className={cn(
+          'flex items-center gap-1 font-black px-2 py-0.5 rounded-full text-[11px]',
+          multiplier > 1 ? 'mn-mult-chip' : 'bg-muted/50 text-muted-foreground',
+        )}>
+          <Zap className="w-3 h-3" /> ×{multiplier}
         </span>
       </div>
       <div className="mt-3 text-left">
@@ -348,10 +339,10 @@ const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct 
           <span>Progress to next unit</span>
           <span className="tabular-nums">{progressPct.toFixed(2)}%</span>
         </div>
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
           {/* transform (not width) — GPU-composited, buttery even at high tap rates */}
           <div
-            className="h-full w-full origin-left gold-surface"
+            className="h-full w-full origin-left mn-iri-bar"
             style={{ transform: `scaleX(${progressPct / 100})`, transition: 'transform 0.25s ease-out' }}
           />
         </div>
@@ -361,32 +352,16 @@ const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct 
 });
 BalanceHero.displayName = 'BalanceHero';
 
-/* ─────────── Tap zone: owns heat/combo state locally so rapid taps never
-   ripple up into the rest of the tree. Also renders the fixed, full-screen
-   heat-reactive glow (mounted here, painted over the whole viewport via
-   position:fixed, but structurally isolated to this component). ─────────── */
-const TapArea = ({ onTap, rewardLabel, onLevelChange, locked, onUnlock }: {
-  onTap: () => void; rewardLabel: string; onLevelChange: (l: HeatLevel) => void;
+/* ─────────── Tap zone ─────────── */
+const TapArea = ({ onTap, rewardLabel, streak, multiplier, nextAt, stepPct, intensity, locked, onUnlock }: {
+  onTap: () => void; rewardLabel: string; streak: number; multiplier: number;
+  nextAt: number; stepPct: number; intensity: number;
   locked?: boolean; onUnlock?: () => void;
 }) => {
-  const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
-  const lastLevel = useRef<HeatLevel>('normal');
-
-  const handleState = useCallback((s: { heat: number; level: HeatLevel; combo: number }) => {
-    setHeat((prev) => {
-      if (prev.combo === s.combo && prev.level === s.level) return prev;
-      return s;
-    });
-    if (s.level !== lastLevel.current) {
-      lastLevel.current = s.level;
-      onLevelChange(s.level);
-    }
-  }, [onLevelChange]);
-
   return (
     <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
-      <ComboBadge combo={heat.combo} level={heat.level} />
-      <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
+      <StreakMeter streak={streak} multiplier={multiplier} nextAt={nextAt} stepPct={stepPct} />
+      <MineButton onTap={onTap} rewardLabel={rewardLabel} intensity={intensity} multiplier={multiplier} />
       {locked && (
         <button
           onClick={onUnlock}
@@ -436,11 +411,11 @@ const StreakCard = memo(() => {
   const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
 
   return (
-    <section className="shrink-0 relative overflow-hidden rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float">
+    <section className="mn-hero shrink-0 relative overflow-hidden rounded-3xl p-4">
       <div className="relative z-10 flex items-center justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Daily Streak</p>
-          <p className="text-2xl font-display font-black gold-text flex items-center gap-1.5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Daily Streak</p>
+          <p className="text-2xl font-display font-black mn-iri-text flex items-center gap-1.5">
             <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
@@ -458,32 +433,36 @@ const StreakCard = memo(() => {
 });
 StreakCard.displayName = 'StreakCard';
 
-/* ─────────── Combo badge — upgraded: tiered gradient, icon, and a light
-   one-shot pop-in on every combo increment (transform/opacity only, no
-   layout or paint-heavy work, and it unmounts entirely below combo 5 so it
-   costs nothing at rest). ─────────── */
-const COMBO_STYLE: Record<HeatLevel, string> = {
-  normal: 'bg-amber-400/15 text-amber-400 border border-amber-400/30',
-  warm: 'bg-amber-400/20 text-amber-300 border border-amber-400/40',
-  hot: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-transparent',
-  'very-hot': 'bg-gradient-to-r from-orange-500 to-red-500 text-white border border-transparent',
-  max: 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 text-white border border-transparent',
-};
-const ComboBadge = memo(({ combo, level }: { combo: number; level: HeatLevel }) => {
-  if (combo < 5) return null;
+/* ─────────── Continuous-tap streak meter — sits above the orb.
+   Only the streak count + a transform-driven bar change per tap, so this
+   stays a single composited update no matter how fast you go. ─────────── */
+const StreakMeter = memo(({ streak, multiplier, nextAt, stepPct }: {
+  streak: number; multiplier: number; nextAt: number; stepPct: number;
+}) => {
+  if (streak < 3) return null;
   return (
-    <span
-      key={combo}
-      className={cn(
-        'absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wide shadow-lg mn-combo-pop',
-        COMBO_STYLE[level],
-      )}
-    >
-      <Flame className="w-3.5 h-3.5" /> x{combo}
-    </span>
+    <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 w-[230px] text-center">
+      <div className="flex items-center justify-center gap-2">
+        <span key={multiplier} className="mn-mult-chip mn-combo-pop-static px-3 py-1 rounded-full text-[13px] font-black tabular-nums">
+          ×{multiplier}
+        </span>
+        <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground tabular-nums">
+          <Flame className="w-3.5 h-3.5 text-orange-400" /> {streak} streak
+        </span>
+      </div>
+      <div className="mt-1.5 h-1 rounded-full bg-muted/60 overflow-hidden">
+        <div
+          className="h-full w-full origin-left mn-iri-bar"
+          style={{ transform: `scaleX(${stepPct})`, transition: 'transform 0.18s linear' }}
+        />
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+        {Math.max(0, nextAt - streak)} more taps to ×{multiplier + 1}
+      </p>
+    </div>
   );
 });
-ComboBadge.displayName = 'ComboBadge';
+StreakMeter.displayName = 'StreakMeter';
 
 /* ─────────── Leverage list item ─────────── */
 const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
@@ -544,32 +523,63 @@ const MineStyles = () => (
     .mn-ambient {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(circle at 18% 12%, hsla(217, 70%, 55%, 0.10) 0%, transparent 50%),
-        radial-gradient(circle at 85% 88%, hsla(38, 80%, 55%, 0.07) 0%, transparent 55%),
+        radial-gradient(circle at 20% 10%, hsla(190, 100%, 55%, 0.10) 0%, transparent 52%),
+        radial-gradient(circle at 82% 26%, hsla(285, 100%, 62%, 0.09) 0%, transparent 50%),
+        radial-gradient(circle at 50% 96%, hsla(38, 100%, 58%, 0.07) 0%, transparent 55%),
         hsl(var(--background));
     }
     .mn-tap-zone { contain: layout paint; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
-    .mn-combo-pop { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
+
+    /* Luxury glass hero with a slow iridescent edge */
+    .mn-hero {
+      position: relative;
+      background: linear-gradient(160deg, hsla(0,0%,100%,0.06), hsla(0,0%,100%,0.015));
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 18px 50px -18px rgba(0,0,0,0.65), inset 0 1px 0 hsla(0,0%,100%,0.12);
+    }
+    .mn-hero::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(115deg, #00e5ff, #b026ff 35%, #ff2fa8 60%, #ffd60a);
+      opacity: 0.5;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+    .mn-iri-text {
+      background: linear-gradient(100deg, #8ef4ff, #ffffff 30%, #ffd9f6 55%, #ffe79a);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .mn-iri-bar {
+      background: linear-gradient(90deg, #00e5ff, #b026ff 40%, #ff2fa8 70%, #ffd60a);
+    }
+    .mn-mult-chip {
+      background: linear-gradient(120deg, rgba(0,229,255,0.9), rgba(176,38,255,0.9) 50%, rgba(255,214,10,0.9));
+      color: #fff;
+      box-shadow: 0 4px 14px -4px rgba(176,38,255,0.6), inset 0 1px 0 hsla(0,0%,100%,0.4);
+    }
+    .mn-combo-pop-static { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
     @keyframes mnComboPop {
-      0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
-      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .mn-combo-pop { animation: none; }
+      .mn-combo-pop-static { animation: none; }
     }
 
     /* Streak liquid orb — GPU-cheap transform-only waves */
     .mn-streak-orb {
       position: relative; width: 64px; height: 64px; border-radius: 9999px;
       overflow: hidden; display: grid; place-items: center;
-      background: hsla(38, 80%, 55%, 0.10);
-      border: 1px solid hsla(38, 80%, 55%, 0.35);
+      background: hsla(190, 90%, 55%, 0.10);
+      border: 1px solid hsla(285, 90%, 65%, 0.35);
     }
     .mn-streak-liquid {
       position: absolute; left: 0; right: 0; bottom: 0;
       height: var(--fill, 50%);
       transition: height 0.9s cubic-bezier(0.34,1.1,0.64,1);
-      background: linear-gradient(180deg, hsl(45 90% 58%), hsl(28 85% 48%));
+      background: linear-gradient(180deg, #00e5ff, #b026ff 55%, #ff2fa8);
     }
     .mn-streak-wave {
       position: absolute; left: -50%; top: -14px; width: 200%; height: 28px;
