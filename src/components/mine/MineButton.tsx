@@ -192,10 +192,12 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           position: absolute; inset: 0; border-radius: inherit;
           background: conic-gradient(from 120deg,
             #00f0ff, #2b6bff, #c02bff, #ff2fb0, #ff5a19, #ffe23a, #00f0ff);
-          filter: blur(1.5px) saturate(1.6);
+          filter: blur(1px) saturate(2) brightness(1.35)
+                  drop-shadow(0 0 10px rgba(0,229,255,0.45));
           -webkit-mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
           mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
-          opacity: calc(0.85 + var(--i) * 0.15);
+          opacity: 1;
+          mix-blend-mode: screen;
           animation: irbSpin 7s linear infinite reverse;
           animation-duration: calc(7s / (0.7 + var(--i) * 1.5));
         }
