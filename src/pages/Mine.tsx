@@ -523,32 +523,63 @@ const MineStyles = () => (
     .mn-ambient {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(circle at 18% 12%, hsla(217, 70%, 55%, 0.10) 0%, transparent 50%),
-        radial-gradient(circle at 85% 88%, hsla(38, 80%, 55%, 0.07) 0%, transparent 55%),
+        radial-gradient(circle at 20% 10%, hsla(190, 100%, 55%, 0.10) 0%, transparent 52%),
+        radial-gradient(circle at 82% 26%, hsla(285, 100%, 62%, 0.09) 0%, transparent 50%),
+        radial-gradient(circle at 50% 96%, hsla(38, 100%, 58%, 0.07) 0%, transparent 55%),
         hsl(var(--background));
     }
     .mn-tap-zone { contain: layout paint; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
-    .mn-combo-pop { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
+
+    /* Luxury glass hero with a slow iridescent edge */
+    .mn-hero {
+      position: relative;
+      background: linear-gradient(160deg, hsla(0,0%,100%,0.06), hsla(0,0%,100%,0.015));
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 18px 50px -18px rgba(0,0,0,0.65), inset 0 1px 0 hsla(0,0%,100%,0.12);
+    }
+    .mn-hero::before {
+      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
+      background: linear-gradient(115deg, #00e5ff, #b026ff 35%, #ff2fa8 60%, #ffd60a);
+      opacity: 0.5;
+      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+      -webkit-mask-composite: xor; mask-composite: exclude;
+      pointer-events: none;
+    }
+    .mn-iri-text {
+      background: linear-gradient(100deg, #8ef4ff, #ffffff 30%, #ffd9f6 55%, #ffe79a);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .mn-iri-bar {
+      background: linear-gradient(90deg, #00e5ff, #b026ff 40%, #ff2fa8 70%, #ffd60a);
+    }
+    .mn-mult-chip {
+      background: linear-gradient(120deg, rgba(0,229,255,0.9), rgba(176,38,255,0.9) 50%, rgba(255,214,10,0.9));
+      color: #fff;
+      box-shadow: 0 4px 14px -4px rgba(176,38,255,0.6), inset 0 1px 0 hsla(0,0%,100%,0.4);
+    }
+    .mn-combo-pop-static { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
     @keyframes mnComboPop {
-      0% { transform: translateX(-50%) scale(0.6); opacity: 0; }
-      100% { transform: translateX(-50%) scale(1); opacity: 1; }
+      0% { transform: scale(0.7); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
-      .mn-combo-pop { animation: none; }
+      .mn-combo-pop-static { animation: none; }
     }
 
     /* Streak liquid orb — GPU-cheap transform-only waves */
     .mn-streak-orb {
       position: relative; width: 64px; height: 64px; border-radius: 9999px;
       overflow: hidden; display: grid; place-items: center;
-      background: hsla(38, 80%, 55%, 0.10);
-      border: 1px solid hsla(38, 80%, 55%, 0.35);
+      background: hsla(190, 90%, 55%, 0.10);
+      border: 1px solid hsla(285, 90%, 65%, 0.35);
     }
     .mn-streak-liquid {
       position: absolute; left: 0; right: 0; bottom: 0;
       height: var(--fill, 50%);
       transition: height 0.9s cubic-bezier(0.34,1.1,0.64,1);
-      background: linear-gradient(180deg, hsl(45 90% 58%), hsl(28 85% 48%));
+      background: linear-gradient(180deg, #00e5ff, #b026ff 55%, #ff2fa8);
     }
     .mn-streak-wave {
       position: absolute; left: -50%; top: -14px; width: 200%; height: 28px;
