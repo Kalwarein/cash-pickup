@@ -433,32 +433,36 @@ const StreakCard = memo(() => {
 });
 StreakCard.displayName = 'StreakCard';
 
-/* ─────────── Combo badge — upgraded: tiered gradient, icon, and a light
-   one-shot pop-in on every combo increment (transform/opacity only, no
-   layout or paint-heavy work, and it unmounts entirely below combo 5 so it
-   costs nothing at rest). ─────────── */
-const COMBO_STYLE: Record<HeatLevel, string> = {
-  normal: 'bg-amber-400/15 text-amber-400 border border-amber-400/30',
-  warm: 'bg-amber-400/20 text-amber-300 border border-amber-400/40',
-  hot: 'bg-gradient-to-r from-amber-500 to-orange-500 text-white border border-transparent',
-  'very-hot': 'bg-gradient-to-r from-orange-500 to-red-500 text-white border border-transparent',
-  max: 'bg-gradient-to-r from-red-500 via-orange-500 to-amber-400 text-white border border-transparent',
-};
-const ComboBadge = memo(({ combo, level }: { combo: number; level: HeatLevel }) => {
-  if (combo < 5) return null;
+/* ─────────── Continuous-tap streak meter — sits above the orb.
+   Only the streak count + a transform-driven bar change per tap, so this
+   stays a single composited update no matter how fast you go. ─────────── */
+const StreakMeter = memo(({ streak, multiplier, nextAt, stepPct }: {
+  streak: number; multiplier: number; nextAt: number; stepPct: number;
+}) => {
+  if (streak < 3) return null;
   return (
-    <span
-      key={combo}
-      className={cn(
-        'absolute top-1 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-black uppercase tracking-wide shadow-lg mn-combo-pop',
-        COMBO_STYLE[level],
-      )}
-    >
-      <Flame className="w-3.5 h-3.5" /> x{combo}
-    </span>
+    <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 w-[230px] text-center">
+      <div className="flex items-center justify-center gap-2">
+        <span key={multiplier} className="mn-mult-chip mn-combo-pop-static px-3 py-1 rounded-full text-[13px] font-black tabular-nums">
+          ×{multiplier}
+        </span>
+        <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground tabular-nums">
+          <Flame className="w-3.5 h-3.5 text-orange-400" /> {streak} streak
+        </span>
+      </div>
+      <div className="mt-1.5 h-1 rounded-full bg-muted/60 overflow-hidden">
+        <div
+          className="h-full w-full origin-left mn-iri-bar"
+          style={{ transform: `scaleX(${stepPct})`, transition: 'transform 0.18s linear' }}
+        />
+      </div>
+      <p className="mt-1 text-[10px] text-muted-foreground tabular-nums">
+        {Math.max(0, nextAt - streak)} more taps to ×{multiplier + 1}
+      </p>
+    </div>
   );
 });
-ComboBadge.displayName = 'ComboBadge';
+StreakMeter.displayName = 'StreakMeter';
 
 /* ─────────── Leverage list item ─────────── */
 const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
