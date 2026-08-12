@@ -5,9 +5,10 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors'
    Cash Miner economy — tapping + leverage only.
    Mirrored on the client in src/lib/tapEarn.ts (keep in sync).
 ──────────────────────────────────────────────────────────── */
-const BASE_REWARD = 0.05 // units per tap at 1x (1 unit = 1 SLE)
+const BASE_REWARD = 0.005 // units per tap at 1x (1 unit = 1 SLE)
 const MIN_MINE_BALANCE = 50 // must have at least SLE 50 to mine
 const MIN_TRANSFER_UNITS = 20.99 // must have >= 20.99 mined units to transfer
+const STREAK_MULT_MAX = 12 // hard cap on the continuous-tap streak multiplier
 
 // index === leverage_level - 1
 const LEVERAGE = [
@@ -77,7 +78,13 @@ Deno.serve(async (req) => {
       const counted = Math.min(requested, allowed)
 
       const mult = LEVERAGE[(profile.leverage_level || 1) - 1]?.mult ?? 1
-      const earned = counted * BASE_REWARD * mult
+      // Client reports the summed streak multiplier for the batch ("weighted").
+      // Clamp it to [counted, counted * STREAK_MULT_MAX] so it can never be forged.
+      const rawWeighted = Number(body.weighted)
+      const weighted = isFinite(rawWeighted) && rawWeighted > 0
+        ? Math.min(counted * STREAK_MULT_MAX, Math.max(counted, (rawWeighted / requested) * counted))
+        : counted
+      const earned = weighted * BASE_REWARD * mult
 
       const today = new Date().toISOString().slice(0, 10)
       const isNewDay = profile.today_date !== today
