@@ -2,11 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  TapProfile, emptyProfile, rewardPerTap,
+  TapProfile, emptyProfile, rewardPerTap, streakMultiplier,
 } from '@/lib/tapEarn';
 
 const PENDING_KEY = 'tap_pending_v1';
+const PENDING_W_KEY = 'tap_pending_w_v1';
 const SYNC_INTERVAL = 1200; // ms between server syncs while tapping
+const STREAK_GAP = 900; // ms without a tap before the continuous streak resets
 
 interface SyncResult {
   profile: TapProfile;
@@ -19,6 +21,13 @@ function readPending(): number {
 }
 function writePending(n: number) {
   try { localStorage.setItem(PENDING_KEY, String(Math.max(0, n))); } catch { /* ignore */ }
+}
+function readWeighted(): number {
+  try { return Math.max(0, parseFloat(localStorage.getItem(PENDING_W_KEY) || '0')) || 0; }
+  catch { return 0; }
+}
+function writeWeighted(n: number) {
+  try { localStorage.setItem(PENDING_W_KEY, String(Math.max(0, n))); } catch { /* ignore */ }
 }
 
 export function useTapEarn() {
@@ -35,36 +44,47 @@ export function useTapEarn() {
   const [displayTodayUnits, setDisplayTodayUnits] = useState(0);
 
   const pendingRef = useRef<number>(readPending()); // taps not yet confirmed by server
+  const weightedRef = useRef<number>(readWeighted() || readPending()); // streak-weighted taps
   const inFlightRef = useRef(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Continuous-tap streak (visual + multiplier)
+  const [streak, setStreak] = useState(0);
+  const streakRef = useRef(0);
+  const lastTapAtRef = useRef(0);
+  const streakTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const applyProfile = useCallback((p: TapProfile) => {
     setProfile(p);
     // Re-base optimistic display on authoritative + still-pending taps
     const per = rewardPerTap(p.leverage_level);
     const pend = pendingRef.current;
-    setDisplayUnits(p.total_units + pend * per);
+    const w = Math.max(pend, weightedRef.current);
+    setDisplayUnits(p.total_units + w * per);
     setDisplayTaps(p.lifetime_taps + pend);
     setDisplayTodayTaps(p.today_taps + pend);
-    setDisplayTodayUnits(p.today_units + pend * per);
+    setDisplayTodayUnits(p.today_units + w * per);
   }, []);
 
   const flush = useCallback(async () => {
     if (inFlightRef.current || !user) return;
     const taps = pendingRef.current;
     if (taps <= 0) return;
+    const weighted = weightedRef.current;
     if (!navigator.onLine) return; // keep queued until back online
     inFlightRef.current = true;
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('tap-earn', {
-        body: { action: 'sync', taps },
+        body: { action: 'sync', taps, weighted },
       });
       if (error) throw error;
       const res = data as SyncResult;
       // Subtract the taps we just confirmed (new taps may have arrived meanwhile)
       pendingRef.current = Math.max(0, pendingRef.current - taps);
+      weightedRef.current = Math.max(0, weightedRef.current - weighted);
       writePending(pendingRef.current);
+      writeWeighted(weightedRef.current);
       if (res?.profile) applyProfile(res.profile);
       return res;
     } catch {
@@ -86,13 +106,29 @@ export function useTapEarn() {
 
   /** Register a single tap — instant optimistic update, batched sync. */
   const tap = useCallback(() => {
+    // ── continuous streak bookkeeping ──
+    const now = Date.now();
+    const gap = now - lastTapAtRef.current;
+    lastTapAtRef.current = now;
+    streakRef.current = gap < STREAK_GAP ? streakRef.current + 1 : 1;
+    const s = streakRef.current;
+    setStreak(s);
+    if (streakTimerRef.current) clearTimeout(streakTimerRef.current);
+    streakTimerRef.current = setTimeout(() => {
+      streakRef.current = 0;
+      setStreak(0);
+    }, STREAK_GAP);
+
+    const sm = streakMultiplier(s);
     pendingRef.current += 1;
+    weightedRef.current += sm;
     writePending(pendingRef.current);
+    writeWeighted(weightedRef.current);
     const per = rewardPerTap(profile.leverage_level);
-    setDisplayUnits((v) => v + per);
+    setDisplayUnits((v) => v + per * sm);
     setDisplayTaps((v) => v + 1);
     setDisplayTodayTaps((v) => v + 1);
-    setDisplayTodayUnits((v) => v + per);
+    setDisplayTodayUnits((v) => v + per * sm);
     scheduleFlush();
   }, [profile.leverage_level, scheduleFlush]);
 
@@ -163,6 +199,7 @@ export function useTapEarn() {
     profile, loading, syncing, online,
     displayUnits, displayTaps, displayTodayTaps, displayTodayUnits,
     pending: pendingRef.current,
+    streak, streakMult: streakMultiplier(streak),
     tap, buyLeverage, transferToWallet, refetch: load, flush,
   };
 }
