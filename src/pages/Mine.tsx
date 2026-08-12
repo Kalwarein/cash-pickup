@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, memo } from 'react';
+import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check, MoreVertical, ArrowRightLeft,
@@ -11,7 +11,8 @@ import { useTapEarn } from '@/hooks/useTapEarn';
 import { MineButton } from '@/components/mine/MineButton';
 import { AnimatedNumber } from '@/components/tap/AnimatedNumber';
 import {
-  LEVERAGE, rewardPerTap, leverageMult, formatUnits, HeatLevel, HEAT_LABEL, BASE_REWARD,
+  LEVERAGE, rewardPerTap, leverageMult, formatUnits, BASE_REWARD,
+  streakProgress, tapIntensity,
 } from '@/lib/tapEarn';
 import { sle } from '@/lib/currency';
 import { cn } from '@/lib/utils';
@@ -25,16 +26,6 @@ import {
 
 const MIN_TRANSFER = 20.99;
 
-/* Heat → small badge/text accents only. No large-area color animation —
-   that's what was costing frames on rapid taps. */
-const HEAT_STYLE: Record<HeatLevel, { text: string; dot: string }> = {
-  normal:     { text: 'text-sky-400',    dot: 'bg-sky-400' },
-  warm:       { text: 'text-amber-400',  dot: 'bg-amber-400' },
-  hot:        { text: 'text-orange-400', dot: 'bg-orange-400' },
-  'very-hot': { text: 'text-red-400',    dot: 'bg-red-400' },
-  max:        { text: 'text-red-500',    dot: 'bg-red-500' },
-};
-
 const Mine = () => {
   const navigate = useNavigate();
   const { user, loading: authLoading } = useAuth();
@@ -43,10 +34,6 @@ const Mine = () => {
   const [leverageOpen, setLeverageOpen] = useState(false);
   const [transferOpen, setTransferOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Only the coarse heat *level* is lifted up — it changes rarely (a handful
-  // of times per session), unlike combo/heat which change on every single
-  // tap. This keeps Header/BalanceHero from re-rendering on every tap.
-  const [heatLevel, setHeatLevel] = useState<HeatLevel>('normal');
 
   useEffect(() => {
     if (!authLoading && !user) navigate('/auth');
@@ -54,6 +41,8 @@ const Mine = () => {
 
   const per = rewardPerTap(t.profile.leverage_level);
   const progressPct = Math.min(100, ((t.displayUnits % 1) / 1) * 100);
+  const streakInfo = streakProgress(t.streak);
+  const intensity = tapIntensity(t.streak);
 
   const balance = wallet?.balance ?? 0;
   const canMine = balance >= 50;
@@ -108,18 +97,18 @@ const Mine = () => {
         <BalanceHero
           displayUnits={t.displayUnits}
           walletBalance={wallet?.balance ?? 0}
-          heatLevel={heatLevel}
           progressPct={progressPct}
+          multiplier={streakInfo.mult}
         />
 
-        {/* Tap zone owns its own heat state — its re-renders never touch
-            Header or BalanceHero, and it drives the fixed full-screen glow
-            layer itself, so the "page background reacting to your taps"
-            effect stays isolated to this subtree. */}
         <TapArea
           onTap={handleTap}
-          rewardLabel={formatUnits(per, 7)}
-          onLevelChange={setHeatLevel}
+          rewardLabel={formatUnits(per, 8)}
+          streak={t.streak}
+          multiplier={streakInfo.mult}
+          nextAt={streakInfo.next}
+          stepPct={streakInfo.pct}
+          intensity={intensity}
           locked={!canMine}
           onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
@@ -321,26 +310,28 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
   );
 };
 
-/* ─────────── Balance hero (memoized — re-renders only when its own props change) ─────────── */
-const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct }: {
-  displayUnits: number; walletBalance: number; heatLevel: HeatLevel; progressPct: number;
+/* ─────────── Balance hero — luxury glass panel with iridescent edge ─────────── */
+const BalanceHero = memo(({ displayUnits, walletBalance, progressPct, multiplier }: {
+  displayUnits: number; walletBalance: number; progressPct: number; multiplier: number;
 }) => {
-  const heatStyle = HEAT_STYLE[heatLevel];
   return (
-    <section className="shrink-0 rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float text-center">
-      <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-0.5">Total Units Mined</p>
+    <section className="mn-hero shrink-0 rounded-3xl p-4 text-center">
+      <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-1">Total Units Mined</p>
       <AnimatedNumber
         value={displayUnits}
-        decimals={8}
+        decimals={9}
         duration={280}
-        className="block text-[27px] leading-tight font-display font-black tabular-nums gold-text"
+        className="block text-[26px] leading-tight font-display font-black tabular-nums mn-iri-text"
       />
-      <div className="mt-2 flex items-center justify-center gap-4 text-xs">
-        <span className="flex items-center gap-1 text-muted-foreground">
+      <div className="mt-2 flex items-center justify-center gap-3 text-xs">
+        <span className="flex items-center gap-1 text-muted-foreground tabular-nums">
           <Wallet className="w-3.5 h-3.5" /> {sle(walletBalance)}
         </span>
-        <span className={cn('flex items-center gap-1 font-semibold', heatStyle.text)}>
-          <span className={cn('w-2 h-2 rounded-full', heatStyle.dot)} /> {HEAT_LABEL[heatLevel]}
+        <span className={cn(
+          'flex items-center gap-1 font-black px-2 py-0.5 rounded-full text-[11px]',
+          multiplier > 1 ? 'mn-mult-chip' : 'bg-muted/50 text-muted-foreground',
+        )}>
+          <Zap className="w-3 h-3" /> ×{multiplier}
         </span>
       </div>
       <div className="mt-3 text-left">
@@ -348,10 +339,10 @@ const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct 
           <span>Progress to next unit</span>
           <span className="tabular-nums">{progressPct.toFixed(2)}%</span>
         </div>
-        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden">
           {/* transform (not width) — GPU-composited, buttery even at high tap rates */}
           <div
-            className="h-full w-full origin-left gold-surface"
+            className="h-full w-full origin-left mn-iri-bar"
             style={{ transform: `scaleX(${progressPct / 100})`, transition: 'transform 0.25s ease-out' }}
           />
         </div>
@@ -361,32 +352,16 @@ const BalanceHero = memo(({ displayUnits, walletBalance, heatLevel, progressPct 
 });
 BalanceHero.displayName = 'BalanceHero';
 
-/* ─────────── Tap zone: owns heat/combo state locally so rapid taps never
-   ripple up into the rest of the tree. Also renders the fixed, full-screen
-   heat-reactive glow (mounted here, painted over the whole viewport via
-   position:fixed, but structurally isolated to this component). ─────────── */
-const TapArea = ({ onTap, rewardLabel, onLevelChange, locked, onUnlock }: {
-  onTap: () => void; rewardLabel: string; onLevelChange: (l: HeatLevel) => void;
+/* ─────────── Tap zone ─────────── */
+const TapArea = ({ onTap, rewardLabel, streak, multiplier, nextAt, stepPct, intensity, locked, onUnlock }: {
+  onTap: () => void; rewardLabel: string; streak: number; multiplier: number;
+  nextAt: number; stepPct: number; intensity: number;
   locked?: boolean; onUnlock?: () => void;
 }) => {
-  const [heat, setHeat] = useState({ heat: 0, level: 'normal' as HeatLevel, combo: 0 });
-  const lastLevel = useRef<HeatLevel>('normal');
-
-  const handleState = useCallback((s: { heat: number; level: HeatLevel; combo: number }) => {
-    setHeat((prev) => {
-      if (prev.combo === s.combo && prev.level === s.level) return prev;
-      return s;
-    });
-    if (s.level !== lastLevel.current) {
-      lastLevel.current = s.level;
-      onLevelChange(s.level);
-    }
-  }, [onLevelChange]);
-
   return (
     <div className="flex-1 min-h-0 grid place-items-center relative mn-tap-zone">
-      <ComboBadge combo={heat.combo} level={heat.level} />
-      <MineButton onTap={onTap} rewardLabel={rewardLabel} onState={handleState} />
+      <StreakMeter streak={streak} multiplier={multiplier} nextAt={nextAt} stepPct={stepPct} />
+      <MineButton onTap={onTap} rewardLabel={rewardLabel} intensity={intensity} multiplier={multiplier} />
       {locked && (
         <button
           onClick={onUnlock}
