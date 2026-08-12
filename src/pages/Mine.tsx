@@ -411,11 +411,11 @@ const StreakCard = memo(() => {
   const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
 
   return (
-    <section className="shrink-0 relative overflow-hidden rounded-2xl p-4 bg-card/60 backdrop-blur-md gold-border shadow-float">
+    <section className="mn-hero shrink-0 relative overflow-hidden rounded-3xl p-4">
       <div className="relative z-10 flex items-center justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Daily Streak</p>
-          <p className="text-2xl font-display font-black gold-text flex items-center gap-1.5">
+          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Daily Streak</p>
+          <p className="text-2xl font-display font-black mn-iri-text flex items-center gap-1.5">
             <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
           </p>
           <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
