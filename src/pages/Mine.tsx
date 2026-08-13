@@ -374,54 +374,6 @@ const TapArea = ({ onTap, rewardLabel, streak, multiplier, nextAt, stepPct, inte
   );
 };
 
-/* ─────────── Daily streak with live liquid-wave fill ─────────── */
-const STREAK_KEY = 'mine_streak_v1';
-const StreakCard = memo(() => {
-  const [streak, setStreak] = useState(0);
-
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    let count = 1;
-    try {
-      const raw = localStorage.getItem(STREAK_KEY);
-      if (raw) {
-        const { last, count: c } = JSON.parse(raw) as { last: string; count: number };
-        if (last === today) count = c || 1;
-        else {
-          const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-          count = last === y ? (c || 0) + 1 : 1;
-        }
-      }
-      localStorage.setItem(STREAK_KEY, JSON.stringify({ last: today, count }));
-    } catch { /* noop */ }
-    setStreak(count);
-  }, []);
-
-  const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
-
-  return (
-    <section className="mn-hero shrink-0 relative overflow-hidden rounded-3xl p-4">
-      <div className="relative z-10 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Daily Streak</p>
-          <p className="text-2xl font-display font-black mn-iri-text flex items-center gap-1.5">
-            <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
-        </div>
-        <div className="mn-streak-orb">
-          <span className="mn-streak-liquid" style={{ ['--fill' as string]: `${pct}%` }}>
-            <span className="mn-streak-wave mn-streak-wave--a" />
-            <span className="mn-streak-wave mn-streak-wave--b" />
-          </span>
-          <span className="mn-streak-num">{streak % 7 || 7}/7</span>
-        </div>
-      </div>
-    </section>
-  );
-});
-StreakCard.displayName = 'StreakCard';
-
 /* ─────────── Continuous-tap streak meter — sits above the orb.
    Only the streak count + a transform-driven bar change per tap, so this
    stays a single composited update no matter how fast you go. ─────────── */
@@ -435,9 +387,7 @@ const StreakMeter = memo(({ streak, multiplier, nextAt, stepPct }: {
         <span key={multiplier} className="mn-mult-chip mn-combo-pop-static px-3 py-1 rounded-full text-[13px] font-black tabular-nums">
           ×{multiplier}
         </span>
-        <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground tabular-nums">
-          <Flame className="w-3.5 h-3.5 text-orange-400" /> {streak} streak
-        </span>
+        <span className="text-[11px] font-bold text-muted-foreground tabular-nums">{streak} streak</span>
       </div>
       <div className="mt-1.5 h-1 rounded-full bg-muted/60 overflow-hidden">
         <div
