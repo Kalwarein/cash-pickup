@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check, MoreVertical, ArrowRightLeft,
+  ChevronLeft, Lock, Check, MoreVertical, ArrowRightLeft,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { PageLoader } from '@/components/PageLoader';
@@ -112,8 +112,6 @@ const Mine = () => {
           locked={!canMine}
           onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
-
-        <StreakCard />
       </main>
 
       <div className="relative z-10 shrink-0"><BottomNav /></div>
@@ -121,9 +119,7 @@ const Mine = () => {
       <Drawer open={leverageOpen} onOpenChange={setLeverageOpen}>
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader className="text-left">
-            <DrawerTitle className="flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-amber-400" /> Leverage Tiers
-            </DrawerTitle>
+            <DrawerTitle>Leverage Tiers</DrawerTitle>
             <DrawerDescription>Unlock higher tiers to multiply every tap. Deposit to unlock instantly.</DrawerDescription>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-8 space-y-3">
@@ -178,7 +174,6 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
         <ChevronLeft className="w-5 h-5" />
       </button>
       <div className="flex items-center gap-2">
-        <Pickaxe className="w-4 h-4 text-amber-400" />
         <h1 className="text-base font-display font-bold gold-text">Earn</h1>
       </div>
       <div className="flex items-center gap-1.5">
@@ -186,7 +181,7 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
           onClick={onLeverage}
           className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
         >
-          <Zap className="w-3.5 h-3.5" /> {multiplier}x
+          {multiplier}x
         </button>
         <Popover open={menuOpen} onOpenChange={onMenuChange}>
           <PopoverTrigger asChild>
@@ -238,9 +233,7 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
     <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <DrawerContent className="max-h-[90dvh]">
         <DrawerHeader className="text-left">
-          <DrawerTitle className="flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5 text-amber-400" /> Transfer to Wallet
-          </DrawerTitle>
+          <DrawerTitle>Transfer to Wallet</DrawerTitle>
           <DrawerDescription>
             Move your mined balance into your main wallet as SLE. Minimum transfer is {sle(MIN_TRANSFER)}.
           </DrawerDescription>
@@ -324,15 +317,11 @@ const BalanceHero = memo(({ displayUnits, walletBalance, progressPct, multiplier
         className="block text-[26px] leading-tight font-display font-black tabular-nums mn-iri-text"
       />
       <div className="mt-2 flex items-center justify-center gap-3 text-xs">
-        <span className="flex items-center gap-1 text-muted-foreground tabular-nums">
-          <Wallet className="w-3.5 h-3.5" /> {sle(walletBalance)}
-        </span>
+        <span className="text-muted-foreground tabular-nums">{sle(walletBalance)}</span>
         <span className={cn(
-          'flex items-center gap-1 font-black px-2 py-0.5 rounded-full text-[11px]',
+          'font-black px-2 py-0.5 rounded-full text-[11px] tabular-nums',
           multiplier > 1 ? 'mn-mult-chip' : 'bg-muted/50 text-muted-foreground',
-        )}>
-          <Zap className="w-3 h-3" /> ×{multiplier}
-        </span>
+        )}>×{multiplier}</span>
       </div>
       <div className="mt-3 text-left">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
