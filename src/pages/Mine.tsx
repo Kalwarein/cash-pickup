@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  ChevronLeft, Gauge, Zap, Wallet, Flame, Pickaxe, Lock, Check, MoreVertical, ArrowRightLeft,
+  ChevronLeft, Lock, Check, MoreVertical, ArrowRightLeft,
 } from 'lucide-react';
 import { BottomNav } from '@/components/BottomNav';
 import { PageLoader } from '@/components/PageLoader';
@@ -112,8 +112,6 @@ const Mine = () => {
           locked={!canMine}
           onUnlock={() => navigate('/wallet?deposit=1&amount=50')}
         />
-
-        <StreakCard />
       </main>
 
       <div className="relative z-10 shrink-0"><BottomNav /></div>
@@ -121,9 +119,7 @@ const Mine = () => {
       <Drawer open={leverageOpen} onOpenChange={setLeverageOpen}>
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader className="text-left">
-            <DrawerTitle className="flex items-center gap-2">
-              <Gauge className="w-5 h-5 text-amber-400" /> Leverage Tiers
-            </DrawerTitle>
+            <DrawerTitle>Leverage Tiers</DrawerTitle>
             <DrawerDescription>Unlock higher tiers to multiply every tap. Deposit to unlock instantly.</DrawerDescription>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-8 space-y-3">
@@ -178,7 +174,6 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
         <ChevronLeft className="w-5 h-5" />
       </button>
       <div className="flex items-center gap-2">
-        <Pickaxe className="w-4 h-4 text-amber-400" />
         <h1 className="text-base font-display font-bold gold-text">Earn</h1>
       </div>
       <div className="flex items-center gap-1.5">
@@ -186,7 +181,7 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
           onClick={onLeverage}
           className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
         >
-          <Zap className="w-3.5 h-3.5" /> {multiplier}x
+          {multiplier}x
         </button>
         <Popover open={menuOpen} onOpenChange={onMenuChange}>
           <PopoverTrigger asChild>
@@ -238,9 +233,7 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
     <Drawer open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <DrawerContent className="max-h-[90dvh]">
         <DrawerHeader className="text-left">
-          <DrawerTitle className="flex items-center gap-2">
-            <ArrowRightLeft className="w-5 h-5 text-amber-400" /> Transfer to Wallet
-          </DrawerTitle>
+          <DrawerTitle>Transfer to Wallet</DrawerTitle>
           <DrawerDescription>
             Move your mined balance into your main wallet as SLE. Minimum transfer is {sle(MIN_TRANSFER)}.
           </DrawerDescription>
@@ -324,15 +317,11 @@ const BalanceHero = memo(({ displayUnits, walletBalance, progressPct, multiplier
         className="block text-[26px] leading-tight font-display font-black tabular-nums mn-iri-text"
       />
       <div className="mt-2 flex items-center justify-center gap-3 text-xs">
-        <span className="flex items-center gap-1 text-muted-foreground tabular-nums">
-          <Wallet className="w-3.5 h-3.5" /> {sle(walletBalance)}
-        </span>
+        <span className="text-muted-foreground tabular-nums">{sle(walletBalance)}</span>
         <span className={cn(
-          'flex items-center gap-1 font-black px-2 py-0.5 rounded-full text-[11px]',
+          'font-black px-2 py-0.5 rounded-full text-[11px] tabular-nums',
           multiplier > 1 ? 'mn-mult-chip' : 'bg-muted/50 text-muted-foreground',
-        )}>
-          <Zap className="w-3 h-3" /> ×{multiplier}
-        </span>
+        )}>×{multiplier}</span>
       </div>
       <div className="mt-3 text-left">
         <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
@@ -385,54 +374,6 @@ const TapArea = ({ onTap, rewardLabel, streak, multiplier, nextAt, stepPct, inte
   );
 };
 
-/* ─────────── Daily streak with live liquid-wave fill ─────────── */
-const STREAK_KEY = 'mine_streak_v1';
-const StreakCard = memo(() => {
-  const [streak, setStreak] = useState(0);
-
-  useEffect(() => {
-    const today = new Date().toISOString().slice(0, 10);
-    let count = 1;
-    try {
-      const raw = localStorage.getItem(STREAK_KEY);
-      if (raw) {
-        const { last, count: c } = JSON.parse(raw) as { last: string; count: number };
-        if (last === today) count = c || 1;
-        else {
-          const y = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
-          count = last === y ? (c || 0) + 1 : 1;
-        }
-      }
-      localStorage.setItem(STREAK_KEY, JSON.stringify({ last: today, count }));
-    } catch { /* noop */ }
-    setStreak(count);
-  }, []);
-
-  const pct = Math.min(100, (streak % 7 || 7) / 7 * 100);
-
-  return (
-    <section className="mn-hero shrink-0 relative overflow-hidden rounded-3xl p-4">
-      <div className="relative z-10 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">Daily Streak</p>
-          <p className="text-2xl font-display font-black mn-iri-text flex items-center gap-1.5">
-            <Flame className="w-5 h-5 text-orange-400" /> {streak} day{streak === 1 ? '' : 's'}
-          </p>
-          <p className="text-[11px] text-muted-foreground mt-0.5">Keep mining daily to grow your streak</p>
-        </div>
-        <div className="mn-streak-orb">
-          <span className="mn-streak-liquid" style={{ ['--fill' as string]: `${pct}%` }}>
-            <span className="mn-streak-wave mn-streak-wave--a" />
-            <span className="mn-streak-wave mn-streak-wave--b" />
-          </span>
-          <span className="mn-streak-num">{streak % 7 || 7}/7</span>
-        </div>
-      </div>
-    </section>
-  );
-});
-StreakCard.displayName = 'StreakCard';
-
 /* ─────────── Continuous-tap streak meter — sits above the orb.
    Only the streak count + a transform-driven bar change per tap, so this
    stays a single composited update no matter how fast you go. ─────────── */
@@ -446,9 +387,7 @@ const StreakMeter = memo(({ streak, multiplier, nextAt, stepPct }: {
         <span key={multiplier} className="mn-mult-chip mn-combo-pop-static px-3 py-1 rounded-full text-[13px] font-black tabular-nums">
           ×{multiplier}
         </span>
-        <span className="flex items-center gap-1 text-[11px] font-bold text-muted-foreground tabular-nums">
-          <Flame className="w-3.5 h-3.5 text-orange-400" /> {streak} streak
-        </span>
+        <span className="text-[11px] font-bold text-muted-foreground tabular-nums">{streak} streak</span>
       </div>
       <div className="mt-1.5 h-1 rounded-full bg-muted/60 overflow-hidden">
         <div
