@@ -174,12 +174,12 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
         <ChevronLeft className="w-5 h-5" />
       </button>
       <div className="flex items-center gap-2">
-        <h1 className="text-base font-display font-bold gold-text">Earn</h1>
+        <h1 className="text-base font-display font-bold mn-brand-text">Earn</h1>
       </div>
       <div className="flex items-center gap-1.5">
         <button
           onClick={onLeverage}
-          className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
+          className="flex items-center gap-1.5 px-2.5 h-8 rounded-xl mn-brand-border bg-card/60 text-xs font-bold text-primary active:scale-95 transition-transform"
         >
           {multiplier}x
         </button>
@@ -194,7 +194,7 @@ const Header = memo(({ multiplier, onBack, onLeverage, menuOpen, onMenuChange, o
               onClick={onTransfer}
               className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm font-semibold hover:bg-muted active:scale-[0.98] transition-all"
             >
-              <ArrowRightLeft className="w-4 h-4 text-amber-400" />
+              <ArrowRightLeft className="w-4 h-4 text-primary" />
               Transfer to Wallet
             </button>
           </PopoverContent>
@@ -239,9 +239,9 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
           </DrawerDescription>
         </DrawerHeader>
         <div className="px-4 pb-8 space-y-4">
-          <div className="rounded-2xl p-4 gold-border bg-amber-500/5">
+          <div className="rounded-2xl p-4 mn-brand-border bg-primary/5">
             <p className="text-[10px] uppercase tracking-widest text-muted-foreground">Available to transfer</p>
-            <p className="text-2xl font-display font-black gold-text tabular-nums">{formatUnits(available, 5)}</p>
+            <p className="text-2xl font-display font-black mn-brand-text tabular-nums">{formatUnits(available, 5)}</p>
             <p className="text-[11px] text-muted-foreground mt-0.5">1 unit = SLE 1.00</p>
           </div>
 
@@ -270,7 +270,7 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
                   />
                   <button
                     onClick={() => setAmount(available.toFixed(2))}
-                    className="h-12 px-3 rounded-xl gold-border bg-card/60 text-xs font-bold text-amber-400 active:scale-95 transition-transform"
+                    className="h-12 px-3 rounded-xl mn-brand-border bg-card/60 text-xs font-bold text-primary active:scale-95 transition-transform"
                   >
                     MAX
                   </button>
@@ -289,7 +289,7 @@ const TransferDrawer = ({ open, onOpenChange, available, onTransfer }: {
                 className={cn(
                   'w-full h-12 rounded-xl font-bold text-sm transition-all',
                   canTransfer && !busy
-                    ? 'gold-surface text-black active:scale-[0.98] shadow-float'
+                    ? 'mn-brand-surface text-primary-foreground active:scale-[0.98] shadow-float'
                     : 'bg-muted text-muted-foreground cursor-not-allowed',
                 )}
               >
@@ -357,14 +357,14 @@ const TapArea = ({ onTap, rewardLabel, streak, multiplier, nextAt, stepPct, inte
           className="absolute inset-0 z-30 grid place-items-center rounded-2xl bg-background/70 backdrop-blur-sm"
         >
           <div className="flex flex-col items-center gap-3 px-6 text-center">
-            <div className="w-14 h-14 rounded-2xl grid place-items-center gold-surface text-black">
+            <div className="w-14 h-14 rounded-2xl grid place-items-center mn-brand-surface text-primary-foreground">
               <Lock className="w-6 h-6" />
             </div>
             <p className="font-display font-bold text-base">Mining Locked</p>
             <p className="text-xs text-muted-foreground max-w-[220px]">
-              Deposit or hold at least <span className="text-amber-400 font-bold">{sle(50)}</span> in your wallet to start mining.
+              Deposit or hold at least <span className="text-primary font-bold">{sle(50)}</span> in your wallet to start mining.
             </p>
-            <span className="mt-1 px-4 py-2 rounded-xl gold-surface text-black text-sm font-bold active:scale-95 transition-transform">
+            <span className="mt-1 px-4 py-2 rounded-xl mn-brand-surface text-primary-foreground text-sm font-bold active:scale-95 transition-transform">
               Deposit {sle(50)}
             </span>
           </div>
@@ -413,13 +413,13 @@ const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
   return (
     <div className={cn(
       'rounded-2xl p-4 backdrop-blur-md transition-all',
-      owned ? 'bg-amber-500/10 gold-border' : 'bg-card/70 border border-border/50',
+      owned ? 'bg-primary/10 mn-brand-border' : 'bg-card/70 border border-border/50',
     )}>
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className={cn(
             'w-12 h-12 shrink-0 rounded-xl grid place-items-center font-black text-sm',
-            owned ? 'gold-surface text-black' : 'bg-muted text-muted-foreground',
+            owned ? 'mn-brand-surface text-primary-foreground' : 'bg-muted text-muted-foreground',
           )}>
             {owned ? `${tier.mult}x` : <Lock className="w-4 h-4" />}
           </div>
@@ -441,7 +441,7 @@ const LeverageCard = memo(({ tier, current, balance, onUnlock }: {
               <p className="text-sm font-bold">{sle(tier.cost)}</p>
               <button
                 onClick={onUnlock}
-                className="mt-1 px-3 py-1.5 rounded-lg gold-surface text-black text-xs font-bold active:scale-95 transition-transform"
+                className="mt-1 px-3 py-1.5 rounded-lg mn-brand-surface text-primary-foreground text-xs font-bold active:scale-95 transition-transform"
               >
                 {affordable ? 'Unlock' : 'Deposit'}
               </button>
@@ -462,82 +462,53 @@ const MineStyles = () => (
     .mn-ambient {
       position: fixed; inset: 0; z-index: 0; pointer-events: none;
       background:
-        radial-gradient(circle at 20% 10%, hsla(190, 100%, 55%, 0.10) 0%, transparent 52%),
-        radial-gradient(circle at 82% 26%, hsla(285, 100%, 62%, 0.09) 0%, transparent 50%),
-        radial-gradient(circle at 50% 96%, hsla(38, 100%, 58%, 0.07) 0%, transparent 55%),
+        radial-gradient(circle at 20% 8%, hsl(var(--primary) / 0.16) 0%, transparent 55%),
+        radial-gradient(circle at 82% 26%, hsl(var(--accent) / 0.12) 0%, transparent 52%),
+        radial-gradient(circle at 50% 98%, hsl(var(--primary-glow) / 0.10) 0%, transparent 58%),
         hsl(var(--background));
     }
-    .mn-tap-zone { contain: layout paint; touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+    .mn-tap-zone {
+      contain: layout paint style; touch-action: manipulation;
+      -webkit-user-select: none; user-select: none;
+    }
 
-    /* Luxury glass hero with a slow iridescent edge */
+    .mn-brand-text {
+      background: linear-gradient(100deg, hsl(var(--primary)), hsl(var(--accent)) 60%, hsl(var(--primary-glow)));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .mn-brand-surface {
+      background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%);
+    }
+    .mn-brand-border { border: 1px solid hsl(var(--primary) / 0.35); }
+
+    /* Glass hero in app palette */
     .mn-hero {
       position: relative;
-      background: linear-gradient(160deg, hsla(0,0%,100%,0.06), hsla(0,0%,100%,0.015));
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      box-shadow: 0 18px 50px -18px rgba(0,0,0,0.65), inset 0 1px 0 hsla(0,0%,100%,0.12);
-    }
-    .mn-hero::before {
-      content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px;
-      background: linear-gradient(115deg, #00e5ff, #b026ff 35%, #ff2fa8 60%, #ffd60a);
-      opacity: 0.5;
-      -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-      -webkit-mask-composite: xor; mask-composite: exclude;
-      pointer-events: none;
+      background: linear-gradient(160deg, hsl(var(--primary) / 0.10), hsl(var(--accent) / 0.04));
+      border: 1px solid hsl(var(--primary) / 0.22);
+      box-shadow: 0 18px 50px -22px hsl(var(--primary) / 0.35), inset 0 1px 0 hsl(0 0% 100% / 0.08);
+      transform: translateZ(0);
     }
     .mn-iri-text {
-      background: linear-gradient(100deg, #8ef4ff, #ffffff 30%, #ffd9f6 55%, #ffe79a);
+      background: linear-gradient(100deg, hsl(var(--primary-glow)), hsl(var(--foreground)) 45%, hsl(var(--accent)));
       -webkit-background-clip: text; background-clip: text; color: transparent;
     }
     .mn-iri-bar {
-      background: linear-gradient(90deg, #00e5ff, #b026ff 40%, #ff2fa8 70%, #ffd60a);
+      background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--accent)) 60%, hsl(var(--primary-glow)));
+      will-change: transform;
     }
     .mn-mult-chip {
-      background: linear-gradient(120deg, rgba(0,229,255,0.9), rgba(176,38,255,0.9) 50%, rgba(255,214,10,0.9));
-      color: #fff;
-      box-shadow: 0 4px 14px -4px rgba(176,38,255,0.6), inset 0 1px 0 hsla(0,0%,100%,0.4);
+      background: linear-gradient(120deg, hsl(var(--primary)), hsl(var(--accent)));
+      color: hsl(var(--primary-foreground));
+      box-shadow: 0 4px 14px -6px hsl(var(--primary) / 0.7), inset 0 1px 0 hsl(0 0% 100% / 0.3);
     }
-    .mn-combo-pop-static { animation: mnComboPop 0.22s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
+    .mn-combo-pop-static { animation: mnComboPop 0.2s cubic-bezier(0.34,1.56,0.64,1); will-change: transform; }
     @keyframes mnComboPop {
-      0% { transform: scale(0.7); opacity: 0; }
+      0% { transform: scale(0.72); opacity: 0; }
       100% { transform: scale(1); opacity: 1; }
     }
     @media (prefers-reduced-motion: reduce) {
       .mn-combo-pop-static { animation: none; }
-    }
-
-    /* Streak liquid orb — GPU-cheap transform-only waves */
-    .mn-streak-orb {
-      position: relative; width: 64px; height: 64px; border-radius: 9999px;
-      overflow: hidden; display: grid; place-items: center;
-      background: hsla(190, 90%, 55%, 0.10);
-      border: 1px solid hsla(285, 90%, 65%, 0.35);
-    }
-    .mn-streak-liquid {
-      position: absolute; left: 0; right: 0; bottom: 0;
-      height: var(--fill, 50%);
-      transition: height 0.9s cubic-bezier(0.34,1.1,0.64,1);
-      background: linear-gradient(180deg, #00e5ff, #b026ff 55%, #ff2fa8);
-    }
-    .mn-streak-wave {
-      position: absolute; left: -50%; top: -14px; width: 200%; height: 28px;
-      border-radius: 45%;
-      background: hsla(0,0%,100%,0.35);
-      will-change: transform;
-    }
-    .mn-streak-wave--a { animation: mnWave 3.2s linear infinite; }
-    .mn-streak-wave--b { top: -18px; opacity: 0.5; animation: mnWave 4.6s linear infinite reverse; }
-    @keyframes mnWave {
-      0% { transform: translateX(0) rotate(0deg); }
-      100% { transform: translateX(25%) rotate(360deg); }
-    }
-    .mn-streak-num {
-      position: relative; z-index: 2; font-size: 12px; font-weight: 900;
-      color: rgba(0,0,0,0.7); text-shadow: 0 1px 2px hsla(0,0%,100%,0.3);
-    }
-    @media (prefers-reduced-motion: reduce) {
-      .mn-streak-wave { animation: none; }
     }
   `}</style>
 );
