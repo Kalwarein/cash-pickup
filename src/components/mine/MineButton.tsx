@@ -1,57 +1,54 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { Pickaxe } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /* ────────────────────────────────────────────────────────────────
-   Iridescent liquid-metal orb.
-   Everything animated here is opacity/transform/filter on a fixed,
-   tiny number of composited layers — the DOM never grows with tap
-   rate, so it stays buttery on low-end devices.
+   Circular liquid-glass mine button.
+   • Fixed DOM: 4 pooled ripple layers + 12 pooled float slots.
+   • Every animation is transform/opacity only → GPU composited.
+   • No state writes per tap beyond two small pooled arrays.
 ──────────────────────────────────────────────────────────────── */
 
-const POOL = 14; // recycled floating-reward slots — screen never gets messy
+const RIPPLE_RINGS = 4;   // quadruple ripple
+const FLOAT_POOL = 12;
 
-interface Slot { nonce: number; dx: number; rot: number; rise: number; x: number; y: number; label: string }
+interface Float { n: number; dx: number; rot: number; label: string }
 
 interface Props {
   onTap: () => void;
   rewardLabel: string;
-  /** 0..1 — how "charged" the orb looks (driven by the tap streak). */
+  /** 0..1 — visual charge driven by the tap streak. */
   intensity?: number;
-  /** Current streak multiplier, surfaced on the reward tokens. */
   multiplier?: number;
 }
 
 export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier = 1 }: Props) => {
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [pressed, setPressed] = useState(false);
-  const [slots, setSlots] = useState<(Slot | null)[]>(() => Array(POOL).fill(null));
+  const [burst, setBurst] = useState(0); // increments per tap → restarts ripple keyframes
+  const [floats, setFloats] = useState<(Float | null)[]>(() => Array(FLOAT_POOL).fill(null));
   const cursor = useRef(0);
   const nonce = useRef(0);
   const releaseTimer = useRef<ReturnType<typeof setTimeout>>();
   const suppressClick = useRef(false);
 
   const fire = useCallback(() => {
-    if ('vibrate' in navigator) { try { navigator.vibrate(5); } catch { /* noop */ } }
+    if ('vibrate' in navigator) { try { navigator.vibrate(4); } catch { /* noop */ } }
 
     setPressed(true);
     if (releaseTimer.current) clearTimeout(releaseTimer.current);
     releaseTimer.current = setTimeout(() => setPressed(false), 110);
 
-    // Recycle one slot from the fixed pool — no unbounded arrays, no timers
-    // per token (each slot is simply overwritten when its turn comes again).
-    const rect = wrapRef.current?.getBoundingClientRect();
+    setBurst((b) => (b + 1) % 1000);
+
     const i = cursor.current;
-    cursor.current = (cursor.current + 1) % POOL;
-    const slot: Slot = {
-      nonce: ++nonce.current,
-      x: (rect ? rect.left + rect.width / 2 : window.innerWidth / 2) + (Math.random() - 0.5) * 26,
-      y: rect ? rect.top + 6 : window.innerHeight / 2,
-      rise: (rect ? rect.top : 300) + 90,
-      dx: (Math.random() - 0.5) * 120,
-      rot: (Math.random() - 0.5) * 22,
+    cursor.current = (cursor.current + 1) % FLOAT_POOL;
+    const f: Float = {
+      n: ++nonce.current,
+      dx: (Math.random() - 0.5) * 90,
+      rot: (Math.random() - 0.5) * 18,
       label: multiplier > 1 ? `+${rewardLabel} ×${multiplier}` : `+${rewardLabel}`,
     };
-    setSlots((s) => { const n = s.slice(); n[i] = slot; return n; });
+    setFloats((s) => { const n = s.slice(); n[i] = f; return n; });
 
     onTap();
   }, [onTap, rewardLabel, multiplier]);
@@ -69,203 +66,181 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
 
   useEffect(() => () => { if (releaseTimer.current) clearTimeout(releaseTimer.current); }, []);
 
-  const i = Math.round(Math.max(0, Math.min(1, intensity)) * 10) / 10; // quantized → few style writes
+  const i = Math.round(Math.max(0, Math.min(1, intensity)) * 5) / 5; // quantized
 
   return (
-    <div ref={wrapRef} className="relative grid place-items-center select-none">
-      {slots.map((s, idx) => s && (
-        <span
-          key={`${idx}-${s.nonce}`}
-          className="irb-token"
-          style={{
-            left: s.x,
-            top: s.y,
-            ['--dx' as string]: `${s.dx}px`,
-            ['--rise' as string]: `${s.rise}px`,
-            ['--rot' as string]: `${s.rot}deg`,
-          }}
-        >
-          {s.label}
-        </span>
-      ))}
+    <div className="relative grid place-items-center select-none">
+      {/* pooled floating reward labels */}
+      <div className="lg-floats" aria-hidden>
+        {floats.map((f, idx) => f && (
+          <span
+            key={`${idx}-${f.n}`}
+            className="lg-float"
+            style={{ ['--dx' as string]: `${f.dx}px`, ['--rot' as string]: `${f.rot}deg` }}
+          >
+            {f.label}
+          </span>
+        ))}
+      </div>
 
       <button
         type="button"
-        aria-label="Tap to mine"
+        aria-label="Mine"
         onContextMenu={(e) => e.preventDefault()}
         onPointerDown={handlePointerDown}
         onClick={handleClick}
-        className={cn('irb', pressed && 'irb--pressed')}
+        className={cn('lg-btn', pressed && 'lg-btn--down')}
         style={{ ['--i' as string]: i }}
       >
-        <span className="irb-halo" aria-hidden />
-        <span className="irb-body" aria-hidden>
-          <span className="irb-film" />
-          <span className="irb-film irb-film--b" />
-          <span className="irb-shade" />
-          <span className="irb-core" />
-          <span className="irb-rim" />
-          <span className="irb-spec" />
+        <span className="lg-glow" aria-hidden />
+        <span className="lg-ring" aria-hidden />
+        <span className="lg-glass" aria-hidden>
+          <span className="lg-sheen" />
+          <span className="lg-inner" />
         </span>
-        <span className="irb-label">TAP</span>
+
+        {/* quadruple ripple — 4 fixed layers, keyframes restarted by key */}
+        <span className="lg-ripples" aria-hidden key={burst}>
+          {Array.from({ length: RIPPLE_RINGS }).map((_, r) => (
+            <span key={r} className="lg-ripple" style={{ animationDelay: `${r * 70}ms` }} />
+          ))}
+        </span>
+
+        <span className="lg-content">
+          <Pickaxe className="lg-icon" strokeWidth={2.2} />
+          <span className="lg-word">MINE</span>
+        </span>
       </button>
 
       <style>{`
-        .irb {
+        .lg-btn {
           position: relative;
-          width: 216px; height: 216px;
+          width: 218px; height: 218px; border-radius: 9999px;
           border: none; padding: 0; background: transparent;
+          display: grid; place-items: center;
           cursor: pointer;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
-          display: grid; place-items: center;
           transform: translateZ(0) scale(1);
-          transition: transform 130ms cubic-bezier(0.34, 1.6, 0.5, 1);
+          transition: transform 140ms cubic-bezier(0.34, 1.56, 0.5, 1);
           will-change: transform;
         }
-        .irb--pressed { transform: translateZ(0) scale(0.935); }
+        .lg-btn--down { transform: translateZ(0) scale(0.945); }
 
-        /* Outer rainbow bloom — sits behind the orb, breathes and spins */
-        .irb-halo {
-          position: absolute; inset: -14%;
-          border-radius: 50%;
+        /* soft ambient bloom */
+        .lg-glow {
+          position: absolute; inset: -12%; border-radius: 9999px;
+          background: radial-gradient(circle at 50% 50%,
+            hsla(190,100%,60%,0.30), hsla(285,100%,65%,0.16) 45%, transparent 70%);
+          filter: blur(22px);
+          opacity: calc(0.55 + var(--i) * 0.45);
+          transform: translateZ(0);
+          animation: lgBreath 5s ease-in-out infinite;
+          pointer-events: none;
+        }
+
+        /* iridescent hairline edge */
+        .lg-ring {
+          position: absolute; inset: 0; border-radius: 9999px; padding: 1.5px;
           background: conic-gradient(from 0deg,
-            #00e0ff, #6a3cff, #ff2fd0, #ff3b1f, #ffd60a, #35ff9e, #00e0ff);
-          filter: blur(34px);
-          opacity: calc(0.16 + var(--i) * 0.34);
-          transform: translateZ(0);
-          animation: irbSpin 12s linear infinite, irbBreath 5.5s ease-in-out infinite;
-          animation-duration: calc(12s / (0.7 + var(--i) * 1.6)), 5.5s;
-          pointer-events: none;
-        }
-
-        /* The liquid body: organic morphing mask + layered refraction films */
-        .irb-body {
-          position: absolute; inset: 7%;
-          border-radius: 48% 52% 56% 44% / 53% 46% 54% 47%;
-          overflow: hidden;
-          transform: translateZ(0);
-          animation: irbMorph 8s ease-in-out infinite;
-          animation-duration: calc(8s / (0.75 + var(--i) * 1.5));
-          box-shadow:
-            inset 0 -18px 40px rgba(0,0,0,0.55),
-            inset 0 12px 30px rgba(255,255,255,0.18),
-            0 18px 50px rgba(0,0,0,0.5);
-          will-change: transform, border-radius;
-        }
-        /* Darkens the middle so the iridescence reads as a thin refracting
-           film over a deep translucent body — the look from the reference. */
-        .irb-shade {
-          position: absolute; inset: -2%;
-          background:
-            radial-gradient(circle at 46% 42%, rgba(4,2,8,0.86) 0%, rgba(6,2,10,0.72) 34%,
-              rgba(90,10,26,0.34) 58%, rgba(0,0,0,0) 78%),
-            radial-gradient(circle at 62% 74%, rgba(120,12,20,0.32), transparent 55%);
-        }
-        .irb-core {
-          position: absolute; inset: 0;
-          background: radial-gradient(circle at 36% 28%,
-            rgba(255,255,255,0.42) 0%, rgba(255,190,60,0.16) 20%, transparent 46%);
-          mix-blend-mode: screen;
-        }
-        .irb-film {
-          position: absolute; inset: -20%;
-          background: conic-gradient(from 20deg,
-            #00e5ff, #1e5cff, #b026ff, #ff1fa8, #ff3a12, #ffdd00, #57ff8f, #00e5ff);
-          filter: blur(26px) saturate(calc(1.2 + var(--i) * 0.8));
-          opacity: calc(0.85 + var(--i) * 0.15);
-          animation: irbSwirl 9s linear infinite;
-          animation-duration: calc(9s / (0.7 + var(--i) * 1.8));
+            #00e5ff, #6a5cff, #ff2fa8, #ff6b2f, #ffd60a, #35ffb0, #00e5ff);
+          opacity: calc(0.65 + var(--i) * 0.35);
+          -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          -webkit-mask-composite: xor; mask-composite: exclude;
+          animation: lgSpin 14s linear infinite;
           will-change: transform;
         }
-        .irb-film--b {
-          inset: -34%;
-          background: conic-gradient(from 200deg,
-            #ff2fb0, #ffe23a, #35ff9e, #00d0ff, #7a3cff, #ff2fb0);
-          filter: blur(40px);
-          mix-blend-mode: color-dodge;
-          opacity: calc(0.22 + var(--i) * 0.3);
-          animation-direction: reverse;
+
+        /* frosted glass body */
+        .lg-glass {
+          position: absolute; inset: 2px; border-radius: 9999px; overflow: hidden;
+          background: linear-gradient(160deg, hsla(0,0%,100%,0.16), hsla(0,0%,100%,0.04) 45%, hsla(0,0%,100%,0.10));
+          backdrop-filter: blur(18px) saturate(1.25);
+          -webkit-backdrop-filter: blur(18px) saturate(1.25);
+          box-shadow:
+            inset 0 1px 0 hsla(0,0%,100%,0.45),
+            inset 0 -22px 44px hsla(240,60%,4%,0.55),
+            0 24px 60px -18px hsla(240,60%,4%,0.8);
         }
-        /* Thin refracting rim — the bright cyan/magenta edge from the reference */
-        .irb-rim {
-          position: absolute; inset: 0; border-radius: inherit;
-          background: conic-gradient(from 120deg,
-            #00f0ff, #2b6bff, #c02bff, #ff2fb0, #ff5a19, #ffe23a, #00f0ff);
-          filter: blur(1px) saturate(2) brightness(1.35)
-                  drop-shadow(0 0 10px rgba(0,229,255,0.45));
-          -webkit-mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
-          mask: radial-gradient(circle at 50% 50%, transparent 78%, #000 88%, #000 97%, transparent 100%);
-          opacity: 1;
-          mix-blend-mode: screen;
-          animation: irbSpin 7s linear infinite reverse;
-          animation-duration: calc(7s / (0.7 + var(--i) * 1.5));
+        .lg-inner {
+          position: absolute; inset: 0;
+          background: radial-gradient(circle at 50% 62%,
+            hsla(190,100%,70%,0.22), transparent 62%);
+          opacity: calc(0.7 + var(--i) * 0.3);
         }
-        /* Wet specular highlight */
-        .irb-spec {
-          position: absolute; top: 10%; left: 20%; width: 42%; height: 26%;
-          border-radius: 50%;
-          background: radial-gradient(ellipse at 40% 40%, rgba(255,255,255,0.85), rgba(255,255,255,0) 70%);
-          filter: blur(3px);
-          animation: irbSpec 6s ease-in-out infinite;
-        }
-        .irb-label {
-          position: relative; z-index: 3;
-          font-size: 11px; font-weight: 900; letter-spacing: 0.34em;
-          color: rgba(255,255,255,0.92);
-          text-shadow: 0 2px 10px rgba(0,0,0,0.75);
-          pointer-events: none;
+        .lg-sheen {
+          position: absolute; top: 6%; left: 14%; width: 56%; height: 34%;
+          border-radius: 9999px;
+          background: radial-gradient(ellipse at 38% 36%, hsla(0,0%,100%,0.6), hsla(0,0%,100%,0) 70%);
+          filter: blur(4px);
+          animation: lgSheen 6s ease-in-out infinite;
+          will-change: transform;
         }
 
-        @keyframes irbSpin { to { transform: rotate(360deg); } }
-        @keyframes irbSwirl {
-          0%   { transform: rotate(0deg) scale(1.05); }
-          50%  { transform: rotate(180deg) scale(1.18); }
-          100% { transform: rotate(360deg) scale(1.05); }
-        }
-        @keyframes irbBreath {
-          0%,100% { transform: scale(1); }
-          50%     { transform: scale(1.07); }
-        }
-        @keyframes irbMorph {
-          0%   { border-radius: 48% 52% 56% 44% / 53% 46% 54% 47%; transform: rotate(0deg) scale(1); }
-          25%  { border-radius: 58% 42% 45% 55% / 44% 57% 43% 56%; transform: rotate(3deg) scale(1.02); }
-          50%  { border-radius: 44% 56% 52% 48% / 57% 43% 57% 43%; transform: rotate(-2deg) scale(0.99); }
-          75%  { border-radius: 53% 47% 44% 56% / 46% 55% 45% 54%; transform: rotate(2deg) scale(1.03); }
-          100% { border-radius: 48% 52% 56% 44% / 53% 46% 54% 47%; transform: rotate(0deg) scale(1); }
-        }
-        @keyframes irbSpec {
-          0%,100% { transform: translate(0,0) scale(1); opacity: 0.85; }
-          50%     { transform: translate(14%, 8%) scale(0.88); opacity: 0.6; }
-        }
-
-        /* Floating reward token — glassy iridescent chip */
-        .irb-token {
-          position: fixed; z-index: 60;
-          display: inline-flex; align-items: center; justify-content: center;
-          padding: 3px 11px; border-radius: 9999px;
-          background: linear-gradient(135deg, rgba(0,229,255,0.92), rgba(176,38,255,0.92) 45%, rgba(255,214,10,0.92));
-          box-shadow: 0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.55);
-          transform: translate(-50%, 0);
-          font-size: 11.5px; font-weight: 900; letter-spacing: 0.01em;
-          color: rgba(255,255,255,0.96);
-          text-shadow: 0 1px 2px rgba(0,0,0,0.35);
-          white-space: nowrap; pointer-events: none;
-          animation: irbRise 1.5s cubic-bezier(0.16,0.72,0.32,1) forwards;
+        /* quadruple ripple */
+        .lg-ripples { position: absolute; inset: 0; border-radius: 9999px; pointer-events: none; }
+        .lg-ripple {
+          position: absolute; inset: 0; border-radius: 9999px;
+          border: 1.5px solid hsla(190,100%,75%,0.55);
+          transform: scale(0.68);
+          opacity: 0;
+          animation: lgRipple 700ms cubic-bezier(0.22,0.68,0.28,1) forwards;
           will-change: transform, opacity;
         }
-        @keyframes irbRise {
-          0%   { transform: translate(-50%, 0) scale(0.6); opacity: 0; }
-          10%  { transform: translate(-50%, calc(var(--rise) * -0.10)) rotate(calc(var(--rot) * 0.3)) scale(1.1); opacity: 1; }
-          55%  { transform: translate(calc(-50% + var(--dx) * 0.6), calc(var(--rise) * -0.58)) rotate(calc(var(--rot) * 0.8)) scale(1); opacity: 1; }
-          80%  { opacity: 0.85; }
-          100% { transform: translate(calc(-50% + var(--dx)), calc(var(--rise) * -1)) rotate(var(--rot)) scale(0.82); opacity: 0; }
+
+        .lg-content {
+          position: relative; z-index: 3;
+          display: flex; flex-direction: column; align-items: center; gap: 8px;
+          pointer-events: none;
+        }
+        .lg-icon {
+          width: 40px; height: 40px;
+          color: hsla(0,0%,100%,0.95);
+          filter: drop-shadow(0 2px 10px hsla(190,100%,60%,0.55));
+        }
+        .lg-word {
+          font-size: 13px; font-weight: 900; letter-spacing: 0.34em;
+          color: hsla(0,0%,100%,0.92);
+          text-shadow: 0 2px 10px hsla(240,60%,4%,0.7);
+        }
+
+        @keyframes lgSpin { to { transform: rotate(360deg); } }
+        @keyframes lgBreath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+        @keyframes lgSheen {
+          0%,100% { transform: translate(0,0) scale(1); opacity: 0.85; }
+          50% { transform: translate(10%, 6%) scale(0.92); opacity: 0.6; }
+        }
+        @keyframes lgRipple {
+          0%   { transform: scale(0.66); opacity: 0.85; }
+          100% { transform: scale(1.32); opacity: 0; }
+        }
+
+        /* pooled float labels */
+        .lg-floats {
+          position: absolute; left: 50%; top: 0; width: 0; height: 0;
+          z-index: 5; pointer-events: none;
+        }
+        .lg-float {
+          position: absolute; left: 0; top: 0;
+          transform: translate(-50%, 0);
+          padding: 3px 11px; border-radius: 9999px;
+          white-space: nowrap;
+          font-size: 11.5px; font-weight: 900;
+          color: hsla(0,0%,100%,0.96);
+          background: linear-gradient(120deg, hsla(190,100%,55%,0.85), hsla(285,100%,62%,0.85));
+          box-shadow: 0 6px 18px -6px hsla(240,60%,4%,0.8), inset 0 1px 0 hsla(0,0%,100%,0.5);
+          animation: lgFloat 1200ms cubic-bezier(0.16,0.72,0.32,1) forwards;
+          will-change: transform, opacity;
+        }
+        @keyframes lgFloat {
+          0%   { transform: translate(-50%, 0) scale(0.7); opacity: 0; }
+          14%  { transform: translate(-50%, -14px) scale(1.06); opacity: 1; }
+          100% { transform: translate(calc(-50% + var(--dx)), -104px) rotate(var(--rot)) scale(0.86); opacity: 0; }
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .irb-halo, .irb-body, .irb-film, .irb-rim, .irb-spec { animation: none; }
-          .irb-token { animation: irbFade 0.6s ease-out forwards; }
-          @keyframes irbFade { 0% { opacity: 0; } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -26px); } }
+          .lg-glow, .lg-ring, .lg-sheen, .lg-ripple { animation: none; }
         }
       `}</style>
     </div>
