@@ -189,18 +189,18 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
 
         .lg-content {
           position: relative; z-index: 3;
-          display: flex; flex-direction: column; align-items: center; gap: 8px;
+          display: flex; flex-direction: column; align-items: center; gap: 5px;
           pointer-events: none;
         }
         .lg-icon {
-          width: 42px; height: 42px;
+          width: 30px; height: 30px;
           color: hsl(var(--primary-foreground));
-          filter: drop-shadow(0 2px 8px hsl(0 0% 0% / 0.35));
+          filter: drop-shadow(0 2px 6px hsl(0 0% 0% / 0.35));
         }
         .lg-word {
-          font-size: 14px; font-weight: 900; letter-spacing: 0.34em;
+          font-size: 12px; font-weight: 900; letter-spacing: 0.32em;
           color: hsl(var(--primary-foreground));
-          text-shadow: 0 2px 10px hsl(0 0% 0% / 0.35);
+          text-shadow: 0 2px 8px hsl(0 0% 0% / 0.35);
         }
 
         @keyframes lgBreath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
