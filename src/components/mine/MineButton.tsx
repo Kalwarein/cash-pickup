@@ -115,24 +115,25 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
       <style>{`
         .lg-btn {
           position: relative;
-          width: 218px; height: 218px; border-radius: 9999px;
+          width: min(320px, 84vw); height: 200px; border-radius: 9999px;
           border: none; padding: 0; background: transparent;
           display: grid; place-items: center;
           cursor: pointer;
           -webkit-tap-highlight-color: transparent;
           touch-action: manipulation;
-          transform: translateZ(0) scale(1);
-          transition: transform 140ms cubic-bezier(0.34, 1.56, 0.5, 1);
+          transform: translateZ(0) scale(1) translateY(0);
+          transition: transform 170ms cubic-bezier(0.34, 1.7, 0.46, 1);
           will-change: transform;
         }
-        .lg-btn--down { transform: translateZ(0) scale(0.945); }
+        /* press reaction: pushes back / down, springs forward on release */
+        .lg-btn--down { transform: translateZ(0) scale(0.93) translateY(6px); }
 
         /* soft ambient bloom */
         .lg-glow {
-          position: absolute; inset: -12%; border-radius: 9999px;
-          background: radial-gradient(circle at 50% 50%,
-            hsla(190,100%,60%,0.30), hsla(285,100%,65%,0.16) 45%, transparent 70%);
-          filter: blur(22px);
+          position: absolute; inset: -14%; border-radius: 9999px;
+          background: radial-gradient(ellipse at 50% 50%,
+            hsl(var(--primary) / 0.42), hsl(var(--primary) / 0.16) 50%, transparent 72%);
+          filter: blur(24px);
           opacity: calc(0.55 + var(--i) * 0.45);
           transform: translateZ(0);
           animation: lgBreath 5s ease-in-out infinite;
@@ -140,49 +141,46 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
         }
 
         /* iridescent hairline edge */
+        /* subtle brand hairline edge (no rainbow) */
         .lg-ring {
           position: absolute; inset: 0; border-radius: 9999px; padding: 1.5px;
-          background: conic-gradient(from 0deg,
-            #00e5ff, #6a5cff, #ff2fa8, #ff6b2f, #ffd60a, #35ffb0, #00e5ff);
-          opacity: calc(0.65 + var(--i) * 0.35);
+          background: linear-gradient(150deg,
+            hsl(0 0% 100% / 0.55), hsl(var(--primary) / 0.5) 45%, hsl(0 0% 100% / 0.18));
+          opacity: calc(0.7 + var(--i) * 0.3);
           -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           -webkit-mask-composite: xor; mask-composite: exclude;
-          animation: lgSpin 14s linear infinite;
-          will-change: transform;
         }
 
         /* frosted glass body */
+        /* solid blue button body */
         .lg-glass {
           position: absolute; inset: 2px; border-radius: 9999px; overflow: hidden;
-          background: linear-gradient(160deg, hsla(0,0%,100%,0.16), hsla(0,0%,100%,0.04) 45%, hsla(0,0%,100%,0.10));
-          backdrop-filter: blur(18px) saturate(1.25);
-          -webkit-backdrop-filter: blur(18px) saturate(1.25);
+          background: linear-gradient(165deg,
+            hsl(var(--primary) / 1), hsl(var(--primary) / 0.86) 55%, hsl(var(--primary) / 0.72));
           box-shadow:
-            inset 0 1px 0 hsla(0,0%,100%,0.45),
-            inset 0 -22px 44px hsla(240,60%,4%,0.55),
-            0 24px 60px -18px hsla(240,60%,4%,0.8);
+            inset 0 1px 0 hsl(0 0% 100% / 0.4),
+            inset 0 -18px 40px hsl(var(--primary) / 0.45),
+            0 18px 44px -16px hsl(var(--primary) / 0.55);
         }
         .lg-inner {
           position: absolute; inset: 0;
-          background: radial-gradient(circle at 50% 62%,
-            hsla(190,100%,70%,0.22), transparent 62%);
-          opacity: calc(0.7 + var(--i) * 0.3);
+          background: radial-gradient(ellipse at 50% 30%,
+            hsl(0 0% 100% / 0.22), transparent 65%);
+          opacity: calc(0.6 + var(--i) * 0.4);
         }
         .lg-sheen {
-          position: absolute; top: 6%; left: 14%; width: 56%; height: 34%;
+          position: absolute; top: 7%; left: 16%; width: 60%; height: 32%;
           border-radius: 9999px;
-          background: radial-gradient(ellipse at 38% 36%, hsla(0,0%,100%,0.6), hsla(0,0%,100%,0) 70%);
-          filter: blur(4px);
-          animation: lgSheen 6s ease-in-out infinite;
-          will-change: transform;
+          background: radial-gradient(ellipse at 40% 40%, hsl(0 0% 100% / 0.45), hsl(0 0% 100% / 0) 72%);
+          filter: blur(5px);
         }
 
         /* quadruple ripple */
         .lg-ripples { position: absolute; inset: 0; border-radius: 9999px; pointer-events: none; }
         .lg-ripple {
           position: absolute; inset: 0; border-radius: 9999px;
-          border: 1.5px solid hsla(190,100%,75%,0.55);
+          border: 1.5px solid hsl(var(--primary) / 0.55);
           transform: scale(0.68);
           opacity: 0;
           animation: lgRipple 700ms cubic-bezier(0.22,0.68,0.28,1) forwards;
@@ -195,22 +193,17 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           pointer-events: none;
         }
         .lg-icon {
-          width: 40px; height: 40px;
-          color: hsla(0,0%,100%,0.95);
-          filter: drop-shadow(0 2px 10px hsla(190,100%,60%,0.55));
+          width: 42px; height: 42px;
+          color: hsl(var(--primary-foreground));
+          filter: drop-shadow(0 2px 8px hsl(0 0% 0% / 0.35));
         }
         .lg-word {
-          font-size: 13px; font-weight: 900; letter-spacing: 0.34em;
-          color: hsla(0,0%,100%,0.92);
-          text-shadow: 0 2px 10px hsla(240,60%,4%,0.7);
+          font-size: 14px; font-weight: 900; letter-spacing: 0.34em;
+          color: hsl(var(--primary-foreground));
+          text-shadow: 0 2px 10px hsl(0 0% 0% / 0.35);
         }
 
-        @keyframes lgSpin { to { transform: rotate(360deg); } }
-        @keyframes lgBreath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.06); } }
-        @keyframes lgSheen {
-          0%,100% { transform: translate(0,0) scale(1); opacity: 0.85; }
-          50% { transform: translate(10%, 6%) scale(0.92); opacity: 0.6; }
-        }
+        @keyframes lgBreath { 0%,100% { transform: scale(1); } 50% { transform: scale(1.05); } }
         @keyframes lgRipple {
           0%   { transform: scale(0.66); opacity: 0.85; }
           100% { transform: scale(1.32); opacity: 0; }
@@ -228,7 +221,7 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           white-space: nowrap;
           font-size: 11.5px; font-weight: 900;
           color: hsla(0,0%,100%,0.96);
-          background: linear-gradient(120deg, hsla(190,100%,55%,0.85), hsla(285,100%,62%,0.85));
+          background: linear-gradient(120deg, hsl(var(--primary)), hsl(var(--primary) / 0.8));
           box-shadow: 0 6px 18px -6px hsla(240,60%,4%,0.8), inset 0 1px 0 hsla(0,0%,100%,0.5);
           animation: lgFloat 1200ms cubic-bezier(0.16,0.72,0.32,1) forwards;
           will-change: transform, opacity;
@@ -240,7 +233,7 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .lg-glow, .lg-ring, .lg-sheen, .lg-ripple { animation: none; }
+          .lg-glow, .lg-ripple { animation: none; }
         }
       `}</style>
     </div>
