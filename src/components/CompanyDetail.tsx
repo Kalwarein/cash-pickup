@@ -215,26 +215,28 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
       </div>
 
       {/* Outcome breakdown */}
-      <div className="glass-card p-4 space-y-3">
+      <div className="glass-card rounded-3xl p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Investment Outcome Breakdown</h3>
+          <div className="p-2 rounded-xl bg-primary/10">
+            <Lightbulb className="w-4 h-4 text-primary" />
+          </div>
+          <h3 className="font-bold text-sm">Investment Outcome Breakdown</h3>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <p className="text-[10px] text-muted-foreground">If things go well</p>
-            <p className="font-bold text-emerald-500">up to +{Math.abs(company.max_return_percent).toFixed(1)}%</p>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="p-3 rounded-2xl bg-success/10 border border-success/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Best Case</p>
+            <p className="font-black text-success text-sm">+{Math.abs(company.max_return_percent).toFixed(1)}%</p>
           </div>
-          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <p className="text-[10px] text-muted-foreground">Likely (mid)</p>
-            <p className="font-bold text-amber-500">~{((company.max_return_percent + company.min_return_percent) / 2).toFixed(1)}%</p>
+          <div className="p-3 rounded-2xl bg-warning/10 border border-warning/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Mid Case</p>
+            <p className="font-black text-warning text-sm">~{((company.max_return_percent + company.min_return_percent) / 2).toFixed(1)}%</p>
           </div>
-          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-[10px] text-muted-foreground">If things go badly</p>
-            <p className="font-bold text-red-500">down to {company.min_return_percent.toFixed(1)}%</p>
+          <div className="p-3 rounded-2xl bg-destructive/10 border border-destructive/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Worst Case</p>
+            <p className="font-black text-destructive text-sm">{company.min_return_percent.toFixed(1)}%</p>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
           Returns are randomised within this range and never exactly match the stated max. Most outcomes lean toward losses.
         </p>
       </div>
