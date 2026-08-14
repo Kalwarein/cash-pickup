@@ -131,7 +131,7 @@ const Mine = () => {
         <DrawerContent className="max-h-[85dvh]">
           <DrawerHeader className="text-left">
             <DrawerTitle>Leverage Tiers</DrawerTitle>
-            <DrawerDescription>Unlock higher tiers to multiply every tap. Deposit to unlock instantly.</DrawerDescription>
+            <DrawerDescription>Unlock higher tiers to multiply every tap. Paid straight from your wallet balance.</DrawerDescription>
           </DrawerHeader>
           <div className="overflow-y-auto px-4 pb-8 space-y-3">
             {LEVERAGE.map((tier) => (
