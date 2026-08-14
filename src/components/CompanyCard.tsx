@@ -1,6 +1,6 @@
 import { memo } from 'react';
 import { cn } from '@/lib/utils';
-import { TrendingUp, TrendingDown, Flame, ArrowUpRight, Sparkles, Globe2, MapPin } from 'lucide-react';
+import { TrendingUp, TrendingDown, Flame, ArrowUpRight, Globe2, MapPin } from 'lucide-react';
 import { sle, formatMarketCap } from '@/lib/currency';
 
 interface CompanyCardProps {
@@ -130,7 +130,6 @@ const CompanyCardComponent = ({
           onClick={(e) => { e.stopPropagation(); onInvest?.(); }}
           className="group/btn inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl font-semibold text-sm text-white bg-gradient-to-r from-blue-600 to-sky-500 shadow-[0_6px_18px_-6px_rgba(37,99,235,0.6)] hover:shadow-[0_10px_24px_-6px_rgba(37,99,235,0.7)] hover:from-blue-500 hover:to-sky-400 active:scale-[0.97] transition-all"
         >
-          <Sparkles className="w-3.5 h-3.5" />
           Invest
           <ArrowUpRight className="w-3.5 h-3.5 transition-transform group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5" />
         </button>
