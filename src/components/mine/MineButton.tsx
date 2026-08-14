@@ -115,7 +115,7 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
       <style>{`
         .lg-btn {
           position: relative;
-          width: min(320px, 84vw); height: 200px; border-radius: 9999px;
+          width: min(220px, 64vw); height: 120px; border-radius: 9999px;
           border: none; padding: 0; background: transparent;
           display: grid; place-items: center;
           cursor: pointer;
@@ -126,7 +126,7 @@ export const MineButton = memo(({ onTap, rewardLabel, intensity = 0, multiplier 
           will-change: transform;
         }
         /* press reaction: pushes back / down, springs forward on release */
-        .lg-btn--down { transform: translateZ(0) scale(0.93) translateY(6px); }
+        .lg-btn--down { transform: translateZ(0) scale(0.94) translateY(5px); }
 
         /* soft ambient bloom */
         .lg-glow {
