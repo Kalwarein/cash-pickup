@@ -179,35 +179,36 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
       <RiskWarning variant="compact" />
 
       {/* Premium hero: market cap + country + price */}
-      <div className="relative overflow-hidden rounded-2xl p-5 text-white shadow-lg"
-        style={{
-          background:
-            company.risk_level === 'Low'
-              ? 'linear-gradient(135deg, hsl(var(--primary)), #2563eb 60%, #0ea5e9)'
-              : company.risk_level === 'Medium'
-              ? 'linear-gradient(135deg, #f59e0b, #ea580c)'
-              : 'linear-gradient(135deg, #dc2626, #7c3aed)',
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2 text-xs font-semibold opacity-90">
+      <div className={cn(
+        "relative overflow-hidden rounded-3xl p-5 text-white shadow-2xl",
+        company.risk_level === 'Low' && "bg-gradient-to-br from-primary via-blue-600 to-sky-500",
+        company.risk_level === 'Medium' && "bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500",
+        company.risk_level === 'High' && "bg-gradient-to-br from-rose-600 via-red-600 to-violet-600"
+      )}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_50%)]" />
+        <div className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+
+        <div className="relative flex items-center gap-2 mb-3 text-[11px] font-semibold uppercase tracking-wider opacity-90">
           {company.country === 'SL' ? <MapPin className="w-3.5 h-3.5" /> : <Globe2 className="w-3.5 h-3.5" />}
           {company.country === 'SL' ? 'Sierra Leone' : 'Global Company'}
           <span className="opacity-60">•</span>
           {company.risk_level} Risk Tier
         </div>
-        <p className="text-xs opacity-80">Market Capitalisation</p>
-        <p className="text-3xl font-extrabold tracking-tight">
+
+        <p className="relative text-[11px] opacity-80 uppercase tracking-wider">Market Capitalisation</p>
+        <p className="relative text-3xl font-black tracking-tight tabular-nums">
           {formatMarketCap(company.market_cap || 0)}
         </p>
-        <div className="mt-3 flex items-center gap-4 text-sm">
-          <div>
-            <p className="text-[11px] opacity-75">Live Price</p>
-            <p className="font-bold">{sle(company.current_price)}</p>
+
+        <div className="relative mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-2xl bg-white/15 backdrop-blur-md p-3 border border-white/20">
+            <p className="text-[10px] opacity-80 uppercase tracking-wide">Live Price</p>
+            <p className="text-lg font-black tabular-nums">{sle(company.current_price)}</p>
           </div>
-          <div>
-            <p className="text-[11px] opacity-75">Best / Worst (weekly)</p>
-            <p className="font-bold">
-              +{Math.abs(company.max_return_percent).toFixed(1)}% / −{Math.abs(company.min_return_percent).toFixed(1)}%
+          <div className="rounded-2xl bg-white/15 backdrop-blur-md p-3 border border-white/20">
+            <p className="text-[10px] opacity-80 uppercase tracking-wide">Weekly Range</p>
+            <p className="text-sm font-bold tabular-nums">
+              +{Math.abs(company.max_return_percent).toFixed(1)}% / {company.min_return_percent.toFixed(1)}%
             </p>
           </div>
         </div>
