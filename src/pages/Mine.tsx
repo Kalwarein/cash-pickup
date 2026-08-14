@@ -62,10 +62,21 @@ const Mine = () => {
     setTransferOpen(true);
   }, []);
 
-  const unlock = useCallback((level: number, cost: number) => {
+  const unlock = useCallback(async (level: number, cost: number) => {
+    // Pay directly from the wallet when the balance covers the tier.
+    if ((wallet?.balance ?? 0) >= cost) {
+      const res = await t.buyLeverage(level);
+      if (res.error) {
+        notify.error('Upgrade failed', res.error);
+        return;
+      }
+      await refetchWallet();
+      notify.success('Leverage unlocked', `Paid ${sle(cost)} from your wallet.`);
+      return;
+    }
     localStorage.setItem('mine_pending_leverage', String(level));
     navigate(`/wallet?deposit=1&amount=${cost}&leverage=${level}`);
-  }, [navigate]);
+  }, [navigate, wallet?.balance, t, refetchWallet]);
 
   if (authLoading || t.loading) {
     return (
