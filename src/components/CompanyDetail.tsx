@@ -155,18 +155,18 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
   const trend = getTrendLabel(company.cpr_trend);
 
   return (
-    <div className="space-y-4 animate-fade-in pb-4">
+    <div className="space-y-5 animate-fade-in pb-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2 bg-muted rounded-xl hover:bg-muted/80 transition-colors">
+      <div className="flex items-center gap-3 sticky top-0 z-10 -mx-4 px-4 py-3 backdrop-blur-xl bg-background/80 border-b border-border/40">
+        <button onClick={onBack} className="p-2.5 rounded-xl bg-muted/80 hover:bg-muted active:scale-90 transition-all">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <div className="flex-1">
-          <h1 className="text-xl font-bold">{company.name}</h1>
-          <p className="text-sm text-muted-foreground">{company.ticker} • {company.sector}</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-lg font-bold truncate">{company.name}</h1>
+          <p className="text-xs text-muted-foreground">{company.ticker} • {company.sector}</p>
         </div>
         <span className={cn(
-          "text-xs px-2 py-1 rounded-full border font-medium",
+          "text-[11px] px-2.5 py-1 rounded-full border font-semibold uppercase tracking-wide",
           company.risk_level === 'Low' && "risk-low",
           company.risk_level === 'Medium' && "risk-medium",
           company.risk_level === 'High' && "risk-high"
@@ -179,61 +179,64 @@ export const CompanyDetail = ({ companyId, onBack }: CompanyDetailProps) => {
       <RiskWarning variant="compact" />
 
       {/* Premium hero: market cap + country + price */}
-      <div className="relative overflow-hidden rounded-2xl p-5 text-white shadow-lg"
-        style={{
-          background:
-            company.risk_level === 'Low'
-              ? 'linear-gradient(135deg, hsl(var(--primary)), #2563eb 60%, #0ea5e9)'
-              : company.risk_level === 'Medium'
-              ? 'linear-gradient(135deg, #f59e0b, #ea580c)'
-              : 'linear-gradient(135deg, #dc2626, #7c3aed)',
-        }}
-      >
-        <div className="flex items-center gap-2 mb-2 text-xs font-semibold opacity-90">
+      <div className={cn(
+        "relative overflow-hidden rounded-3xl p-5 text-white shadow-2xl",
+        company.risk_level === 'Low' && "bg-gradient-to-br from-primary via-blue-600 to-sky-500",
+        company.risk_level === 'Medium' && "bg-gradient-to-br from-amber-500 via-orange-500 to-rose-500",
+        company.risk_level === 'High' && "bg-gradient-to-br from-rose-600 via-red-600 to-violet-600"
+      )}>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.18),transparent_50%)]" />
+        <div className="absolute -bottom-12 -right-12 w-40 h-40 rounded-full bg-white/10 blur-2xl" />
+
+        <div className="relative flex items-center gap-2 mb-3 text-[11px] font-semibold uppercase tracking-wider opacity-90">
           {company.country === 'SL' ? <MapPin className="w-3.5 h-3.5" /> : <Globe2 className="w-3.5 h-3.5" />}
           {company.country === 'SL' ? 'Sierra Leone' : 'Global Company'}
           <span className="opacity-60">•</span>
           {company.risk_level} Risk Tier
         </div>
-        <p className="text-xs opacity-80">Market Capitalisation</p>
-        <p className="text-3xl font-extrabold tracking-tight">
+
+        <p className="relative text-[11px] opacity-80 uppercase tracking-wider">Market Capitalisation</p>
+        <p className="relative text-3xl font-black tracking-tight tabular-nums">
           {formatMarketCap(company.market_cap || 0)}
         </p>
-        <div className="mt-3 flex items-center gap-4 text-sm">
-          <div>
-            <p className="text-[11px] opacity-75">Live Price</p>
-            <p className="font-bold">{sle(company.current_price)}</p>
+
+        <div className="relative mt-4 grid grid-cols-2 gap-3 text-sm">
+          <div className="rounded-2xl bg-white/15 backdrop-blur-md p-3 border border-white/20">
+            <p className="text-[10px] opacity-80 uppercase tracking-wide">Live Price</p>
+            <p className="text-lg font-black tabular-nums">{sle(company.current_price)}</p>
           </div>
-          <div>
-            <p className="text-[11px] opacity-75">Best / Worst (weekly)</p>
-            <p className="font-bold">
-              +{Math.abs(company.max_return_percent).toFixed(1)}% / −{Math.abs(company.min_return_percent).toFixed(1)}%
+          <div className="rounded-2xl bg-white/15 backdrop-blur-md p-3 border border-white/20">
+            <p className="text-[10px] opacity-80 uppercase tracking-wide">Weekly Range</p>
+            <p className="text-sm font-bold tabular-nums">
+              +{Math.abs(company.max_return_percent).toFixed(1)}% / {company.min_return_percent.toFixed(1)}%
             </p>
           </div>
         </div>
       </div>
 
       {/* Outcome breakdown */}
-      <div className="glass-card p-4 space-y-3">
+      <div className="glass-card rounded-3xl p-5 space-y-4">
         <div className="flex items-center gap-2">
-          <Lightbulb className="w-4 h-4 text-primary" />
-          <h3 className="font-semibold">Investment Outcome Breakdown</h3>
+          <div className="p-2 rounded-xl bg-primary/10">
+            <Lightbulb className="w-4 h-4 text-primary" />
+          </div>
+          <h3 className="font-bold text-sm">Investment Outcome Breakdown</h3>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center">
-          <div className="p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-            <p className="text-[10px] text-muted-foreground">If things go well</p>
-            <p className="font-bold text-emerald-500">up to +{Math.abs(company.max_return_percent).toFixed(1)}%</p>
+        <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="p-3 rounded-2xl bg-success/10 border border-success/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Best Case</p>
+            <p className="font-black text-success text-sm">+{Math.abs(company.max_return_percent).toFixed(1)}%</p>
           </div>
-          <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
-            <p className="text-[10px] text-muted-foreground">Likely (mid)</p>
-            <p className="font-bold text-amber-500">~{((company.max_return_percent + company.min_return_percent) / 2).toFixed(1)}%</p>
+          <div className="p-3 rounded-2xl bg-warning/10 border border-warning/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Mid Case</p>
+            <p className="font-black text-warning text-sm">~{((company.max_return_percent + company.min_return_percent) / 2).toFixed(1)}%</p>
           </div>
-          <div className="p-2 rounded-lg bg-red-500/10 border border-red-500/20">
-            <p className="text-[10px] text-muted-foreground">If things go badly</p>
-            <p className="font-bold text-red-500">down to {company.min_return_percent.toFixed(1)}%</p>
+          <div className="p-3 rounded-2xl bg-destructive/10 border border-destructive/20">
+            <p className="text-[10px] text-muted-foreground mb-1">Worst Case</p>
+            <p className="font-black text-destructive text-sm">{company.min_return_percent.toFixed(1)}%</p>
           </div>
         </div>
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-[11px] text-muted-foreground leading-relaxed">
           Returns are randomised within this range and never exactly match the stated max. Most outcomes lean toward losses.
         </p>
       </div>
