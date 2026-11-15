@@ -289,19 +289,6 @@
     @apply fixed bottom-0 left-0 right-0 bg-card/95 backdrop-blur-xl border-t border-border pb-safe;
   }
 
-  .card-foil {
-    background:
-      radial-gradient(circle at 82% 18%, color-mix(in srgb, var(--card-glow) 62%, transparent), transparent 39%),
-      radial-gradient(circle at 12% 92%, color-mix(in srgb, var(--card-foil) 28%, transparent), transparent 42%),
-      linear-gradient(135deg, var(--card-base), color-mix(in srgb, var(--card-base) 68%, black));
-  }
-
-  .card-foil__grid {
-    background-image: linear-gradient(rgba(255,255,255,.09) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.09) 1px, transparent 1px);
-    background-size: 26px 26px;
-    mask-image: linear-gradient(130deg, black, transparent 80%);
-  }
-
   .nav-item {
     @apply flex flex-col items-center justify-center py-2 px-4 transition-all duration-200;
   }
@@ -680,16 +667,4 @@
 
 @media (prefers-reduced-motion: reduce) {
   .mine-btn::after { animation: none; }
-}
-
-
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
 }

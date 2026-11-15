@@ -1,440 +1,705 @@
-import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
-  Activity, ArrowDownRight, ArrowUpRight, BadgeCheck, BarChart3, ChevronRight,
-  CircleAlert, Clock3, Layers3, Search, Sparkles, Store, TrendingDown,
-  TrendingUp, X,
+  TrendingUp, TrendingDown, ChevronRight, Building2, Flame,
+  Activity, Shield, BarChart3, ArrowUpRight, ArrowDownRight,
+  Zap, Star, Eye, Info, Target, Search, X, Sparkles, Gauge,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle } from '@/components/ui/drawer';
-import { BottomNav } from '@/components/BottomNav';
-import { CardArtwork } from '@/components/cards/CardArtwork';
-import { CardPriceChart } from '@/components/cards/CardPriceChart';
-import { MarketCardTile } from '@/components/cards/MarketCardTile';
-import { TradeConfirmDialog } from '@/components/cards/TradeConfirmDialog';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { useCardCatalog, useCardHoldings, useCardPriceHistory, useCardRealtime, useCardTradeActions, useCardWallet } from '@/hooks/useCardMarket';
-import type { CardCatalogRow, CardCategory, CardHoldingRow } from '@/integrations/supabase/card-trading-types';
-import { formatLeCredits } from '@/lib/card-currency';
-import { toast } from '@/hooks/use-toast';
+import { useCPR } from '@/hooks/useCPR';
+import { useCompanies } from '@/hooks/useCompanies';
+import { CPRChart } from '@/components/CPRChart';
 import { cn } from '@/lib/utils';
+import { sle, formatMarketCap } from '@/lib/currency';
+import { supabase } from '@/integrations/supabase/client';
+import { Drawer, DrawerContent } from '@/components/ui/drawer';
+import { CompanyGlobalInvestments } from '@/components/CompanyGlobalInvestments';
+import { MarketIndexChart } from '@/components/market/MarketIndexChart';
+import { AnimatedNumber, Sparkline, seededSeries, hashSeed } from '@/components/market/parts';
 
-const EMPTY_CARDS: CardCatalogRow[] = [];
-const EMPTY_HOLDINGS: CardHoldingRow[] = [];
+/* ─── Types ─── */
+interface CompanyDetailData {
+  id: string; name: string; ticker: string; sector: string;
+  risk_level: string; cpr_today: number; cpr_yesterday: number;
+  cpr_7day_avg: number; cpr_30day_avg: number; cpr_best: number;
+  cpr_worst: number; cpr_volatility: number; cpr_trend: string;
+  current_price: number; is_silent_performer: boolean; description: string | null;
+  is_trending?: boolean;
+}
 
-const categories: Array<{ value: 'all' | CardCategory; label: string }> = [
-  { value: 'all', label: 'All cards' },
-  { value: 'meme', label: 'Memes' },
-  { value: 'company', label: 'Companies' },
-  { value: 'fintech_collectible', label: 'Fintech' },
-  { value: 'community', label: 'Community' },
-];
-
-const categoryLabel: Record<CardCategory, string> = {
-  meme: 'Meme collectible',
-  company: 'Fictional company collectible',
-  fintech_collectible: 'Fintech collectible',
-  community: 'Community collectible',
+const riskColor = (r: string) => {
+  const k = (r || '').toLowerCase();
+  return k === 'low'    ? { c: '#22c55e', bg: 'rgba(34,197,94,0.12)',  label: 'Low' } :
+         k === 'medium' ? { c: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'Med' } :
+                          { c: '#ef4444', bg: 'rgba(239,68,68,0.12)',  label: 'High' };
 };
 
-type SortMode = 'featured' | 'price-low' | 'price-high' | 'move';
+const spark = (id: string, base: number) =>
+  seededSeries(hashSeed(id), 18, base, Math.max(0.5, Math.abs(base) * 0.14) + 0.4);
+
+const TrendBadge = ({ trend }: { trend: string }) => {
+  const cfg =
+    trend === 'improving' || trend === 'rising' ? { icon: ArrowUpRight, color: '#22c55e', bg: 'rgba(34,197,94,0.12)', label: 'Rising' } :
+    trend === 'declining' || trend === 'falling' ? { icon: ArrowDownRight, color: '#ef4444', bg: 'rgba(239,68,68,0.12)', label: 'Falling' } :
+                                                   { icon: Activity, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', label: 'Stable' };
+  const Icon = cfg.icon;
+  return <span className="mt-trend-badge" style={{ color: cfg.color, background: cfg.bg }}><Icon className="w-3 h-3" />{cfg.label}</span>;
+};
 
 export const MarketTab = () => {
-  const navigate = useNavigate();
-  const catalogQuery = useCardCatalog();
-  const holdingsQuery = useCardHoldings();
-  const walletQuery = useCardWallet();
-  const { buyCard, isBuying } = useCardTradeActions();
-  useCardRealtime();
+  const {
+    companies: cprCompanies, positiveCompanies, negativeCompanies,
+    stableCompanies, averageCPR, loading,
+  } = useCPR();
+  const { companies: fullCompanies } = useCompanies();
 
-  const [activeCategory, setActiveCategory] = useState<'all' | CardCategory>('all');
-  const [search, setSearch] = useState('');
-  const [sortMode, setSortMode] = useState<SortMode>('featured');
-  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
-  const [buyTarget, setBuyTarget] = useState<CardCatalogRow | null>(null);
-  const [buyRequestId, setBuyRequestId] = useState<string | null>(null);
+  const [selectedCompany, setSelectedCompany] = useState<CompanyDetailData | null>(null);
+  const [cprHistory, setCprHistory] = useState<Array<{ recorded_date: string; cpr_value: number }>>([]);
+  const [category, setCategory] = useState<string>('All');
+  const [query, setQuery] = useState('');
+  const [moverTab, setMoverTab] = useState<'gainers' | 'losers' | 'active' | 'watched'>('gainers');
+  const [showDrawer, setShowDrawer] = useState(false);
+  const [drawerTab, setDrawerTab] = useState<'trending' | 'topGainers' | 'topLosers'>('trending');
+  const [tick, setTick] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState(0);
 
-  const cards = catalogQuery.data ?? EMPTY_CARDS;
-  const holdings = holdingsQuery.data ?? EMPTY_HOLDINGS;
-  const walletBalance = Number(walletQuery.data?.balance ?? 0);
-  const selectedCard = cards.find((card) => card.id === selectedCardId) ?? null;
-  const historyQuery = useCardPriceHistory(selectedCardId ?? undefined);
-  const history = historyQuery.data ?? [];
+  /* Merge CPR + full company data */
+  const companies = useMemo(() => cprCompanies.map((c) => {
+    const f = fullCompanies.find((x) => x.id === c.id);
+    return {
+      ...c,
+      price_change_percent: f ? f.price_change_percent : c.cpr_today,
+      market_cap: f ? f.market_cap : 0,
+    };
+  }), [cprCompanies, fullCompanies]);
 
-  const { filteredCards, ownedCounts, previouslyPurchased } = useMemo(() => {
-    const owned = new Map<string, number>();
-    const purchased = new Set<string>();
-    for (const holding of holdings) {
-      purchased.add(holding.card_id);
-      if (holding.status === 'owned') owned.set(holding.card_id, (owned.get(holding.card_id) ?? 0) + 1);
-    }
+  /* "Last updated" timer + gentle live tick */
+  useEffect(() => {
+    const t = setInterval(() => { setLastUpdated((s) => s + 1); }, 1000);
+    return () => clearInterval(t);
+  }, []);
+  useEffect(() => { setLastUpdated(0); setTick((t) => t + 1); }, [averageCPR]);
 
-    const term = search.trim().toLocaleLowerCase();
-    const visible = cards.filter((card) => {
-      if (activeCategory !== 'all' && card.category !== activeCategory) return false;
-      if (!term) return true;
-      return [card.title, card.code, card.description, categoryLabel[card.category]]
-        .some((value) => value.toLocaleLowerCase().includes(term));
-    });
+  /* CPR history for detail drawer */
+  useEffect(() => {
+    if (!selectedCompany) return;
+    (async () => {
+      const { data } = await supabase
+        .from('cpr_history')
+        .select('recorded_date, cpr_value')
+        .eq('company_id', selectedCompany.id)
+        .order('recorded_date', { ascending: true })
+        .limit(60);
+      setCprHistory(data || []);
+    })();
+  }, [selectedCompany]);
 
-    visible.sort((a, b) => {
-      if (sortMode === 'price-low') return a.current_price - b.current_price;
-      if (sortMode === 'price-high') return b.current_price - a.current_price;
-      if (sortMode === 'move') return Math.abs(b.price_change_percent) - Math.abs(a.price_change_percent);
-      if (a.is_limited !== b.is_limited) return a.is_limited ? -1 : 1;
-      return Math.abs(b.price_change_percent) - Math.abs(a.price_change_percent);
-    });
-    return { filteredCards: visible, ownedCounts: owned, previouslyPurchased: purchased };
-  }, [activeCategory, cards, holdings, search, sortMode]);
-
-  const featuredCard = cards.find((card) => card.is_limited && card.status === 'active' && !card.market_paused) ?? cards[0] ?? null;
-  const risingCount = cards.filter((card) => card.price_change_percent > 0).length;
-  const fallingCount = cards.filter((card) => card.price_change_percent < 0).length;
-  const remainingForFeatured = featuredCard?.is_limited && featuredCard.buyer_limit !== null
-    ? Math.max(0, featuredCard.buyer_limit - featuredCard.lifetime_buyer_count)
-    : null;
-  const selectedOwnedCount = selectedCard ? ownedCounts.get(selectedCard.id) ?? 0 : 0;
-  const selectedPreviouslyPurchased = selectedCard ? previouslyPurchased.has(selectedCard.id) : false;
-  const canBuySelected = Boolean(selectedCard)
-    && selectedCard?.status === 'active'
-    && !selectedCard.market_paused
-    && !(selectedCard.is_limited && selectedPreviouslyPurchased)
-    && !(selectedCard.is_limited && selectedCard.buyer_limit !== null && selectedCard.lifetime_buyer_count >= selectedCard.buyer_limit);
-  const currentBuyTarget = buyTarget ? cards.find((card) => card.id === buyTarget.id) ?? buyTarget : null;
-  const lastMarketTick = cards.reduce<string | null>((latest, card) =>
-    card.last_tick_at && (!latest || card.last_tick_at > latest) ? card.last_tick_at : latest, null);
-  const lastMarketTickLabel = lastMarketTick
-    ? new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(new Date(lastMarketTick))
-    : null;
-
-  const openBuy = (card: CardCatalogRow) => {
-    setBuyTarget(card);
-    setBuyRequestId(crypto.randomUUID());
-  };
-
-  const cancelBuy = () => {
-    setBuyTarget(null);
-    setBuyRequestId(null);
-  };
-
-  const confirmBuy = async () => {
-    if (!buyTarget || !buyRequestId) return;
-    try {
-      const result = await buyCard(buyTarget.id, buyRequestId);
-      cancelBuy();
-      toast({
-        title: 'Card added to your collection',
-        description: `${buyTarget.title} · ${result.serial_code ?? result.holding_id} · bought at ${formatLeCredits(result.unit_price)} · new quote ${formatLeCredits(result.price_after)} · balance ${formatLeCredits(result.balance)}.`,
-      });
-    } catch (error) {
-      toast({
-        title: 'Purchase could not be completed',
-        description: error instanceof Error ? error.message : 'The live quote or your balance may have changed. Refresh and try again.',
-        variant: 'destructive',
+  const handleCompanyClick = (companyId: string) => {
+    const full = fullCompanies.find((c) => c.id === companyId);
+    const cpr = cprCompanies.find((c) => c.id === companyId);
+    if (full && cpr) {
+      setSelectedCompany({
+        id: full.id, name: full.name, ticker: full.ticker, sector: full.sector,
+        risk_level: full.risk_level, cpr_today: cpr.cpr_today, cpr_yesterday: cpr.cpr_yesterday || 0,
+        cpr_7day_avg: cpr.cpr_7day_avg, cpr_30day_avg: cpr.cpr_30day_avg || 0,
+        cpr_best: cpr.cpr_best || 0, cpr_worst: cpr.cpr_worst || 0,
+        cpr_volatility: cpr.cpr_volatility || 0, cpr_trend: cpr.cpr_trend || 'stable',
+        current_price: full.current_price,
+        is_silent_performer: (full as any).is_silent_performer || false,
+        is_trending: full.is_trending, description: null,
       });
     }
   };
 
-  const movers = [...cards].sort((a, b) => Math.abs(b.price_change_percent) - Math.abs(a.price_change_percent)).slice(0, 6);
+  /* ─── Derived market intelligence ─── */
+  const isUp = averageCPR >= 0;
+  const sentiment = averageCPR >= 3 ? 'Bullish' : averageCPR <= -3 ? 'Bearish' : 'Neutral';
+  const sentColor = averageCPR >= 3 ? '#22c55e' : averageCPR <= -3 ? '#ef4444' : '#f59e0b';
+
+  const totalCap = useMemo(() => companies.reduce((s, c) => s + (c.market_cap || 0), 0), [companies]);
+  const gainers = useMemo(() => [...companies].sort((a, b) => b.cpr_today - a.cpr_today), [companies]);
+  const losers = useMemo(() => [...companies].sort((a, b) => a.cpr_today - b.cpr_today), [companies]);
+  const active = useMemo(() => [...companies].sort((a, b) => (b.market_cap || 0) - (a.market_cap || 0)), [companies]);
+  const watched = useMemo(() => [...companies].sort((a, b) => Number(b.is_trending) - Number(a.is_trending) || b.cpr_volatility - a.cpr_volatility), [companies]);
+  const trending = useMemo(() => companies.filter((c) => c.is_trending), [companies]);
+
+  const avgVol = companies.length ? companies.reduce((s, c) => s + c.cpr_volatility, 0) / companies.length : 0;
+  const positivePct = companies.length ? (positiveCompanies.length / companies.length) * 100 : 50;
+  const fearGreed = Math.max(2, Math.min(98, Math.round(50 + averageCPR * 2.2 + (positivePct - 50) * 0.6)));
+  const fgLabel = fearGreed >= 75 ? 'Extreme Greed' : fearGreed >= 55 ? 'Greed' : fearGreed >= 45 ? 'Neutral' : fearGreed >= 25 ? 'Fear' : 'Extreme Fear';
+
+  /* Sectors / categories */
+  const sectors = useMemo(() => Array.from(new Set(companies.map((c) => c.sector))).filter(Boolean), [companies]);
+  const sectorPerf = useMemo(() => sectors.map((s) => {
+    const list = companies.filter((c) => c.sector === s);
+    const avg = list.reduce((a, c) => a + c.cpr_today, 0) / (list.length || 1);
+    return { sector: s, avg, count: list.length };
+  }).sort((a, b) => b.avg - a.avg), [sectors, companies]);
+
+  /* Filtered list (search + category) */
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return companies.filter((c) => {
+      if (category !== 'All' && c.sector !== category) return false;
+      if (q && !(c.name.toLowerCase().includes(q) || c.ticker.toLowerCase().includes(q) || c.sector.toLowerCase().includes(q))) return false;
+      return true;
+    });
+  }, [companies, category, query]);
+
+  /* Overview stat cards */
+  const overviewCards = [
+    { key: 'bull', icon: TrendingUp, emoji: '📈', label: 'Bullish', value: positiveCompanies.length, color: '#22c55e', base: 2 },
+    { key: 'bear', icon: TrendingDown, emoji: '📉', label: 'Bearish', value: negativeCompanies.length, color: '#ef4444', base: -2 },
+    { key: 'active', icon: Flame, emoji: '🔥', label: 'Most Active', value: active[0]?.ticker, color: '#f97316', base: 3, raw: active[0]?.id },
+    { key: 'gain', icon: ArrowUpRight, emoji: '⭐', label: 'Top Gainer', value: gainers[0] ? `+${gainers[0].cpr_today.toFixed(1)}%` : '—', color: '#22c55e', base: 4, raw: gainers[0]?.id },
+    { key: 'loss', icon: ArrowDownRight, emoji: '⚠️', label: 'Biggest Loser', value: losers[0] ? `${losers[0].cpr_today.toFixed(1)}%` : '—', color: '#ef4444', base: -4, raw: losers[0]?.id },
+    { key: 'avg', icon: Activity, emoji: '📊', label: 'Avg Growth', value: `${averageCPR >= 0 ? '+' : ''}${averageCPR.toFixed(1)}%`, color: isUp ? '#22c55e' : '#ef4444', base: averageCPR },
+    { key: 'vol', icon: Zap, emoji: '⚡', label: 'Volatility', value: avgVol.toFixed(1), color: '#a855f7', base: 1.5 },
+    { key: 'cap', icon: Building2, emoji: '💰', label: 'Market Cap', value: formatMarketCap(totalCap), color: '#3b82f6', base: 3 },
+  ];
+
+  /* AI Insights derived from real sector data */
+  const aiInsights = useMemo(() => {
+    const out: { text: string; conf: number; tone: 'up' | 'down' | 'flat' }[] = [];
+    const top = sectorPerf[0];
+    const bottom = sectorPerf[sectorPerf.length - 1];
+    if (top) out.push({ text: `${top.sector} is outperforming the market, averaging ${top.avg >= 0 ? '+' : ''}${top.avg.toFixed(1)}% today.`, conf: Math.min(96, 62 + Math.abs(top.avg) * 3), tone: top.avg >= 0 ? 'up' : 'down' });
+    if (bottom && bottom !== top) out.push({ text: `${bottom.sector} is under pressure at ${bottom.avg.toFixed(1)}%, dragging on overall sentiment.`, conf: Math.min(94, 60 + Math.abs(bottom.avg) * 3), tone: bottom.avg >= 0 ? 'up' : 'down' });
+    if (gainers[0]) out.push({ text: `${gainers[0].name} is leading today's momentum with a ${gainers[0].cpr_today.toFixed(1)}% move.`, conf: Math.min(97, 70 + gainers[0].cpr_today), tone: 'up' });
+    out.push({ text: `Market breadth is ${positivePct >= 55 ? 'strong' : positivePct >= 45 ? 'balanced' : 'weak'} — ${positiveCompanies.length} of ${companies.length} companies advancing.`, conf: 88, tone: positivePct >= 50 ? 'up' : 'down' });
+    return out;
+  }, [sectorPerf, gainers, positivePct, positiveCompanies.length, companies.length]);
+
+  /* ─── Loading skeleton ─── */
+  if (loading) {
+    return (
+      <div className="mt-page"><div className="mt-body">
+        <div className="mt-shimmer mt-sk-hero" />
+        <div className="mt-shimmer mt-sk-chart" />
+        <div className="mt-sk-row">{[...Array(3)].map((_, i) => <div key={i} className="mt-shimmer mt-sk-stat" />)}</div>
+        {[...Array(4)].map((_, i) => <div key={i} className="mt-shimmer mt-sk-card" style={{ animationDelay: `${i * 60}ms` }} />)}
+      </div></div>
+    );
+  }
+
+  /* ─── Reusable company row ─── */
+  const CompanyRow = ({ company, index, onTap }: { company: any; index: number; onTap: () => void }) => {
+    const cprUp = company.cpr_today >= 0;
+    const risk = riskColor(company.risk_level);
+    return (
+      <button className="mt-row" onClick={onTap}>
+        <span className="mt-row-rank">{index + 1}</span>
+        <div className="mt-row-logo"><span>{company.ticker?.slice(0, 2)}</span>{company.is_trending && <span className="mt-row-fire">🔥</span>}</div>
+        <div className="mt-row-info">
+          <p className="mt-row-name">{company.name}</p>
+          <div className="mt-row-meta">
+            <span>{company.ticker}</span><span className="mt-dot" /><span>{company.sector}</span>
+            <span className="mt-risk-chip" style={{ color: risk.c, background: risk.bg }}>{risk.label}</span>
+          </div>
+        </div>
+        <Sparkline data={spark(company.id, company.cpr_today)} color={cprUp ? '#22c55e' : '#ef4444'} width={48} height={22} />
+        <div className="mt-row-cpr">
+          <div className={cn('mt-row-cpr-main', cprUp ? 'mt-up' : 'mt-down')}>
+            {cprUp ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+            {cprUp ? '+' : ''}{company.cpr_today?.toFixed(1)}%
+          </div>
+          <div className="mt-row-cap">{company.market_cap ? formatMarketCap(company.market_cap) : `7d ${company.cpr_7day_avg?.toFixed(1)}%`}</div>
+        </div>
+        <ChevronRight className="mt-row-chevron" />
+      </button>
+    );
+  };
+
+  const moverList = moverTab === 'gainers' ? gainers : moverTab === 'losers' ? losers : moverTab === 'active' ? active : watched;
 
   return (
-    <>
-      <main className="mx-auto w-full max-w-7xl space-y-6 px-4 pb-10 pt-5 sm:space-y-8 sm:px-6 sm:pt-8 lg:px-8">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary ring-1 ring-primary/15">
-              <Store className="h-5 w-5" aria-hidden="true" />
-            </div>
+    <div className="mt-page">
+      {/* HEADER */}
+      <header className="mt-header"><div className="mt-header-inner">
+        <div>
+          <div className="mt-live-pill" style={{ color: sentColor, background: `${sentColor}1f` }}>
+            <span className="mt-live-dot" style={{ background: sentColor }} />LIVE MARKET
+          </div>
+          <h1 className="mt-header-title">Market</h1>
+        </div>
+        <div className={cn('mt-index-pill', isUp ? 'mt-up' : 'mt-down')}>
+          {isUp ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+          <AnimatedNumber value={averageCPR} decimals={2} prefix={isUp ? '+' : ''} suffix="%" />
+        </div>
+      </div></header>
+
+      {/* LIVE TICKER */}
+      <div className="mt-ticker">
+        <div className="mt-ticker-track">
+          {[...active.slice(0, 14), ...active.slice(0, 14)].map((c, i) => {
+            const u = c.cpr_today >= 0;
+            return (
+              <span key={i} className="mt-ticker-item" onClick={() => handleCompanyClick(c.id)}>
+                <b>{c.ticker}</b>
+                <span className={u ? 'mt-up' : 'mt-down'}>{u ? '▲' : '▼'}{Math.abs(c.cpr_today).toFixed(1)}%</span>
+              </span>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-body">
+        {/* HERO */}
+        <div className="mt-hero">
+          <div className="mt-hero-glow" />
+          <div className="mt-hero-top">
             <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-primary">Cash Pickup · Exchange</p>
-              <h1 className="font-display text-2xl font-black tracking-tight sm:text-3xl">The card market</h1>
+              <p className="mt-hero-sent" style={{ color: sentColor }}>
+                <span className="mt-live-dot" style={{ background: sentColor }} />{sentiment}
+              </p>
+              <div className={cn('mt-hero-big', isUp ? 'mt-up' : 'mt-down')}>
+                <AnimatedNumber value={averageCPR} decimals={2} prefix={isUp ? '+' : ''} suffix="%" />
+              </div>
+              <p className="mt-hero-sub">CP Market Index · Daily Change</p>
+            </div>
+            <div className="mt-fg">
+              <Gauge className="w-4 h-4" style={{ color: sentColor }} />
+              <p className="mt-fg-val" style={{ color: sentColor }}><AnimatedNumber value={fearGreed} /></p>
+              <p className="mt-fg-label">{fgLabel}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-2 rounded-2xl border border-border/70 bg-card/80 px-3.5 py-2.5 sm:flex">
-              <span className={cn('h-2 w-2 rounded-full', lastMarketTick ? 'bg-success' : 'bg-warning')} />
-              <span className="text-xs font-bold">{lastMarketTickLabel ? `Last tick ${lastMarketTickLabel}` : catalogQuery.isLoading ? 'Loading quotes' : 'Waiting for first price tick'}</span>
-            </div>
-            <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => navigate('/cards')}>
-              <Layers3 className="h-4 w-4" /> My cards
-            </Button>
-            <ThemeToggle />
+          <div className="mt-hero-stats">
+            <div className="mt-hero-stat"><p className="mt-hs-label">Health</p><p className="mt-hs-val">{Math.round(positivePct)}%</p></div>
+            <div className="mt-hero-stat"><p className="mt-hs-label">Active</p><p className="mt-hs-val">{companies.length}</p></div>
+            <div className="mt-hero-stat"><p className="mt-hs-label">Market Cap</p><p className="mt-hs-val">{formatMarketCap(totalCap)}</p></div>
+            <div className="mt-hero-stat"><p className="mt-hs-label">Updated</p><p className="mt-hs-val">{lastUpdated}s ago</p></div>
           </div>
-        </header>
+        </div>
 
-        <section className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_19rem]">
-          <div className="relative overflow-hidden rounded-[1.8rem] border border-border/70 bg-gradient-to-br from-primary/[0.12] via-card to-accent/[0.07] p-5 shadow-[var(--shadow-card)] sm:p-7">
-            <div className="pointer-events-none absolute -right-20 -top-28 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
-            <div className="relative z-10 grid items-center gap-6 md:grid-cols-[minmax(0,1fr)_minmax(16rem,0.75fr)]">
-              <div>
-                <Badge className="border-success/20 bg-success/10 text-success hover:bg-success/10">
-                  <span className="mr-1.5 h-1.5 w-1.5 rounded-full bg-success" /> SIMULATED MARKET
-                </Badge>
-                <h2 className="mt-4 max-w-xl font-display text-3xl font-black leading-[1.06] tracking-tight sm:text-4xl">
-                  Collect the moment.<br /><span className="text-gradient">Trade the quote.</span>
-                </h2>
-                <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                  Browse 30 fictional collectibles, follow their live quotes, and trade with simulated Le credits. Every quote can move up or down.
-                </p>
-                <div className="mt-5 flex flex-wrap gap-2">
-                  <Button type="button" className="rounded-xl" onClick={() => document.getElementById('card-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
-                    Explore cards <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <Button type="button" variant="outline" className="rounded-xl" onClick={() => navigate('/cards')}>
-                    View collection
-                  </Button>
-                </div>
-                <p className="mt-4 inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                  <BadgeCheck className="h-3.5 w-3.5 text-primary" /> Fictional cards and non-redeemable credits only
-                </p>
-              </div>
-
-              {featuredCard ? (
-                <button type="button" onClick={() => setSelectedCardId(featuredCard.id)} className="group relative text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-4 focus-visible:ring-offset-background">
-                  <div className="absolute -inset-2 rounded-[1.5rem] bg-primary/10 blur-2xl transition-opacity group-hover:opacity-80" />
-                  <div className="relative rotate-[1deg] transition-transform duration-300 group-hover:rotate-0 group-hover:scale-[1.02]">
-                    <CardArtwork card={featuredCard} />
-                    <div className="mt-2 flex items-center justify-between gap-2 px-1">
-                      <span className="text-xs font-bold">Featured drop · {featuredCard.title}</span>
-                      {remainingForFeatured !== null && <span className="rounded-full border border-border/70 bg-card/80 px-2.5 py-1 text-[10px] font-bold backdrop-blur">{remainingForFeatured} spots remain</span>}
-                    </div>
-                  </div>
-                </button>
-              ) : catalogQuery.isLoading ? (
-                <Skeleton className="aspect-[1.72] w-full rounded-[1.15rem]" />
-              ) : (
-                <div className="rounded-[1.5rem] border border-border/70 bg-card/70 p-6 text-center text-sm text-muted-foreground">
-                  {catalogQuery.isError ? 'Featured card unavailable while the market reconnects.' : 'No featured card is available yet.'}
-                </div>
-              )}
-            </div>
+        {/* INTERACTIVE CHART */}
+        <div className="mt-chart-card">
+          <div className="mt-card-title-row">
+            <p className="mt-card-title"><BarChart3 className="w-4 h-4 text-primary" />Market Index</p>
+            <span className={cn('mt-mini-badge', isUp ? 'mt-up-bg' : 'mt-down-bg')}>{isUp ? 'Uptrend' : 'Downtrend'}</span>
           </div>
+          <MarketIndexChart averageCPR={averageCPR} seed={tick + 991} isUp={isUp} />
+        </div>
 
-          <aside className="grid grid-cols-2 gap-3 lg:grid-cols-1">
-            <div className="rounded-[1.4rem] border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary"><Layers3 className="h-4 w-4" /></span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">My balance</span>
-              </div>
-              <p className="mt-4 font-display text-xl font-black tabular-nums tracking-tight sm:text-2xl">{walletQuery.isLoading ? '—' : formatLeCredits(walletBalance)}</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Simulated Le credits · no cash value</p>
-            </div>
-            <div className="rounded-[1.4rem] border border-border/70 bg-card p-4 shadow-[var(--shadow-card)] sm:p-5">
-              <div className="flex items-center justify-between gap-3">
-                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-accent/10 text-accent"><Activity className="h-4 w-4" /></span>
-                <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Market breadth</span>
-              </div>
-              <p className="mt-4 font-display text-xl font-black tracking-tight sm:text-2xl">{catalogQuery.isLoading ? '—' : `${risingCount} rising · ${fallingCount} falling`}</p>
-              <p className="mt-1 text-[10px] leading-relaxed text-muted-foreground">Based on each card’s latest recorded quote change</p>
-            </div>
-          </aside>
-        </section>
+        {/* SEARCH */}
+        <div className="mt-search">
+          <Search className="w-4 h-4 text-muted-foreground" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search ticker, company or sector…" />
+          {query && <button onClick={() => setQuery('')}><X className="w-4 h-4 text-muted-foreground" /></button>}
+        </div>
 
-        {cards.length > 0 && (
-          <section aria-label="Recent card quote moves" className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 px-3 py-3 sm:px-4">
-            <div className="mb-2 flex items-center gap-2 px-1 text-[10px] font-extrabold uppercase tracking-[0.14em] text-muted-foreground">
-              <Clock3 className="h-3.5 w-3.5 text-primary" /> Latest quote moves
+        {/* CATEGORIES */}
+        <div className="mt-chips">
+          {['All', ...sectors].map((s) => (
+            <button key={s} onClick={() => setCategory(s)} className={cn('mt-chip', category === s && 'mt-chip--on')}>{s}</button>
+          ))}
+        </div>
+
+        {/* OVERVIEW CARDS */}
+        <div className="mt-ov-grid">
+          {overviewCards.map((c) => (
+            <button key={c.key} className="mt-ov-card" onClick={() => c.raw && handleCompanyClick(c.raw)}>
+              <div className="mt-ov-top">
+                <span className="mt-ov-emoji">{c.emoji}</span>
+                <span className="mt-ov-dot" style={{ background: c.color }} />
+              </div>
+              <p className="mt-ov-value" style={{ color: c.color }}>
+                {typeof c.value === 'number' ? <AnimatedNumber value={c.value} /> : c.value}
+              </p>
+              <div className="mt-ov-bottom">
+                <p className="mt-ov-label">{c.label}</p>
+                <Sparkline data={spark(c.key, c.base)} color={c.color} width={42} height={18} />
+              </div>
+            </button>
+          ))}
+        </div>
+
+        {/* AI INSIGHTS */}
+        <div className="mt-section-head"><Sparkles className="w-4 h-4 text-primary" /><p>AI Market Insights</p></div>
+        <div className="mt-ai-list">
+          {aiInsights.map((ins, i) => (
+            <div key={i} className="mt-ai-card">
+              <div className={cn('mt-ai-icon', ins.tone === 'up' ? 'mt-up-bg' : ins.tone === 'down' ? 'mt-down-bg' : 'mt-flat-bg')}>
+                {ins.tone === 'up' ? <TrendingUp className="w-3.5 h-3.5" /> : ins.tone === 'down' ? <TrendingDown className="w-3.5 h-3.5" /> : <Activity className="w-3.5 h-3.5" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="mt-ai-text">{ins.text}</p>
+                <div className="mt-ai-conf"><div className="mt-ai-bar"><span style={{ width: `${ins.conf}%` }} /></div><span>{Math.round(ins.conf)}% confidence</span></div>
+              </div>
             </div>
-            <div className="flex gap-2.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {movers.map((card) => {
-                const isUp = card.price_change_percent >= 0;
+          ))}
+        </div>
+
+        {/* TRENDING */}
+        {trending.length > 0 && (
+          <>
+            <div className="mt-section-head"><Flame className="w-4 h-4" style={{ color: '#f97316' }} /><p>Trending Stocks</p>
+              <button className="mt-see-all" onClick={() => { setDrawerTab('trending'); setShowDrawer(true); }}>See all <ChevronRight className="w-3.5 h-3.5" /></button>
+            </div>
+            <div className="mt-trend-track">
+              {trending.slice(0, 8).map((co) => {
+                const u = co.cpr_today >= 0; const risk = riskColor(co.risk_level);
                 return (
-                  <button key={card.id} type="button" onClick={() => setSelectedCardId(card.id)} className="flex min-w-[190px] items-center gap-3 rounded-xl border border-border/60 bg-background/70 px-3 py-2 text-left transition-colors hover:border-primary/30 hover:bg-primary/[0.04]">
-                    <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', isUp ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
-                      {isUp ? <ArrowUpRight className="h-4 w-4" /> : <ArrowDownRight className="h-4 w-4" />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-bold">{card.title}</span>
-                      <span className="mt-0.5 block text-[10px] tabular-nums text-muted-foreground">{formatLeCredits(card.current_price)}</span>
-                    </span>
-                    <span className={cn('text-[10px] font-bold tabular-nums', isUp ? 'text-success' : 'text-destructive')}>{isUp ? '+' : ''}{card.price_change_percent.toFixed(2)}%</span>
+                  <button key={co.id} className="mt-trend-card" onClick={() => handleCompanyClick(co.id)}>
+                    <div className="mt-trend-top">
+                      <div className="mt-trend-logo">{co.ticker.slice(0, 2)}</div>
+                      <span className="mt-risk-chip" style={{ color: risk.c, background: risk.bg }}>{risk.label}</span>
+                    </div>
+                    <p className="mt-trend-name">{co.name}</p>
+                    <p className="mt-trend-sector">{co.ticker} · {co.sector}</p>
+                    <Sparkline data={spark(co.id, co.cpr_today)} color={u ? '#22c55e' : '#ef4444'} width={132} height={30} />
+                    <div className="mt-trend-foot">
+                      <span className="mt-trend-price">{sle(co.current_price, false)}</span>
+                      <span className={cn('mt-trend-cpr', u ? 'mt-up' : 'mt-down')}>{u ? '+' : ''}{co.cpr_today.toFixed(1)}%</span>
+                    </div>
                   </button>
                 );
               })}
             </div>
-          </section>
+          </>
         )}
 
-        <section id="card-grid" className="scroll-mt-4 space-y-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-primary">Discover the set</p>
-              <h2 className="mt-1 font-display text-2xl font-black tracking-tight sm:text-3xl">Every card, one market</h2>
-              <p className="mt-1 text-sm text-muted-foreground">Live server quotes · 30 fictional collectibles</p>
-            </div>
-            <div className="rounded-full border border-border/70 bg-card px-3 py-1.5 text-xs font-bold tabular-nums text-muted-foreground">
-              {catalogQuery.isLoading ? 'Loading…' : `${filteredCards.length} of ${cards.length} cards`}
-            </div>
+        {/* SECTOR PERFORMANCE */}
+        <div className="mt-section-head"><BarChart3 className="w-4 h-4 text-primary" /><p>Sector Performance</p></div>
+        <div className="mt-sectors">
+          {sectorPerf.map((s) => {
+            const u = s.avg >= 0;
+            const maxAbs = Math.max(...sectorPerf.map((x) => Math.abs(x.avg)), 1);
+            const w = (Math.abs(s.avg) / maxAbs) * 100;
+            return (
+              <button key={s.sector} className="mt-sector-row" onClick={() => setCategory(s.sector)}>
+                <span className="mt-sector-name">{s.sector}</span>
+                <div className="mt-sector-track"><div className={cn('mt-sector-bar', u ? 'mt-up-fill' : 'mt-down-fill')} style={{ width: `${w}%` }} /></div>
+                <span className={cn('mt-sector-val', u ? 'mt-up' : 'mt-down')}>{u ? '+' : ''}{s.avg.toFixed(1)}%</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* MARKET MOVERS */}
+        <div className="mt-section-head"><Zap className="w-4 h-4 text-primary" /><p>Market Movers</p></div>
+        <div className="mt-mover-tabs">
+          {([['gainers', 'Gainers'], ['losers', 'Losers'], ['active', 'Active'], ['watched', 'Watched']] as const).map(([k, l]) => (
+            <button key={k} className={cn('mt-mover-tab', moverTab === k && 'mt-mover-tab--on')} onClick={() => setMoverTab(k)}>{l}</button>
+          ))}
+        </div>
+        <div className="mt-mover-list">
+          {moverList.slice(0, 5).map((co, i) => (
+            <CompanyRow key={co.id} company={co} index={i} onTap={() => handleCompanyClick(co.id)} />
+          ))}
+        </div>
+
+        {/* HEAT MAP */}
+        <div className="mt-section-head"><Building2 className="w-4 h-4 text-primary" /><p>Market Heat Map</p></div>
+        <div className="mt-heat">
+          {active.slice(0, 12).map((co, i) => {
+            const u = co.cpr_today >= 0;
+            const intensity = Math.min(1, Math.abs(co.cpr_today) / 12);
+            const bg = u ? `rgba(34,197,94,${0.18 + intensity * 0.55})` : `rgba(239,68,68,${0.18 + intensity * 0.55})`;
+            const big = i < 3;
+            return (
+              <button key={co.id} className={cn('mt-heat-cell', big && 'mt-heat-cell--big')} style={{ background: bg }} onClick={() => handleCompanyClick(co.id)}>
+                <span className="mt-heat-ticker">{co.ticker}</span>
+                <span className="mt-heat-cpr">{u ? '+' : ''}{co.cpr_today.toFixed(1)}%</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* ALL COMPANIES */}
+        <div className="mt-section-head"><Building2 className="w-4 h-4 text-primary" /><p>{category === 'All' ? 'All Companies' : category}</p>
+          <span className="mt-count">{filtered.length}</span>
+        </div>
+        {filtered.length > 0 ? (
+          <div className="mt-mover-list">
+            {filtered.map((co, i) => <CompanyRow key={co.id} company={co} index={i} onTap={() => handleCompanyClick(co.id)} />)}
           </div>
-
-          <div className="rounded-[1.25rem] border border-border/70 bg-card/80 p-3 shadow-[var(--shadow-card)] sm:p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <label className="flex h-11 min-w-0 flex-1 items-center gap-2.5 rounded-xl border border-border/70 bg-background/80 px-3.5 focus-within:border-primary/50 focus-within:ring-2 focus-within:ring-primary/10">
-                <Search className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search cards, codes, or series…" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" aria-label="Search cards" />
-                {search && <button type="button" onClick={() => setSearch('')} aria-label="Clear search"><X className="h-4 w-4 text-muted-foreground" /></button>}
-              </label>
-              <label className="flex h-11 items-center gap-2 rounded-xl border border-border/70 bg-background/80 px-3 text-sm">
-                <BarChart3 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                <span className="text-xs font-semibold text-muted-foreground">Sort</span>
-                <select value={sortMode} onChange={(event) => setSortMode(event.target.value as SortMode)} className="min-w-0 bg-transparent text-xs font-bold outline-none">
-                  <option value="featured">Featured</option>
-                  <option value="move">Biggest move</option>
-                  <option value="price-low">Price: low to high</option>
-                  <option value="price-high">Price: high to low</option>
-                </select>
-              </label>
-            </div>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="group" aria-label="Filter cards by category">
-              {categories.map((category) => (
-                <button key={category.value} type="button" onClick={() => setActiveCategory(category.value)} aria-pressed={activeCategory === category.value} className={cn('shrink-0 rounded-full border px-3.5 py-2 text-xs font-bold transition-all duration-200', activeCategory === category.value ? 'border-primary bg-primary text-primary-foreground shadow-[0_4px_14px_-6px_hsl(var(--primary)/.8)]' : 'border-border bg-background/70 text-muted-foreground hover:border-primary/40 hover:text-foreground')}>
-                  {category.label}
-                </button>
-              ))}
-            </div>
+        ) : (
+          <div className="mt-empty"><p className="text-3xl mb-2">🔍</p><p className="mt-empty-title">No matches</p>
+            <button className="mt-empty-btn" onClick={() => { setQuery(''); setCategory('All'); }}>Reset</button>
           </div>
+        )}
+      </div>
 
-          {catalogQuery.isLoading ? (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {Array.from({ length: 8 }).map((_, index) => (
-                <div key={index} className="space-y-3 rounded-[1.35rem] border border-border/70 bg-card p-3">
-                  <Skeleton className="aspect-[1.58] rounded-[1.15rem]" />
-                  <Skeleton className="h-4 w-3/4" />
-                  <Skeleton className="h-5 w-1/2" />
-                  <Skeleton className="h-9 w-full rounded-xl" />
-                </div>
-              ))}
-            </div>
-          ) : catalogQuery.isError ? (
-            <div className="rounded-[1.5rem] border border-destructive/20 bg-destructive/[0.04] p-7 text-center">
-              <CircleAlert className="mx-auto h-8 w-8 text-destructive" />
-              <h3 className="mt-3 font-display text-lg font-extrabold">The card market could not load</h3>
-              <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">Check your connection. If this is a new install, the card-market database migration must be applied before cards can be traded.</p>
-              <Button type="button" variant="outline" className="mt-4 rounded-xl" onClick={() => void catalogQuery.refetch()}>Try again</Button>
-            </div>
-          ) : cards.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-border bg-card/50 px-5 py-12 text-center">
-              <Layers3 className="mx-auto h-8 w-8 text-muted-foreground/60" />
-              <h3 className="mt-3 font-display text-lg font-extrabold">The market is being prepared</h3>
-              <p className="mx-auto mt-1 max-w-lg text-sm text-muted-foreground">The card catalogue is empty. Apply the card-market migration and seed data to open trading.</p>
-            </div>
-          ) : filteredCards.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-border bg-card/50 px-5 py-12 text-center">
-              <Search className="mx-auto h-8 w-8 text-muted-foreground/60" />
-              <h3 className="mt-3 font-display text-lg font-extrabold">No cards match that search</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Try a different name, code, or category.</p>
-              <Button type="button" variant="ghost" className="mt-2" onClick={() => { setSearch(''); setActiveCategory('all'); }}>Clear filters</Button>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 xl:grid-cols-4">
-              {filteredCards.map((card) => (
-                <MarketCardTile
-                  key={card.id}
-                  card={card}
-                  ownedCount={ownedCounts.get(card.id) ?? 0}
-                  hasPurchasedBefore={previouslyPurchased.has(card.id)}
-                  onDetails={() => setSelectedCardId(card.id)}
-                  onBuy={() => openBuy(card)}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+      {/* TRENDING DRAWER */}
+      <Drawer open={showDrawer} onOpenChange={(o) => { if (!o) setShowDrawer(false); }}>
+        <DrawerContent className="max-h-[85dvh]">
+          <div className="mt-drawer-tabs">
+            {([['trending', '🔥 Trending'], ['topGainers', '📈 Gainers'], ['topLosers', '📉 Losers']] as const).map(([k, l]) => (
+              <button key={k} className={cn('mt-dtab', drawerTab === k && 'mt-dtab--on')} onClick={() => setDrawerTab(k)}>{l}</button>
+            ))}
+          </div>
+          <div className="mt-drawer-body">
+            {(drawerTab === 'trending' ? trending : drawerTab === 'topGainers' ? gainers : losers).map((co, i) => (
+              <CompanyRow key={co.id} company={co} index={i} onTap={() => { setShowDrawer(false); handleCompanyClick(co.id); }} />
+            ))}
+          </div>
+        </DrawerContent>
+      </Drawer>
 
-        <footer className="flex items-start gap-3 rounded-2xl border border-border/70 bg-muted/25 p-4 text-xs leading-relaxed text-muted-foreground">
-          <BadgeCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-          <p>All cards are fictional digital collectibles. Quotes can rise or fall and do not guarantee profit. “Le credits” are promotional simulation credits with no cash value and cannot be deposited, withdrawn, transferred, or redeemed. No real payment-card details are requested or stored.</p>
-        </footer>
-      </main>
-
-      <Drawer open={Boolean(selectedCard)} onOpenChange={(open) => { if (!open) setSelectedCardId(null); }}>
-        <DrawerContent className="max-h-[94dvh] rounded-t-[1.75rem] border-t-border/70">
-          {selectedCard && (
-            <div className="mx-auto w-full max-w-3xl px-4 pb-7 sm:px-7">
-              <DrawerHeader className="px-0 pb-4 text-left">
-                <div className="mb-2 flex items-center gap-2">
-                  <Badge variant="outline" className="border-primary/20 bg-primary/5 text-primary">{categoryLabel[selectedCard.category]}</Badge>
-                  {selectedCard.is_limited && <Badge variant="secondary"><Sparkles className="mr-1 h-3 w-3" /> Limited edition</Badge>}
-                </div>
-                <DrawerTitle className="font-display text-2xl font-black">{selectedCard.title}</DrawerTitle>
-                <DrawerDescription>{selectedCard.code} · Fictional collectible card</DrawerDescription>
-              </DrawerHeader>
-
-              <div className="grid gap-5 md:grid-cols-[minmax(15rem,0.86fr)_minmax(0,1.14fr)]">
-                <div className="space-y-3">
-                  <CardArtwork card={selectedCard} />
-                  <div className="rounded-2xl border border-border/70 bg-muted/20 p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.12em] text-muted-foreground">About this card</p>
-                    <p className="mt-2 text-sm leading-relaxed">{selectedCard.description}</p>
+      {/* DETAIL DRAWER */}
+      <Drawer open={!!selectedCompany} onOpenChange={(o) => { if (!o) setSelectedCompany(null); }}>
+        <DrawerContent className="max-h-[92dvh] p-0">
+          {selectedCompany && (
+            <>
+              <div className="mt-detail-hero">
+                <div className="mt-detail-hero-inner">
+                  <div className="mt-detail-logo">{selectedCompany.ticker.slice(0, 2)}</div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h2 className="mt-detail-name">{selectedCompany.name}</h2>
+                      {selectedCompany.is_trending && <span className="text-base">🔥</span>}
+                    </div>
+                    <p className="mt-detail-sub">{selectedCompany.ticker} · {selectedCompany.sector}</p>
                   </div>
-                  {selectedCard.is_limited && selectedCard.buyer_limit !== null && (
-                    <div className="rounded-2xl border border-primary/15 bg-primary/[0.04] p-4">
-                      <div className="flex items-center justify-between gap-3 text-sm">
-                        <span className="font-bold">First-collector edition</span>
-                        <span className="tabular-nums text-muted-foreground">{Math.max(0, selectedCard.buyer_limit - selectedCard.lifetime_buyer_count)} / {selectedCard.buyer_limit} spots left</span>
-                      </div>
-                      <p className="mt-1 text-xs text-muted-foreground">Limited to one purchase per account. Selling does not restore a spot.</p>
-                    </div>
-                  )}
                 </div>
-
-                <div className="space-y-4">
-                  <div className="rounded-2xl border border-border/70 bg-background/60 p-4 sm:p-5">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-muted-foreground">Latest server quote</p>
-                        <p className="mt-1 font-display text-3xl font-black tabular-nums tracking-tight">{formatLeCredits(selectedCard.current_price)}</p>
-                      </div>
-                      <span className={cn('mt-1 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-xs font-bold tabular-nums', selectedCard.price_change_percent >= 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive')}>
-                        {selectedCard.price_change_percent >= 0 ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
-                        {selectedCard.price_change_percent >= 0 ? '+' : ''}{selectedCard.price_change_percent.toFixed(2)}%
-                      </span>
-                    </div>
-                    <div className="mt-3 flex items-center justify-between border-t border-border/60 pt-3 text-xs">
-                      <span className="text-muted-foreground">Your copies</span><span className="font-bold tabular-nums">{selectedOwnedCount}</span>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Quote floor · ceiling</span><span className="font-semibold tabular-nums">{formatLeCredits(selectedCard.price_floor)} · {formatLeCredits(selectedCard.price_ceiling)}</span>
-                    </div>
-                    <Button type="button" className="mt-4 w-full rounded-xl" disabled={!canBuySelected} onClick={() => openBuy(selectedCard)}>
-                      {selectedCard.status === 'sold_out' ? 'Sold out' : selectedCard.market_paused ? 'Trading paused' : selectedCard.is_limited && selectedPreviouslyPurchased ? 'One purchase per account' : 'Buy at live quote'}
-                    </Button>
+                <div className="mt-detail-cpr-row">
+                  <div>
+                    <p className="mt-detail-cpr-label">Today's CPR</p>
+                    <p className={cn('mt-detail-cpr-big', selectedCompany.cpr_today >= 0 ? 'mt-up' : 'mt-down')}>
+                      {selectedCompany.cpr_today >= 0 ? '+' : ''}{selectedCompany.cpr_today.toFixed(2)}%
+                    </p>
                   </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <h3 className="inline-flex items-center gap-2 text-sm font-extrabold"><BarChart3 className="h-4 w-4 text-primary" /> Quote history</h3>
-                      <span className="inline-flex items-center gap-1 text-[10px] font-medium text-muted-foreground"><Activity className="h-3 w-3 text-success" /> Refreshes with the market</span>
-                    </div>
-                    {historyQuery.isLoading ? <Skeleton className="h-48 rounded-2xl" /> : historyQuery.isError ? (
-                      <div className="flex min-h-36 items-center justify-center rounded-2xl border border-border bg-muted/20 px-5 text-center text-sm text-muted-foreground">Stored quote history is temporarily unavailable.</div>
-                    ) : <CardPriceChart history={history} />}
-                  </div>
-
-                  <div className="rounded-xl bg-warning/10 p-3 text-xs leading-relaxed text-muted-foreground">
-                    <p><strong className="text-foreground">Price risk:</strong> this quote can fall after purchase. The chart shows saved backend quote points; it does not predict future prices. All values are simulated and non-redeemable.</p>
+                  <div className="mt-detail-badges">
+                    <TrendBadge trend={selectedCompany.cpr_trend} />
+                    <span className="mt-detail-risk-badge" style={{ color: riskColor(selectedCompany.risk_level).c, background: riskColor(selectedCompany.risk_level).bg }}>
+                      <Shield className="w-3 h-3" />{riskColor(selectedCompany.risk_level).label} Risk
+                    </span>
                   </div>
                 </div>
               </div>
-            </div>
+              <div className="mt-detail-body">
+                <div className="mt-detail-section"><CompanyGlobalInvestments companyId={selectedCompany.id} ticker={selectedCompany.ticker} /></div>
+                {cprHistory.length > 0 && (
+                  <div className="mt-detail-section">
+                    <div className="mt-detail-section-header"><BarChart3 className="w-4 h-4 text-primary" /><p className="mt-detail-section-title">CPR History</p></div>
+                    <div className="mt-detail-chart-wrap"><CPRChart data={cprHistory} height={140} showAxis /></div>
+                  </div>
+                )}
+                <div className="mt-detail-section">
+                  <div className="mt-detail-section-header"><Target className="w-4 h-4 text-primary" /><p className="mt-detail-section-title">CPR Performance</p></div>
+                  <div className="mt-stats-grid">
+                    {[
+                      { label: 'Yesterday', val: selectedCompany.cpr_yesterday, isNum: true },
+                      { label: '7-Day Avg', val: selectedCompany.cpr_7day_avg, isNum: true },
+                      { label: '30-Day Avg', val: selectedCompany.cpr_30day_avg, isNum: true },
+                      { label: 'Volatility', val: selectedCompany.cpr_volatility, isNum: false },
+                    ].map((s) => (
+                      <div key={s.label} className="mt-stat-tile">
+                        <p className="mt-stat-label">{s.label}</p>
+                        <p className={cn('mt-stat-val', s.isNum ? ((s.val as number) >= 0 ? 'mt-up' : 'mt-down') : 'text-foreground')}>
+                          {s.isNum ? `${(s.val as number) >= 0 ? '+' : ''}${(s.val as number).toFixed(1)}%` : (s.val as number).toFixed(1)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-extremes-row">
+                    <div className="mt-extreme mt-extreme--best"><span className="mt-extreme-label">🏆 Best</span><span className="mt-extreme-val mt-up">+{selectedCompany.cpr_best.toFixed(1)}%</span></div>
+                    <div className="mt-extreme mt-extreme--worst"><span className="mt-extreme-label">⚠️ Worst</span><span className="mt-extreme-val mt-down">{selectedCompany.cpr_worst.toFixed(1)}%</span></div>
+                  </div>
+                </div>
+                <div className="mt-detail-section">
+                  <div className="mt-detail-section-header"><Info className="w-4 h-4 text-primary" /><p className="mt-detail-section-title">Company Info</p></div>
+                  <div className="mt-info-row"><span className="mt-info-label">Current Price</span><span className="mt-info-val">{sle(selectedCompany.current_price)}</span></div>
+                  <div className="mt-info-row"><span className="mt-info-label">Sector</span><span className="mt-info-val">{selectedCompany.sector}</span></div>
+                  <div className="mt-info-row"><span className="mt-info-label">Risk Level</span><span className="mt-info-val" style={{ color: riskColor(selectedCompany.risk_level).c }}>{riskColor(selectedCompany.risk_level).label}</span></div>
+                  <div className="mt-info-row"><span className="mt-info-label">CPR Trend</span><TrendBadge trend={selectedCompany.cpr_trend} /></div>
+                </div>
+              </div>
+            </>
           )}
         </DrawerContent>
       </Drawer>
 
-      <TradeConfirmDialog
-        open={Boolean(buyTarget)}
-        onOpenChange={(open) => { if (!open) cancelBuy(); }}
-        mode="buy"
-        cardTitle={currentBuyTarget?.title ?? ''}
-        cardCode={currentBuyTarget?.code ?? ''}
-        quote={currentBuyTarget?.current_price ?? 0}
-        balance={walletBalance}
-        isPending={isBuying}
-        onConfirm={() => void confirmBuy()}
-      />
-      <BottomNav />
-    </>
+      <style>{`
+        .mt-page { min-height: 100vh; background: hsl(var(--background)); display: flex; flex-direction: column; }
+        .mt-body { flex: 1; display: flex; flex-direction: column; gap: 18px; padding: 16px 16px 40px; }
+        .mt-up { color: #22c55e; } .mt-down { color: #ef4444; }
+        .mt-up-bg { color: #22c55e; background: rgba(34,197,94,0.12); }
+        .mt-down-bg { color: #ef4444; background: rgba(239,68,68,0.12); }
+        .mt-flat-bg { color: #f59e0b; background: rgba(245,158,11,0.12); }
+        .mt-up-fill { background: linear-gradient(90deg,#16a34a,#22c55e); }
+        .mt-down-fill { background: linear-gradient(90deg,#dc2626,#ef4444); }
+
+        /* Header */
+        .mt-header { position: sticky; top: 0; z-index: 40; background: hsl(var(--background)/0.9); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); border-bottom: 1px solid hsl(var(--border)/0.6); }
+        .mt-header-inner { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; max-width: 680px; margin: 0 auto; }
+        .mt-header-title { font-size: 24px; font-weight: 900; letter-spacing: -0.5px; margin-top: 3px; }
+        .mt-live-pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 9999px; font-size: 10px; font-weight: 900; letter-spacing: 0.08em; }
+        .mt-live-dot { width: 6px; height: 6px; border-radius: 9999px; animation: mtPulse 1.4s ease-in-out infinite; }
+        @keyframes mtPulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.35;transform:scale(.7);} }
+        .mt-index-pill { display: inline-flex; align-items: center; gap: 5px; padding: 8px 14px; border-radius: 14px; font-size: 15px; font-weight: 900; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+
+        /* Ticker */
+        .mt-ticker { overflow: hidden; border-bottom: 1px solid hsl(var(--border)/0.6); background: hsl(var(--card)/0.5); }
+        .mt-ticker-track { display: inline-flex; gap: 22px; padding: 8px 0; white-space: nowrap; animation: mtTicker 40s linear infinite; will-change: transform; }
+        @keyframes mtTicker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+        .mt-ticker-item { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .mt-ticker-item b { color: hsl(var(--foreground)); }
+
+        /* Hero */
+        .mt-hero { position: relative; overflow: hidden; border-radius: 24px; padding: 20px; background: linear-gradient(160deg, hsl(var(--card)), hsl(var(--muted)/0.4)); border: 1px solid hsl(var(--border)); box-shadow: var(--shadow-card); }
+        .mt-hero-glow { position: absolute; top: -40%; right: -20%; width: 60%; height: 120%; background: radial-gradient(circle, hsl(var(--primary)/0.25), transparent 70%); filter: blur(30px); pointer-events: none; }
+        .mt-hero-top { display: flex; justify-content: space-between; align-items: flex-start; position: relative; }
+        .mt-hero-sent { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+        .mt-hero-big { font-size: 42px; font-weight: 900; letter-spacing: -1.5px; line-height: 1.05; margin: 4px 0; }
+        .mt-hero-sub { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 500; }
+        .mt-fg { text-align: center; padding: 10px 14px; border-radius: 16px; background: hsl(var(--background)/0.5); border: 1px solid hsl(var(--border)); }
+        .mt-fg-val { font-size: 26px; font-weight: 900; line-height: 1; margin-top: 2px; }
+        .mt-fg-label { font-size: 9px; font-weight: 700; color: hsl(var(--muted-foreground)); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .mt-hero-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-top: 18px; position: relative; }
+        .mt-hero-stat { background: hsl(var(--background)/0.5); border: 1px solid hsl(var(--border)/0.6); border-radius: 14px; padding: 10px 8px; text-align: center; }
+        .mt-hs-label { font-size: 9px; color: hsl(var(--muted-foreground)); font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; }
+        .mt-hs-val { font-size: 13px; font-weight: 900; margin-top: 3px; }
+
+        /* Chart card */
+        .mt-chart-card { border-radius: 22px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); padding: 16px; box-shadow: var(--shadow-card); }
+        .mt-card-title-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+        .mt-card-title { display: inline-flex; align-items: center; gap: 7px; font-size: 14px; font-weight: 800; }
+        .mt-mini-badge { font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 9999px; }
+
+        /* Search */
+        .mt-search { display: flex; align-items: center; gap: 10px; padding: 12px 14px; border-radius: 16px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+        .mt-search input { flex: 1; background: none; border: none; outline: none; font-size: 14px; color: hsl(var(--foreground)); }
+        .mt-search input::placeholder { color: hsl(var(--muted-foreground)); }
+
+        /* Chips */
+        .mt-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px 0; }
+        .mt-chips::-webkit-scrollbar { display: none; }
+        .mt-chip { flex-shrink: 0; font-size: 12px; font-weight: 700; padding: 8px 14px; border-radius: 9999px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--muted-foreground)); cursor: pointer; transition: all .18s var(--ease-out); }
+        .mt-chip--on { background: hsl(var(--primary)); border-color: hsl(var(--primary)); color: hsl(var(--primary-foreground)); box-shadow: 0 4px 12px -4px hsl(var(--primary)/0.6); }
+
+        /* Overview grid */
+        .mt-ov-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 10px; }
+        .mt-ov-card { text-align: left; border-radius: 18px; padding: 14px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); cursor: pointer; transition: transform .15s var(--ease-out), box-shadow .15s var(--ease-out); }
+        .mt-ov-card:active { transform: scale(0.97); }
+        .mt-ov-top { display: flex; align-items: center; justify-content: space-between; }
+        .mt-ov-emoji { font-size: 18px; }
+        .mt-ov-dot { width: 8px; height: 8px; border-radius: 9999px; box-shadow: 0 0 8px currentColor; }
+        .mt-ov-value { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; margin: 8px 0 2px; }
+        .mt-ov-bottom { display: flex; align-items: flex-end; justify-content: space-between; gap: 6px; }
+        .mt-ov-label { font-size: 11px; font-weight: 600; color: hsl(var(--muted-foreground)); }
+
+        /* Section head */
+        .mt-section-head { display: flex; align-items: center; gap: 8px; }
+        .mt-section-head p { font-size: 15px; font-weight: 800; flex: 1; }
+        .mt-see-all { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 700; color: hsl(var(--primary)); background: none; border: none; cursor: pointer; }
+        .mt-count { font-size: 12px; font-weight: 800; color: hsl(var(--muted-foreground)); background: hsl(var(--muted)); padding: 2px 9px; border-radius: 9999px; }
+
+        /* AI */
+        .mt-ai-list { display: flex; flex-direction: column; gap: 10px; margin-top: -6px; }
+        .mt-ai-card { display: flex; gap: 12px; padding: 14px; border-radius: 16px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); }
+        .mt-ai-icon { width: 30px; height: 30px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .mt-ai-text { font-size: 13px; font-weight: 600; line-height: 1.45; }
+        .mt-ai-conf { display: flex; align-items: center; gap: 8px; margin-top: 8px; }
+        .mt-ai-bar { flex: 1; height: 4px; border-radius: 9999px; background: hsl(var(--muted)); overflow: hidden; }
+        .mt-ai-bar span { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, hsl(var(--primary)), hsl(var(--primary-glow))); }
+        .mt-ai-conf > span { font-size: 10px; font-weight: 700; color: hsl(var(--muted-foreground)); white-space: nowrap; }
+
+        /* Trending */
+        .mt-trend-track { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 2px 0 6px; margin-top: -6px; }
+        .mt-trend-track::-webkit-scrollbar { display: none; }
+        .mt-trend-card { flex-shrink: 0; width: 172px; text-align: left; border-radius: 20px; padding: 14px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); cursor: pointer; transition: transform .15s var(--ease-out); }
+        .mt-trend-card:active { transform: scale(0.97); }
+        .mt-trend-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .mt-trend-logo { width: 36px; height: 36px; border-radius: 11px; background: hsl(var(--primary)/0.12); color: hsl(var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 900; }
+        .mt-trend-name { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mt-trend-sector { font-size: 10px; color: hsl(var(--muted-foreground)); font-weight: 600; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mt-trend-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+        .mt-trend-price { font-size: 12px; font-weight: 800; }
+        .mt-trend-cpr { font-size: 13px; font-weight: 900; }
+
+        /* Sectors */
+        .mt-sectors { display: flex; flex-direction: column; gap: 4px; margin-top: -6px; }
+        .mt-sector-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; background: none; border: none; cursor: pointer; }
+        .mt-sector-name { width: 92px; text-align: left; font-size: 12px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-shrink: 0; }
+        .mt-sector-track { flex: 1; height: 8px; border-radius: 9999px; background: hsl(var(--muted)); overflow: hidden; }
+        .mt-sector-bar { height: 100%; border-radius: 9999px; transition: width .5s var(--ease-out); }
+        .mt-sector-val { width: 54px; text-align: right; font-size: 12px; font-weight: 800; flex-shrink: 0; }
+
+        /* Movers */
+        .mt-mover-tabs { display: flex; gap: 6px; margin-top: -6px; }
+        .mt-mover-tab { flex: 1; font-size: 12px; font-weight: 700; padding: 8px; border-radius: 12px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--muted-foreground)); cursor: pointer; transition: all .18s var(--ease-out); }
+        .mt-mover-tab--on { background: hsl(var(--primary)/0.12); color: hsl(var(--primary)); border-color: hsl(var(--primary)/0.4); }
+        .mt-mover-list { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+        /* Row */
+        .mt-row { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 16px; background: hsl(var(--card)); border: 1px solid hsl(var(--border)); cursor: pointer; text-align: left; transition: transform .15s var(--ease-out); }
+        .mt-row:active { transform: scale(0.985); }
+        .mt-row-rank { width: 20px; font-size: 12px; font-weight: 900; color: hsl(var(--muted-foreground)); text-align: center; flex-shrink: 0; }
+        .mt-row-logo { position: relative; width: 40px; height: 40px; border-radius: 12px; background: hsl(var(--primary)/0.12); color: hsl(var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; flex-shrink: 0; }
+        .mt-row-fire { position: absolute; top: -6px; right: -6px; font-size: 12px; }
+        .mt-row-info { flex: 1; min-width: 0; }
+        .mt-row-name { font-size: 13px; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mt-row-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; color: hsl(var(--muted-foreground)); font-weight: 600; margin-top: 2px; }
+        .mt-dot { width: 3px; height: 3px; border-radius: 9999px; background: hsl(var(--muted-foreground)); flex-shrink: 0; }
+        .mt-risk-chip { font-size: 9px; font-weight: 800; padding: 1px 6px; border-radius: 9999px; }
+        .mt-row-cpr { text-align: right; flex-shrink: 0; }
+        .mt-row-cpr-main { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 900; }
+        .mt-row-cap { font-size: 9px; color: hsl(var(--muted-foreground)); font-weight: 600; margin-top: 2px; }
+        .mt-row-chevron { width: 16px; height: 16px; color: hsl(var(--muted-foreground)); flex-shrink: 0; }
+
+        /* Heat map */
+        .mt-heat { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; grid-auto-rows: 62px; margin-top: -6px; }
+        .mt-heat-cell { border-radius: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; cursor: pointer; border: 1px solid hsl(var(--border)/0.4); transition: transform .15s var(--ease-out); }
+        .mt-heat-cell:active { transform: scale(0.95); }
+        .mt-heat-cell--big { grid-column: span 1; grid-row: span 1; }
+        .mt-heat-ticker { font-size: 13px; font-weight: 900; color: hsl(var(--foreground)); }
+        .mt-heat-cpr { font-size: 11px; font-weight: 800; color: hsl(var(--foreground)/0.85); }
+
+        /* Empty */
+        .mt-empty { text-align: center; padding: 40px 20px; }
+        .mt-empty-title { font-size: 15px; font-weight: 800; }
+        .mt-empty-btn { margin-top: 12px; font-size: 13px; font-weight: 700; padding: 8px 20px; border-radius: 12px; background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border: none; cursor: pointer; }
+
+        /* Skeleton shimmer */
+        .mt-shimmer { position: relative; overflow: hidden; background: hsl(var(--muted)); border-radius: 18px; }
+        .mt-shimmer::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, hsl(var(--foreground)/0.06), transparent); transform: translateX(-100%); animation: mtShimmer 1.4s infinite; }
+        @keyframes mtShimmer { 100% { transform: translateX(100%); } }
+        .mt-sk-hero { height: 150px; } .mt-sk-chart { height: 220px; }
+        .mt-sk-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; } .mt-sk-stat { height: 80px; }
+        .mt-sk-card { height: 64px; }
+
+        /* Drawers */
+        .mt-drawer-tabs { display: flex; gap: 6px; padding: 12px 16px 0; }
+        .mt-dtab { flex: 1; font-size: 12px; font-weight: 700; padding: 9px; border-radius: 12px; border: 1px solid hsl(var(--border)); background: hsl(var(--card)); color: hsl(var(--muted-foreground)); cursor: pointer; }
+        .mt-dtab--on { background: hsl(var(--primary)/0.12); color: hsl(var(--primary)); border-color: hsl(var(--primary)/0.4); }
+        .mt-drawer-body { display: flex; flex-direction: column; gap: 8px; padding: 14px 16px 28px; overflow-y: auto; }
+        .mt-trend-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 800; padding: 3px 8px; border-radius: 9999px; }
+
+        .mt-detail-hero { padding: 20px 16px 16px; background: linear-gradient(160deg, hsl(var(--primary)/0.12), hsl(var(--card))); border-bottom: 1px solid hsl(var(--border)); }
+        .mt-detail-hero-inner { display: flex; align-items: center; gap: 12px; }
+        .mt-detail-logo { width: 52px; height: 52px; border-radius: 16px; background: hsl(var(--primary)/0.15); color: hsl(var(--primary)); display: flex; align-items: center; justify-content: center; font-size: 17px; font-weight: 900; flex-shrink: 0; }
+        .mt-detail-name { font-size: 18px; font-weight: 900; }
+        .mt-detail-sub { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 600; }
+        .mt-detail-cpr-row { display: flex; align-items: flex-end; justify-content: space-between; margin-top: 16px; }
+        .mt-detail-cpr-label { font-size: 11px; color: hsl(var(--muted-foreground)); font-weight: 600; }
+        .mt-detail-cpr-big { font-size: 30px; font-weight: 900; letter-spacing: -0.5px; }
+        .mt-detail-badges { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
+        .mt-detail-risk-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 800; padding: 4px 9px; border-radius: 9999px; }
+        .mt-detail-body { display: flex; flex-direction: column; gap: 18px; padding: 18px 16px 32px; overflow-y: auto; }
+        .mt-detail-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; }
+        .mt-detail-section-title { font-size: 13px; font-weight: 800; }
+        .mt-detail-chart-wrap { border-radius: 16px; background: hsl(var(--muted)/0.3); padding: 8px; }
+        .mt-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 10px; }
+        .mt-stat-tile { padding: 12px; border-radius: 14px; background: hsl(var(--muted)/0.4); }
+        .mt-stat-label { font-size: 10px; color: hsl(var(--muted-foreground)); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+        .mt-stat-val { font-size: 16px; font-weight: 900; }
+        .mt-extremes-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .mt-extreme { padding: 12px; border-radius: 14px; display: flex; align-items: center; justify-content: space-between; }
+        .mt-extreme--best { background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.2); }
+        .mt-extreme--worst { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); }
+        .mt-extreme-label { font-size: 10px; font-weight: 700; color: hsl(var(--muted-foreground)); }
+        .mt-extreme-val { font-size: 14px; font-weight: 900; }
+        .mt-info-row { display: flex; align-items: center; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid hsl(var(--border)/0.5); }
+        .mt-info-row:last-child { border-bottom: none; }
+        .mt-info-label { font-size: 12px; color: hsl(var(--muted-foreground)); font-weight: 500; }
+        .mt-info-val { font-size: 12px; font-weight: 700; }
+
+        @media (min-width: 640px) {
+          .mt-body { max-width: 680px; margin: 0 auto; }
+          .mt-ov-grid { grid-template-columns: repeat(4,1fr); }
+          .mt-heat { grid-template-columns: repeat(4,1fr); }
+          .mt-stats-grid { grid-template-columns: repeat(4,1fr); }
+        }
+      `}</style>
+    </div>
   );
 };
