@@ -14,6 +14,196 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_accounts: {
+        Row: {
+          bonus_granted_at: string
+          promo_balance: number
+          user_id: string
+        }
+        Insert: {
+          bonus_granted_at?: string
+          promo_balance?: number
+          user_id: string
+        }
+        Update: {
+          bonus_granted_at?: string
+          promo_balance?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      card_catalog: {
+        Row: {
+          artwork_key: string
+          buyer_limit: number | null
+          category: string
+          current_price: number
+          description: string
+          id: string
+          initial_price: number
+          issued_count: number
+          name: string
+          previous_price: number
+          purchase_closed: boolean
+          ticker: string
+          updated_at: string
+          volatility: number
+        }
+        Insert: {
+          artwork_key: string
+          buyer_limit?: number | null
+          category: string
+          current_price: number
+          description: string
+          id?: string
+          initial_price: number
+          issued_count?: number
+          name: string
+          previous_price: number
+          purchase_closed?: boolean
+          ticker: string
+          updated_at?: string
+          volatility?: number
+        }
+        Update: {
+          artwork_key?: string
+          buyer_limit?: number | null
+          category?: string
+          current_price?: number
+          description?: string
+          id?: string
+          initial_price?: number
+          issued_count?: number
+          name?: string
+          previous_price?: number
+          purchase_closed?: boolean
+          ticker?: string
+          updated_at?: string
+          volatility?: number
+        }
+        Relationships: []
+      }
+      card_holdings: {
+        Row: {
+          card_id: string
+          id: string
+          purchase_price: number
+          purchased_at: string
+          sale_price: number | null
+          serial: string
+          sold_at: string | null
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          id?: string
+          purchase_price: number
+          purchased_at?: string
+          sale_price?: number | null
+          serial?: string
+          sold_at?: string | null
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          id?: string
+          purchase_price?: number
+          purchased_at?: string
+          sale_price?: number | null
+          serial?: string
+          sold_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_holdings_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_orders: {
+        Row: {
+          action: string
+          card_id: string
+          created_at: string
+          holding_id: string
+          id: string
+          price: number
+          request_key: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          card_id: string
+          created_at?: string
+          holding_id: string
+          id?: string
+          price: number
+          request_key: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          card_id?: string
+          created_at?: string
+          holding_id?: string
+          id?: string
+          price?: number
+          request_key?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_orders_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_orders_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "card_holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_price_history: {
+        Row: {
+          card_id: string
+          id: number
+          price: number
+          reason: string
+          recorded_at: string
+        }
+        Insert: {
+          card_id: string
+          id?: never
+          price: number
+          reason: string
+          recorded_at?: string
+        }
+        Update: {
+          card_id?: string
+          id?: never
+          price?: number
+          reason?: string
+          recorded_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_price_history_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_feed: {
         Row: {
           created_at: string | null
@@ -920,6 +1110,21 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      card_market_tick: { Args: never; Returns: undefined }
+      card_session: {
+        Args: never
+        Returns: {
+          bonus_granted_at: string
+          promo_balance: number
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_accounts"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cleanup_old_candles: { Args: never; Returns: undefined }
       cleanup_old_candles_1m: { Args: never; Returns: undefined }
       cleanup_old_company_candles: { Args: never; Returns: undefined }
@@ -968,6 +1173,31 @@ export type Database = {
           user_id: string
           user_name: string
         }[]
+      }
+      trade_card: {
+        Args: {
+          p_action: string
+          p_card_id: string
+          p_expected_price?: number
+          p_holding_id?: string
+          p_request_key: string
+        }
+        Returns: {
+          action: string
+          card_id: string
+          created_at: string
+          holding_id: string
+          id: string
+          price: number
+          request_key: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "card_orders"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
