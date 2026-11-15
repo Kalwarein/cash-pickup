@@ -1,7 +1,7 @@
 {
-  "name": "Cash Pickup - Investment Platform",
+  "name": "Cash Pickup - Card Market",
   "short_name": "Cash Pickup",
-  "description": "Invest in Sierra Leone's top companies. Track CPR, manage your portfolio, and grow your wealth.",
+  "description": "Collect fictional cards and follow simulated market quotes using non-redeemable Le credits.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0a1628",

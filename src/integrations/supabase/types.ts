@@ -14,6 +14,317 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_admin_audit: {
+        Row: {
+          action: string
+          after_state: Json
+          admin_user_id: string
+          before_state: Json
+          card_id: string | null
+          created_at: string
+          id: number
+          reason: string
+        }
+        Insert: {
+          action: string
+          after_state: Json
+          admin_user_id: string
+          before_state: Json
+          card_id?: string | null
+          created_at?: string
+          id?: number
+          reason: string
+        }
+        Update: {
+          action?: string
+          after_state?: Json
+          admin_user_id?: string
+          before_state?: Json
+          card_id?: string | null
+          created_at?: string
+          id?: number
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_admin_audit_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_catalog: {
+        Row: {
+          buy_impact_pct: number
+          buyer_limit: number | null
+          category: "meme" | "company" | "fintech_collectible" | "community"
+          code: string
+          created_at: string
+          current_price: number
+          description: string
+          id: string
+          is_limited: boolean
+          last_tick_at: string | null
+          lifetime_buyer_count: number
+          market_paused: boolean
+          price_ceiling: number
+          price_change_percent: number
+          price_floor: number
+          previous_price: number
+          sell_impact_pct: number
+          status: "active" | "sold_out" | "retired"
+          title: string
+          updated_at: string
+          volatility_pct: number
+        }
+        Insert: {
+          buy_impact_pct?: number
+          buyer_limit?: number | null
+          category: "meme" | "company" | "fintech_collectible" | "community"
+          code: string
+          created_at?: string
+          current_price: number
+          description?: string
+          id?: string
+          is_limited?: boolean
+          last_tick_at?: string | null
+          lifetime_buyer_count?: number
+          market_paused?: boolean
+          price_ceiling?: number
+          price_change_percent?: number
+          price_floor?: number
+          previous_price: number
+          sell_impact_pct?: number
+          status?: "active" | "sold_out" | "retired"
+          title: string
+          updated_at?: string
+          volatility_pct?: number
+        }
+        Update: {
+          buy_impact_pct?: number
+          buyer_limit?: number | null
+          category?: "meme" | "company" | "fintech_collectible" | "community"
+          code?: string
+          created_at?: string
+          current_price?: number
+          description?: string
+          id?: string
+          is_limited?: boolean
+          last_tick_at?: string | null
+          lifetime_buyer_count?: number
+          market_paused?: boolean
+          price_ceiling?: number
+          price_change_percent?: number
+          price_floor?: number
+          previous_price?: number
+          sell_impact_pct?: number
+          status?: "active" | "sold_out" | "retired"
+          title?: string
+          updated_at?: string
+          volatility_pct?: number
+        }
+        Relationships: []
+      }
+      card_holdings: {
+        Row: {
+          card_id: string
+          id: string
+          purchase_price: number
+          purchased_at: string
+          serial_code: string
+          sold_at: string | null
+          sold_price: number | null
+          status: "owned" | "sold"
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          id?: string
+          purchase_price: number
+          purchased_at?: string
+          serial_code?: string
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: "owned" | "sold"
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          id?: string
+          purchase_price?: number
+          purchased_at?: string
+          serial_code?: string
+          sold_at?: string | null
+          sold_price?: number | null
+          status?: "owned" | "sold"
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_holdings_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_price_history: {
+        Row: {
+          card_id: string
+          change_percent: number
+          id: number
+          price: number
+          recorded_at: string
+          source: "seed" | "market_tick" | "buy_pressure" | "sell_pressure" | "admin_adjustment"
+        }
+        Insert: {
+          card_id: string
+          change_percent?: number
+          id?: number
+          price: number
+          recorded_at?: string
+          source: "seed" | "market_tick" | "buy_pressure" | "sell_pressure" | "admin_adjustment"
+        }
+        Update: {
+          card_id?: string
+          change_percent?: number
+          id?: number
+          price?: number
+          recorded_at?: string
+          source?: "seed" | "market_tick" | "buy_pressure" | "sell_pressure" | "admin_adjustment"
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_price_history_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_trades: {
+        Row: {
+          card_id: string
+          created_at: string
+          holding_id: string
+          id: string
+          idempotency_key: string
+          price_after: number
+          profit_loss: number | null
+          side: "buy" | "sell"
+          unit_price: number
+          user_id: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          holding_id: string
+          id?: string
+          idempotency_key: string
+          price_after: number
+          profit_loss?: number | null
+          side: "buy" | "sell"
+          unit_price: number
+          user_id: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          holding_id?: string
+          id?: string
+          idempotency_key?: string
+          price_after?: number
+          profit_loss?: number | null
+          side?: "buy" | "sell"
+          unit_price?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_trades_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "card_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "card_trades_holding_id_fkey"
+            columns: ["holding_id"]
+            isOneToOne: false
+            referencedRelation: "card_holdings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_wallet_ledger: {
+        Row: {
+          amount: number
+          balance_after: number
+          created_at: string
+          description: string
+          entry_type: "welcome_bonus" | "card_buy" | "card_sell"
+          id: string
+          idempotency_key: string
+          trade_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          balance_after: number
+          created_at?: string
+          description: string
+          entry_type: "welcome_bonus" | "card_buy" | "card_sell"
+          id?: string
+          idempotency_key: string
+          trade_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          balance_after?: number
+          created_at?: string
+          description?: string
+          entry_type?: "welcome_bonus" | "card_buy" | "card_sell"
+          id?: string
+          idempotency_key?: string
+          trade_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_wallet_ledger_trade_id_fkey"
+            columns: ["trade_id"]
+            isOneToOne: false
+            referencedRelation: "card_trades"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      card_wallets: {
+        Row: {
+          balance: number
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       chat_feed: {
         Row: {
           created_at: string | null
@@ -920,6 +1231,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_adjust_card_price: {
+        Args: { p_card_id: string; p_new_price: number; p_reason: string }
+        Returns: Json
+      }
+      admin_update_card_controls: {
+        Args: {
+          p_buy_impact_pct: number
+          p_card_id: string
+          p_market_paused: boolean
+          p_reason: string
+          p_sell_impact_pct: number
+          p_volatility_pct: number
+        }
+        Returns: Json
+      }
+      buy_card: {
+        Args: { p_card_id: string; p_request_id: string }
+        Returns: Json
+      }
+      claim_card_welcome_bonus: { Args: never; Returns: Json }
       cleanup_old_candles: { Args: never; Returns: undefined }
       cleanup_old_candles_1m: { Args: never; Returns: undefined }
       cleanup_old_company_candles: { Args: never; Returns: undefined }
@@ -969,6 +1300,12 @@ export type Database = {
           user_name: string
         }[]
       }
+      is_card_market_admin: { Args: never; Returns: boolean }
+      sell_card: {
+        Args: { p_holding_id: string; p_request_id: string }
+        Returns: Json
+      }
+      tick_card_market: { Args: never; Returns: number }
       update_leaderboard_cache: { Args: never; Returns: undefined }
     }
     Enums: {

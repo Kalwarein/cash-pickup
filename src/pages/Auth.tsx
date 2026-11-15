@@ -54,7 +54,7 @@ const Auth = () => {
         </div>
         <h1 className="text-3xl font-extrabold text-white tracking-tight drop-shadow animate-fade-in">Welcome to Cash Pickup</h1>
         <p className="mt-3 text-white/85 text-base max-w-xs leading-relaxed animate-fade-in">
-          Invest in real Sierra Leonean companies. Smart, simple, secure.
+          Collect fictional cards and follow simulated quotes. Get Le 15 in non-redeemable credits on your first sign-in.
         </p>
       </div>
 

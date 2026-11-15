@@ -3,28 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { BottomNav } from '@/components/BottomNav';
 import { HomeTab } from '@/components/tabs/HomeTab';
 import { useAuth } from '@/contexts/AuthContext';
-import { useOnboarding } from '@/hooks/useOnboarding';
-import { NotificationPopups } from '@/components/NotificationPopups';
-import { NotificationPermissionBanner } from '@/components/NotificationPermissionBanner';
-import { useBackgroundSync } from '@/hooks/useBackgroundSync';
-import { useCompanies } from '@/hooks/useCompanies';
-import { useWallet } from '@/hooks/useWallet';
 import { PageLoader } from '@/components/PageLoader';
 
 const Home = () => {
   const { user, loading } = useAuth();
-  const { completed, loading: onboardingLoading } = useOnboarding();
-  const { loading: companiesLoading } = useCompanies();
-  const { loading: walletLoading } = useWallet();
   const navigate = useNavigate();
-  useBackgroundSync();
 
   useEffect(() => {
     if (!loading && !user) navigate('/auth');
-    if (!loading && !onboardingLoading && user && completed === false) navigate('/onboarding');
-  }, [user, loading, completed, onboardingLoading, navigate]);
+  }, [user, loading, navigate]);
 
-  if (loading || onboardingLoading || companiesLoading || walletLoading)
+  if (loading || !user)
     return (
       <div className="min-h-screen bg-background pb-24">
         <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
@@ -34,15 +23,9 @@ const Home = () => {
       </div>
     );
 
-  if (!user) return null;
-
   return (
     <div className="min-h-screen bg-background pb-24">
-      <NotificationPermissionBanner />
-      <main className="max-w-lg mx-auto">
-        <HomeTab />
-      </main>
-      <NotificationPopups />
+      <main><HomeTab /></main>
       <BottomNav />
     </div>
   );

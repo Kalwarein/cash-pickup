@@ -1,4 +1,7 @@
 project_id = "lwcsknjikqnkqbeoaoca"
 
 [functions.trade-monitor]
-verify_jwt = false
+verify_jwt = true
+
+[functions.card-market-engine]
+verify_jwt = true

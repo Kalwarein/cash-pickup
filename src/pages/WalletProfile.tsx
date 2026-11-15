@@ -1,328 +1,162 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from '@/hooks/use-toast';
+import { useNavigate } from 'react-router-dom';
+import { ArrowDownRight, ArrowUpRight, BadgeCheck, Clock3, Coins, Layers3, LogOut, ShieldCheck, ShoppingBag, Sparkles, UserRound, Wallet } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import { BottomNav } from '@/components/BottomNav';
-import { useAuth } from '@/contexts/AuthContext';
-import { useWallet } from '@/hooks/useWallet';
-import { useInvestments } from '@/hooks/useInvestments';
-import { usePromoCodes } from '@/hooks/usePromoCodes';
-import { useProfile } from '@/hooks/useProfile';
-import { usePushNotifications } from '@/hooks/usePushNotifications';
-import { ClaimInvestmentCard } from '@/components/ClaimInvestmentCard';
-import { DepositWithdrawModal } from '@/components/DepositWithdrawModal';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCardHoldings, useCardLedger, useCardRealtime, useCardWallet } from '@/hooks/useCardMarket';
+import { useProfile } from '@/hooks/useProfile';
+import { formatLeCredits } from '@/lib/card-currency';
 import { cn } from '@/lib/utils';
-import { sle } from '@/lib/currency';
-import { 
-  User, Wallet, Plus, Minus, Gift, TrendingUp, TrendingDown,
-  Award, BellRing, Clock, Sparkles, History, ChevronRight,
-  Settings, CreditCard
-} from 'lucide-react';
-import {
-  Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription
-} from '@/components/ui/drawer';
-import { PageLoader } from '@/components/PageLoader';
+
+const eventLabel = (type: string) => {
+  if (type === 'welcome_bonus') return 'Welcome credits';
+  if (type === 'card_buy') return 'Card purchase';
+  if (type === 'card_sell') return 'Card sale';
+  return 'Card-market activity';
+};
 
 const WalletProfile = () => {
-  const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-  const { wallet, transactions, loading: walletLoading, refetch: refetchWallet } = useWallet();
-  const { investments, maturedInvestments, claimedInvestments, loading: investmentsLoading, refetch: refetchInvestments } = useInvestments();
-  const { getActivePromoCodes, userPromoCodes } = usePromoCodes();
+  const { user, signOut } = useAuth();
   const { profile } = useProfile();
-  const { permission, requestPermission, sendNotification } = usePushNotifications();
-  const activePromoCodes = getActivePromoCodes();
-  const completedInvestments = claimedInvestments;
+  const walletQuery = useCardWallet();
+  const holdingsQuery = useCardHoldings();
+  const ledgerQuery = useCardLedger(12);
+  useCardRealtime();
 
-  const [depositModalOpen, setDepositModalOpen] = useState(false);
-  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
-  const [depositAmount, setDepositAmount] = useState<string>('');
-  const [showPromos, setShowPromos] = useState(false);
-  const [showPerformance, setShowPerformance] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [searchParams, setSearchParams] = useSearchParams();
+  const balance = Number(walletQuery.data?.balance ?? 0);
+  const owned = (holdingsQuery.data ?? []).filter((holding) => holding.status === 'owned');
+  const sold = (holdingsQuery.data ?? []).filter((holding) => holding.status === 'sold');
+  const email = profile?.email || user?.email || 'Account email unavailable';
+  const name = profile?.name || (typeof user?.user_metadata?.name === 'string' ? user.user_metadata.name : '') || email.split('@')[0] || 'Card collector';
+  const initial = name.trim().charAt(0).toLocaleUpperCase() || 'C';
 
-  useEffect(() => {
-    if (!loading && !user) navigate('/auth');
-  }, [user, loading, navigate]);
-
-  // Deep-link from the Mine page: open the deposit modal, prefilled with the
-  // leverage cost, and remember which tier to auto-unlock after payment.
-  useEffect(() => {
-    if (searchParams.get('deposit') === '1') {
-      const amt = searchParams.get('amount');
-      if (amt) setDepositAmount(amt);
-      setDepositModalOpen(true);
-      const next = new URLSearchParams(searchParams);
-      next.delete('deposit'); next.delete('amount'); next.delete('leverage');
-      setSearchParams(next, { replace: true });
-    }
-  }, [searchParams, setSearchParams]);
-
-  if (loading || walletLoading || investmentsLoading || !user)
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <div className="flex min-h-[calc(100svh-5rem)] items-center justify-center">
-          <PageLoader inline />
-        </div>
-        <BottomNav />
-      </div>
-    );
-
-  const netProfitLoss = completedInvestments.reduce((sum, inv) => sum + (inv.final_profit_loss || 0), 0);
-  const profitableInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) > 0).length;
-  const lossInvestments = completedInvestments.filter(inv => (inv.final_profit_loss || 0) < 0).length;
-  const winRate = completedInvestments.length > 0 ? (profitableInvestments / completedInvestments.length) * 100 : 0;
-
-  const handleClaimed = () => { refetchInvestments(); refetchWallet(); };
-  const handlePaymentRefresh = () => {
-    refetchWallet();
-  };
-
-  // After a deposit lands, auto-unlock the leverage tier the user chose on the Mine page.
-  const handleDepositSuccess = async () => {
-    refetchWallet();
-    const pending = localStorage.getItem('mine_pending_leverage');
-    if (!pending) return;
-    const level = parseInt(pending, 10);
-    if (!level) { localStorage.removeItem('mine_pending_leverage'); return; }
-    const { data } = await supabase.functions.invoke('tap-earn', {
-      body: { action: 'buy_leverage', level },
-    });
-    if (data && !data.error) {
-      localStorage.removeItem('mine_pending_leverage');
-      refetchWallet();
-      toast({ title: 'Leverage unlocked! ⚡', description: 'Your mining power just increased.' });
-    }
-  };
-
-  const handleTestNotification = async () => {
-    if (permission !== 'granted') {
-      const result = await requestPermission();
-      if (result !== 'granted') return;
-    }
-    sendNotification('Cash Pickup 🔔', {
-      body: `Hey! Your balance is ${sle(wallet?.balance || 0)}. Check the market for new opportunities!`,
-      tag: 'test-notification',
-    });
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth', { replace: true });
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24">
-      <main className="max-w-lg mx-auto space-y-4 animate-fade-in">
-        {/* Profile Header - edge to edge */}
-        <div className="relative overflow-hidden gradient-primary px-5 pt-8 pb-6 shadow-float">
-          <span className="pointer-events-none absolute -top-12 -right-10 w-40 h-40 rounded-full bg-white/15 blur-3xl" />
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
-                <Wallet className="w-7 h-7 text-primary-foreground" />
+    <>
+      <main className="mx-auto w-full max-w-5xl space-y-5 px-4 pb-28 pt-5 sm:space-y-7 sm:px-6 sm:pt-8">
+        <header className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-primary">Cash Pickup</p>
+            <h1 className="font-display text-2xl font-black tracking-tight sm:text-3xl">Your account</h1>
+          </div>
+          <ThemeToggle />
+        </header>
+
+        <section className="relative overflow-hidden rounded-[1.8rem] border border-primary/20 bg-gradient-to-br from-primary via-primary/90 to-accent/80 p-5 text-primary-foreground shadow-float sm:p-7">
+          <span className="pointer-events-none absolute -right-12 -top-24 h-72 w-72 rounded-full bg-white/15 blur-3xl" />
+          <span className="pointer-events-none absolute -bottom-24 left-1/4 h-48 w-48 rounded-full bg-black/10 blur-3xl" />
+          <div className="relative">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="flex items-center gap-3.5">
+                <div className="flex h-14 w-14 items-center justify-center rounded-[1.2rem] border border-white/25 bg-white/15 text-xl font-black shadow-sm backdrop-blur-sm">{initial}</div>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/65">Collector profile</p>
+                  <h2 className="mt-0.5 truncate font-display text-xl font-extrabold sm:text-2xl">{name}</h2>
+                  <p className="mt-1 max-w-[65vw] truncate text-xs text-white/75">{email}</p>
+                </div>
               </div>
-              <div>
-                <h1 className="text-xl font-display font-bold tracking-tight text-primary-foreground">My Wallet</h1>
-                <p className="text-xs text-primary-foreground/60">{profile?.name || profile?.email}</p>
+              <Badge className="border-white/25 bg-white/15 text-white hover:bg-white/15"><UserRound className="mr-1 h-3 w-3" /> Account</Badge>
+            </div>
+
+            <div className="mt-6 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+              <div className="rounded-2xl border border-white/15 bg-black/15 p-4 backdrop-blur-sm sm:p-5">
+                <p className="flex items-center gap-2 text-xs font-semibold text-white/70"><Wallet className="h-4 w-4" /> Simulated Le-credit balance</p>
+                <p className="mt-2 font-display text-3xl font-black tabular-nums tracking-tight sm:text-4xl">{walletQuery.isLoading ? '—' : formatLeCredits(balance)}</p>
+                <p className="mt-2 text-[11px] leading-relaxed text-white/65">Promotional simulation credits only. No deposit, withdrawal, transfer, or cash redemption.</p>
+              </div>
+              <div className="flex gap-2">
+                <Button type="button" variant="secondary" className="min-h-12 flex-1 rounded-xl border-0 bg-white text-slate-900 hover:bg-white/90 md:flex-none" onClick={() => navigate('/cards')}>
+                  <Layers3 className="h-4 w-4" /> Cards <span className="rounded-full bg-slate-900/10 px-2 py-0.5 text-xs tabular-nums">{owned.length}</span>
+                </Button>
+                <Button type="button" variant="outline" className="min-h-12 flex-1 rounded-xl border-white/35 bg-white/10 text-white hover:bg-white/20 hover:text-white md:flex-none" onClick={() => navigate('/market')}>
+                  <ShoppingBag className="h-4 w-4" /> Market
+                </Button>
               </div>
             </div>
-            <ThemeToggle />
           </div>
+        </section>
 
-          {/* Balance */}
-          <div className="relative bg-black/20 backdrop-blur rounded-2xl p-4">
-            <p className="text-xs text-primary-foreground/60 mb-1">Available Balance</p>
-            <p className="text-3xl font-display font-bold tabular-nums tracking-tight text-primary-foreground mb-3">{sle(wallet?.balance || 0)}</p>
-            <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/10">
-              <div><p className="text-[10px] text-primary-foreground/50">Invested</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{sle(wallet?.invested_amount || 0)}</p></div>
-              <div><p className="text-[10px] text-primary-foreground/50">Net P/L</p><p className={cn("text-sm font-semibold tabular-nums", netProfitLoss >= 0 ? "text-green-300" : "text-red-300")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p></div>
-              <div><p className="text-[10px] text-primary-foreground/50">Win Rate</p><p className="text-sm font-semibold tabular-nums text-primary-foreground">{winRate.toFixed(0)}%</p></div>
+        {(walletQuery.isError || holdingsQuery.isError || ledgerQuery.isError) && (
+          <div className="rounded-xl border border-warning/25 bg-warning/10 p-3 text-xs leading-relaxed text-muted-foreground">
+            Some card-market account data is unavailable. If the card migration has not been applied to Supabase yet, the balance, collection, and ledger will populate after deployment.
+          </div>
+        )}
+
+        <section className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Owned cards</span><Layers3 className="h-4 w-4 text-primary" /></div>
+            <p className="mt-3 font-display text-2xl font-black tabular-nums">{holdingsQuery.isLoading ? '—' : owned.length}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Available to view in Cards</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Sold cards</span><BadgeCheck className="h-4 w-4 text-accent" /></div>
+            <p className="mt-3 font-display text-2xl font-black tabular-nums">{holdingsQuery.isLoading ? '—' : sold.length}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">Available in sold history</p>
+          </div>
+          <div className="rounded-2xl border border-border/70 bg-card p-4 shadow-[var(--shadow-card)]">
+            <div className="flex items-center justify-between"><span className="text-[10px] font-bold uppercase tracking-[0.12em] text-muted-foreground">Member since</span><ShieldCheck className="h-4 w-4 text-success" /></div>
+            <p className="mt-3 font-display text-lg font-black">{profile?.created_at ? new Date(profile.created_at).toLocaleDateString(undefined, { month: 'short', year: 'numeric' }) : '—'}</p>
+            <p className="mt-1 text-[10px] text-muted-foreground">One account, one collection</p>
+          </div>
+        </section>
+
+        <section className="overflow-hidden rounded-[1.4rem] border border-border/70 bg-card shadow-[var(--shadow-card)]">
+          <div className="flex items-center justify-between gap-3 border-b border-border/60 px-4 py-4 sm:px-5">
+            <div>
+              <h2 className="font-display text-base font-extrabold">Credit activity</h2>
+              <p className="mt-1 text-xs text-muted-foreground">A record of simulated bonus credits and card trades</p>
             </div>
+            <Coins className="h-5 w-5 text-primary" />
           </div>
-        </div>
-
-        <div className="px-4 space-y-4">
-          {/* Deposit/Withdraw */}
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setDepositModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-success/10 transition-colors group">
-              <div className="w-8 h-8 rounded-xl bg-success/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Plus className="w-4 h-4 text-success" />
-              </div>
-              <span className="font-semibold text-sm">Deposit</span>
-            </button>
-            <button onClick={() => setWithdrawModalOpen(true)} className="glass-card p-3 flex items-center justify-center gap-2 hover:bg-primary/10 transition-colors group">
-              <div className="w-8 h-8 rounded-xl bg-primary/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Minus className="w-4 h-4 text-primary" />
-              </div>
-              <span className="font-semibold text-sm">Withdraw</span>
-            </button>
-          </div>
-
-          {/* Matured - Claim Section */}
-          {maturedInvestments && maturedInvestments.length > 0 && (
-            <div className="glass-card p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="w-5 h-5 text-success animate-pulse" />
-                <h3 className="font-semibold">Ready to Claim</h3>
-                <span className="ml-auto text-xs bg-success/20 text-success px-2 py-0.5 rounded-full font-medium">{maturedInvestments.length} ready</span>
-              </div>
-              <div className="space-y-3">
-                {maturedInvestments.map((inv) => (
-                  <ClaimInvestmentCard key={inv.id} investment={{ ...inv, company_name: inv.company_name ?? null, company_ticker: inv.company_ticker ?? null }} onClaimed={handleClaimed} />
-                ))}
-              </div>
+          {ledgerQuery.isLoading ? (
+            <div className="space-y-3 p-4 sm:p-5">{[0, 1, 2].map((key) => <Skeleton key={key} className="h-14 rounded-xl" />)}</div>
+          ) : (ledgerQuery.data ?? []).length === 0 ? (
+            <div className="px-5 py-10 text-center">
+              <div className="mx-auto flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10 text-primary"><Sparkles className="h-5 w-5" /></div>
+              <p className="mt-3 text-sm font-bold">No activity yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">Your one-time bonus and card trades will appear here.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border/60">
+              {(ledgerQuery.data ?? []).map((entry) => {
+                const positive = entry.amount >= 0;
+                return (
+                  <div key={entry.id} className="flex items-center gap-3 px-4 py-3.5 sm:px-5">
+                    <span className={cn('flex h-9 w-9 shrink-0 items-center justify-center rounded-xl', positive ? 'bg-success/10 text-success' : 'bg-primary/10 text-primary')}>
+                      {positive ? <ArrowDownRight className="h-4 w-4" /> : <ArrowUpRight className="h-4 w-4" />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-bold">{eventLabel(entry.entry_type)}</p>
+                      <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{entry.description} · {new Date(entry.created_at).toLocaleString()}</p>
+                    </div>
+                    <span className={cn('shrink-0 text-sm font-extrabold tabular-nums', positive ? 'text-success' : 'text-foreground')}>{formatLeCredits(entry.amount, true)}</span>
+                  </div>
+                );
+              })}
             </div>
           )}
+        </section>
 
-          {/* Quick Action Buttons - Drawer style */}
-          <div className="space-y-2">
-            <button onClick={() => navigate('/payments')} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-500/10 flex items-center justify-center"><History className="w-4 h-4 text-blue-500" /></div>
-                <span className="font-medium text-sm">Payments History</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-
-            <button onClick={() => setShowPromos(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center"><Gift className="w-4 h-4 text-purple-500" /></div>
-                <span className="font-medium text-sm">My Promo Codes</span>
-                {activePromoCodes.length > 0 && <span className="px-2 py-0.5 rounded-full bg-success/20 text-success text-[10px] font-medium">{activePromoCodes.length} active</span>}
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-
-            <button onClick={() => setShowPerformance(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center"><Award className="w-4 h-4 text-emerald-500" /></div>
-                <span className="font-medium text-sm">Performance Stats</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
-
-            <button onClick={handleTestNotification} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-amber-500/10 flex items-center justify-center"><BellRing className="w-4 h-4 text-amber-500" /></div>
-                <span className="font-medium text-sm">Test Notifications</span>
-              </div>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full", permission === 'granted' ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
-                {permission === 'granted' ? 'Enabled' : permission === 'denied' ? 'Blocked' : 'Off'}
-              </span>
-            </button>
-
-            <button onClick={() => setShowSettings(true)} className="w-full glass-card p-4 flex items-center justify-between hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-gray-500/10 flex items-center justify-center"><Settings className="w-4 h-4 text-gray-500" /></div>
-                <span className="font-medium text-sm">Account Settings</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            </button>
+        <section className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
+          <div className="flex items-start gap-3 rounded-2xl border border-border/70 bg-muted/20 p-4">
+            <Clock3 className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+            <p className="text-xs leading-relaxed text-muted-foreground">A Le 15 welcome credit is awarded once by the card-market backend after your account signs in. It is a promotional simulation credit, not cash and not a stored-value wallet.</p>
           </div>
-
-          {/* Account Info */}
-          <div className="glass-card p-4">
-            <h3 className="font-semibold mb-3 text-sm">Account</h3>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between"><span className="text-muted-foreground">Member Since</span><span>{profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : '-'}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Total Investments</span><span>{investments.length + completedInvestments.length}</span></div>
-              <div className="flex justify-between"><span className="text-muted-foreground">Payment Method</span><span className="flex items-center gap-1"><CreditCard className="w-3 h-3" /> Mobile Money & USSD</span></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Promo Codes Drawer */}
-        <Drawer open={showPromos} onOpenChange={setShowPromos}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>My Promo Codes</DrawerTitle>
-              <DrawerDescription>Manage your promotional codes</DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 pb-6">
-              {userPromoCodes.length > 0 ? (
-                <div className="space-y-3">
-                  {userPromoCodes.map((upc) => {
-                    const isExpired = new Date(upc.expires_at) < new Date();
-                    const isActive = upc.is_active && !isExpired;
-                    return (
-                      <div key={upc.id} className={cn("p-3 rounded-xl border transition-all", isActive ? "bg-primary/10 border-primary/30" : "bg-muted/50 border-border opacity-60")}>
-                        <div className="flex items-center justify-between mb-1">
-                          <div className="flex items-center gap-2">
-                            <Sparkles className={cn("w-4 h-4", isActive ? "text-primary" : "text-muted-foreground")} />
-                            <span className="font-medium text-sm">{upc.promo_code?.name || upc.promo_code?.code}</span>
-                          </div>
-                          <span className={cn("text-xs px-2 py-0.5 rounded-full", isActive ? "bg-success/20 text-success" : "bg-muted text-muted-foreground")}>
-                            {isActive ? 'Active' : isExpired ? 'Expired' : 'Used'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">{upc.promo_code?.description}</p>
-                        <div className="flex items-center gap-1 mt-1 text-[10px] text-muted-foreground">
-                          <Clock className="w-3 h-3" />
-                          <span>{isExpired ? 'Expired' : `Expires ${new Date(upc.expires_at).toLocaleDateString()}`}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p className="text-center text-muted-foreground py-8">No promo codes yet</p>
-              )}
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Performance Drawer */}
-        <Drawer open={showPerformance} onOpenChange={setShowPerformance}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Performance Stats</DrawerTitle>
-              <DrawerDescription>Your investment performance overview</DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 pb-6">
-              <div className="grid grid-cols-2 gap-3">
-                <div className={cn("p-4 rounded-xl", netProfitLoss >= 0 ? "bg-success/10" : "bg-destructive/10")}>
-                  {netProfitLoss >= 0 ? <TrendingUp className="w-5 h-5 text-success mb-2" /> : <TrendingDown className="w-5 h-5 text-destructive mb-2" />}
-                  <p className="text-xs text-muted-foreground">Net P/L</p>
-                  <p className={cn("text-xl font-bold", netProfitLoss >= 0 ? "text-success" : "text-destructive")}>{netProfitLoss >= 0 ? '+' : ''}{sle(netProfitLoss)}</p>
-                </div>
-                <div className="p-4 bg-primary/10 rounded-xl">
-                  <Award className="w-5 h-5 text-primary mb-2" />
-                  <p className="text-xs text-muted-foreground">Win Rate</p>
-                  <p className="text-xl font-bold text-primary">{winRate.toFixed(0)}%</p>
-                  <p className="text-xs text-muted-foreground">{profitableInvestments}W / {lossInvestments}L</p>
-                </div>
-              </div>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Settings Drawer */}
-        <Drawer open={showSettings} onOpenChange={setShowSettings}>
-          <DrawerContent>
-            <DrawerHeader>
-              <DrawerTitle>Account Settings</DrawerTitle>
-              <DrawerDescription>Manage your account</DrawerDescription>
-            </DrawerHeader>
-            <div className="px-4 pb-6 space-y-3">
-              <div className="p-4 bg-muted/50 rounded-xl">
-                <p className="text-sm font-medium mb-1">Email</p>
-                <p className="text-sm text-muted-foreground">{profile?.email}</p>
-              </div>
-              <div className="p-4 bg-muted/50 rounded-xl">
-                <p className="text-sm font-medium mb-1">Name</p>
-                <p className="text-sm text-muted-foreground">{profile?.name}</p>
-              </div>
-              <button onClick={signOut} className="w-full p-4 flex items-center justify-center gap-2 text-destructive bg-destructive/10 rounded-xl font-medium hover:bg-destructive/20 transition-colors">
-                Sign Out
-              </button>
-            </div>
-          </DrawerContent>
-        </Drawer>
-
-        {/* Modals */}
-        <DepositWithdrawModal isOpen={depositModalOpen} onClose={() => setDepositModalOpen(false)} type="deposit" balance={wallet?.balance || 0} onSuccess={handleDepositSuccess} initialAmount={depositAmount} />
-        <DepositWithdrawModal isOpen={withdrawModalOpen} onClose={() => setWithdrawModalOpen(false)} type="withdraw" balance={wallet?.balance || 0} onSuccess={handlePaymentRefresh} />
+          <Button type="button" variant="outline" className="w-full rounded-xl text-destructive hover:bg-destructive/5 hover:text-destructive sm:w-auto" onClick={() => void handleSignOut()}>
+            <LogOut className="h-4 w-4" /> Sign out
+          </Button>
+        </section>
       </main>
       <BottomNav />
-    </div>
+    </>
   );
 };
 
